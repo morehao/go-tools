@@ -12,6 +12,7 @@ type Cfg struct {
 	TableName   string
 	PackageName string
 	PrefixName  string
+	TplPath     string
 }
 
 func NewAutoCode(db *gorm.DB, cfg *Cfg) AutoCode {

@@ -18,6 +18,16 @@ type ModelField struct {
 	FieldComment string `json:"fieldComment"` // 字段描述
 }
 
+type TableList []string
+
+func (l TableList) ToMap() map[string]struct{} {
+	m := make(map[string]struct{}, len(l))
+	for _, v := range l {
+		m[v] = struct{}{}
+	}
+	return m
+}
+
 var columnFieldTypeMap = map[string]string{
 	"int":      "int64",
 	"tinyint":  "int8",
@@ -30,7 +40,7 @@ var columnFieldTypeMap = map[string]string{
 	"datetime": "time.Time",
 }
 
-func getTableList(db *gorm.DB, dbName string) (tableList []string, err error) {
+func getTableList(db *gorm.DB, dbName string) (tableList TableList, err error) {
 	getTableSql := fmt.Sprintf("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%s';", dbName)
 	if err = db.Raw(getTableSql).Scan(&tableList).Error; err != nil {
 		return nil, err
