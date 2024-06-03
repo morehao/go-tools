@@ -18,3 +18,14 @@ func FileExists(path string) (bool, error) {
 	}
 	return true, nil
 }
+
+func CreateDir(dir string) error {
+	if exist, err := FileExists(dir); err != nil {
+		return err
+	} else if !exist {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
+}

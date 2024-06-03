@@ -10,19 +10,54 @@ import (
 
 const (
 	tplFileSuffix = ".tpl"
+
+	tplLayerNameRouter     = "router"
+	tplLayerNameController = "controller"
+	tplLayerNameService    = "service"
+	tplLayerNameDto        = "dto"
+	tplLayerNameRequest    = "request"
+	tplLayerNameResponse   = "response"
+	tplLayerNameModel      = "model"
+
+	tplLayerPrefixController = "ctr"
+	tplLayerPrefixService    = "svc"
+	tplLayerPrefixDto        = "dto"
+	tplLayerPrefixModel      = "dao"
 )
+
+var layerPrefixMap = map[string]string{
+	tplLayerNameController: tplLayerPrefixController,
+	tplLayerNameService:    tplLayerPrefixService,
+	tplLayerNameModel:      tplLayerPrefixModel,
+}
+
+var layerSpecialNameMap = map[string]string{
+	tplLayerNameRequest:  tplLayerPrefixDto,
+	tplLayerNameResponse: tplLayerPrefixDto,
+}
+
+var layerFileNameMap = map[string]string{}
 
 type tplFile struct {
 	filepath       string
 	filename       string
 	originFilename string
 	layerName      string
+	layerPrefix    string
 }
 
 type tplCfg struct {
 	template template.Template
 	tplFile
-	targetFilepath string
+	targetFileName string
+}
+
+func (t *tplCfg) GetCodeDir(rootDir, structName string) string {
+	if t.layerPrefix == "" {
+		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
+	}
+	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, structName)
+	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
 type tplParam struct {
@@ -65,11 +100,15 @@ func getTmplFiles(path string) ([]tplFile, error) {
 		// 判断是否是模板文件
 		if utils.GetFileSuffix(name) == tplFileSuffix {
 			layerName := strings.TrimSuffix(name, fmt.Sprintf(".go%s", tplFileSuffix))
+			if specialName, ok := layerSpecialNameMap[layerName]; ok {
+				layerName = specialName
+			}
 			files = append(files, tplFile{
 				filepath:       fmt.Sprintf("%s/%s", path, name),
 				filename:       name,
 				originFilename: name[:len(name)-len(tplFileSuffix)],
 				layerName:      layerName,
+				layerPrefix:    layerPrefixMap[layerName],
 			})
 		}
 	}
@@ -85,16 +124,21 @@ func createFile(packageName, tableName string, tplList []tplCfg) error {
 		PackagePascal: packagePascal,
 		StructName:    structName,
 	}
-	tempPath := "./tempAutoCode"
+	rootDir := "/Users/morehao/Documents/practice/go/go-tools/autoCode/tempAutoCode"
 	for _, tplItem := range tplList {
-		f, err := os.Open(fmt.Sprintf("%s/%s", tempPath, tplItem.originFilename))
+		codeDir := tplItem.GetCodeDir(rootDir, structName)
+		if err := utils.CreateDir(codeDir); err != nil {
+			return err
+		}
+		fmt.Println(codeDir)
+		f, err := os.Open(fmt.Sprintf("%s/%s", codeDir, tplItem.originFilename))
 		if err != nil {
 			return err
 		}
 		if err = tplItem.template.Execute(f, tmplParam); err != nil {
 			return err
 		}
-		_ = f.Close()
+		// _ = f.Close()
 	}
 	return nil
 }

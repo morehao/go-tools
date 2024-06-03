@@ -41,9 +41,13 @@ func (m *mysqlImpl) Generate() error {
 	}
 	var tplList []tplCfg
 	for _, file := range tplFiles {
+		targetFileName := file.originFilename
+		if file.layerName != tplLayerNameDto {
+			targetFileName = m.cfg.TableName + ".go"
+		}
 		tplItem := tplCfg{
 			tplFile:        file,
-			targetFilepath: fmt.Sprintf("%s/%s/%s", m.cfg.PackageName, file.layerName, m.cfg.PackageName+".go"),
+			targetFileName: targetFileName,
 		}
 		tplList = append(tplList, tplItem)
 	}
@@ -56,5 +60,10 @@ func (m *mysqlImpl) Generate() error {
 		tplList[i].template = *tmpl
 	}
 	fmt.Println(utils.ToJson(tplList))
+
+	// 渲染模板
+	if err := createFile(m.cfg.PackageName, m.cfg.TableName, tplList); err != nil {
+		return err
+	}
 	return nil
 }
