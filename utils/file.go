@@ -12,17 +12,15 @@ func GetFileSuffix(name string) string {
 }
 
 // FileExists 检查文件是否存在
-func FileExists(path string) (bool, error) {
+func FileExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func CreateDir(dir string) error {
-	if exist, err := FileExists(dir); err != nil {
-		return err
-	} else if !exist {
+	if exist := FileExists(dir); !exist {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return err
 		}

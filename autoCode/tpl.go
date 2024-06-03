@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/morehao/go-tools/utils"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 )
@@ -130,14 +131,87 @@ func createFile(packageName, tableName, rootDir string, tplList []tplCfg) error 
 			return err
 		}
 		codeFilepath := fmt.Sprintf("%s/%s", codeDir, tplItem.targetFileName)
-		f, err := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR, 0755)
-		if err != nil {
-			return err
+		// 判断文件是否存在
+		if exist := utils.FileExists(codeFilepath); exist {
+			// 如果存在，先写入一个临时文件，再对既有文件进行追加
+			tempDir := fmt.Sprintf("%s/temp", codeDir)
+			tmpFilepath := fmt.Sprintf("%s/%s", tempDir, tplItem.targetFileName)
+			if err := utils.CreateDir(tempDir); err != nil {
+				return err
+			}
+			tempF, err := os.OpenFile(tmpFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+			if err != nil {
+				return err
+			}
+			if err = tplItem.template.Execute(tempF, &tmplParam); err != nil {
+				return err
+			}
+			otherContent, trimErr := trimFileTitle(tmpFilepath)
+			if trimErr != nil {
+				return trimErr
+			}
+			f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+			if openErr != nil {
+				return openErr
+			}
+			_, writeErr := f.WriteString(otherContent)
+			if writeErr != nil {
+				return writeErr
+			}
+			// _ = os.Remove(tmpFilepath)
+			_ = os.RemoveAll(tempDir)
+		} else {
+			f, err := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+			if err != nil {
+				return err
+			}
+			if err = tplItem.template.Execute(f, &tmplParam); err != nil {
+				return err
+			}
+			_ = f.Close()
 		}
-		if err = tplItem.template.Execute(f, &tmplParam); err != nil {
-			return err
-		}
-		_ = f.Close()
+
 	}
 	return nil
+}
+
+func trimFileTitle(file string) (string, error) {
+	content, readErr := os.ReadFile(file)
+	if readErr != nil {
+		return "", readErr
+	}
+	fileContent := string(content)
+
+	// 正则表达式匹配 package 语句
+	packagePattern := regexp.MustCompile(`package\s+\w+\s*\n`)
+	// 查找 package 语句的位置
+	// 查找 package 语句的位置
+	packageMatch := packagePattern.FindStringIndex(fileContent)
+	var importStartIndex int
+	if packageMatch != nil {
+		importStartIndex = packageMatch[1]
+	} else {
+		importStartIndex = 0
+	}
+
+	// 正则表达式匹配 import 块和单个 import 语句
+	importBlockPattern := regexp.MustCompile(`(?s)import \((.|\n)*?\)\n`)
+	singleImportPattern := regexp.MustCompile(`import ".*?"\n`)
+	// 查找 import 块和单个 import 语句的位置
+	importBlockMatch := importBlockPattern.FindStringIndex(fileContent[importStartIndex:])
+	singleImportMatch := singleImportPattern.FindStringIndex(fileContent[importStartIndex:])
+
+	// 确定 import 语句及其块的结束位置
+	var importEndIndex int
+	if importBlockMatch != nil {
+		importEndIndex = importStartIndex + importBlockMatch[1]
+	} else if singleImportMatch != nil {
+		importEndIndex = importStartIndex + singleImportMatch[1]
+	} else {
+		importEndIndex = importStartIndex
+	}
+
+	// 分割文件内容
+	otherContent := fileContent[importEndIndex:]
+	return otherContent, nil
 }
