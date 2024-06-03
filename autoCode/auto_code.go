@@ -11,7 +11,6 @@ type AutoCode interface {
 type Cfg struct {
 	TableName   string
 	PackageName string
-	PrefixName  string
 	TplDir      string
 	RootDir     string
 }

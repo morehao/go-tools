@@ -116,7 +116,7 @@ func getTmplFiles(path string) ([]tplFile, error) {
 	return files, nil
 }
 
-func createFile(packageName, tableName, rootDir string, tplList []tplCfg) error {
+func createFile(packageName, tableName, rootDir string, tpl *tplCfg) error {
 	packagePascalName := utils.SnakeToPascal(packageName)
 	structName := utils.SnakeToPascal(tableName)
 	tmplParam := tplParam{
@@ -125,52 +125,56 @@ func createFile(packageName, tableName, rootDir string, tplList []tplCfg) error 
 		PackagePascalName: packagePascalName,
 		StructName:        structName,
 	}
-	for _, tplItem := range tplList {
-		codeDir := tplItem.GetCodeDir(rootDir, structName)
-		if err := utils.CreateDir(codeDir); err != nil {
+	codeDir := tpl.GetCodeDir(rootDir, structName)
+	if err := utils.CreateDir(codeDir); err != nil {
+		return err
+	}
+	codeFilepath := fmt.Sprintf("%s/%s", codeDir, tpl.targetFileName)
+	// 判断文件是否存在
+	if exist := utils.FileExists(codeFilepath); exist {
+		// 如果存在，先写入一个临时文件，再对既有文件进行追加
+		tempDir := fmt.Sprintf("%s/tmp", codeDir)
+		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, tpl.targetFileName)
+		if err := utils.CreateDir(tempDir); err != nil {
 			return err
 		}
-		codeFilepath := fmt.Sprintf("%s/%s", codeDir, tplItem.targetFileName)
-		// 判断文件是否存在
-		if exist := utils.FileExists(codeFilepath); exist {
-			// 如果存在，先写入一个临时文件，再对既有文件进行追加
-			tempDir := fmt.Sprintf("%s/temp", codeDir)
-			tmpFilepath := fmt.Sprintf("%s/%s", tempDir, tplItem.targetFileName)
-			if err := utils.CreateDir(tempDir); err != nil {
-				return err
-			}
-			tempF, err := os.OpenFile(tmpFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
-			if err != nil {
-				return err
-			}
-			if err = tplItem.template.Execute(tempF, &tmplParam); err != nil {
-				return err
-			}
-			otherContent, trimErr := trimFileTitle(tmpFilepath)
-			if trimErr != nil {
-				return trimErr
-			}
-			f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
-			if openErr != nil {
-				return openErr
-			}
-			_, writeErr := f.WriteString(otherContent)
-			if writeErr != nil {
-				return writeErr
-			}
-			// _ = os.Remove(tmpFilepath)
-			_ = os.RemoveAll(tempDir)
-		} else {
-			f, err := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
-			if err != nil {
-				return err
-			}
-			if err = tplItem.template.Execute(f, &tmplParam); err != nil {
-				return err
-			}
-			_ = f.Close()
+		tempF, openTempErr := os.OpenFile(tmpFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+		if openTempErr != nil {
+			return openTempErr
 		}
-
+		defer func() {
+			if err := os.RemoveAll(tempDir); err != nil {
+				panic(err)
+			}
+		}()
+		if err := tpl.template.Execute(tempF, &tmplParam); err != nil {
+			return err
+		}
+		otherContent, trimErr := trimFileTitle(tmpFilepath)
+		if trimErr != nil {
+			return trimErr
+		}
+		f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+		if openErr != nil {
+			return openErr
+		}
+		_, writeErr := f.WriteString(otherContent)
+		if writeErr != nil {
+			return writeErr
+		}
+	} else {
+		f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+		if openErr != nil {
+			return openErr
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				panic(err)
+			}
+		}()
+		if err := tpl.template.Execute(f, &tmplParam); err != nil {
+			return err
+		}
 	}
 	return nil
 }

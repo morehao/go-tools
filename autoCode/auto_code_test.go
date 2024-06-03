@@ -17,11 +17,10 @@ func TestGenerate(t *testing.T) {
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
 	tplDir := fmt.Sprintf("%s/tplExample", workDir)
-	rootDir := fmt.Sprintf("%s/tempAutoCode", workDir)
+	rootDir := fmt.Sprintf("%s/tmpAutoCode", workDir)
 	cfg := &Cfg{
 		TableName:   "user",
 		PackageName: "user",
-		PrefixName:  "user",
 		TplDir:      tplDir,
 		RootDir:     rootDir,
 	}

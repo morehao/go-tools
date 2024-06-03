@@ -60,8 +60,11 @@ func (m *mysqlImpl) Generate() error {
 	}
 
 	// 渲染模板
-	if err := createFile(m.cfg.PackageName, m.cfg.TableName, m.cfg.RootDir, tplList); err != nil {
-		return err
+	for _, tplItem := range tplList {
+		if err := createFile(m.cfg.PackageName, m.cfg.TableName, m.cfg.RootDir, &tplItem); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
