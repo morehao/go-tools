@@ -1,1 +1,1 @@
-package dto{{.PackagePascal}}
+package dto{{.PackagePascalName}}

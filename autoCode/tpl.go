@@ -47,7 +47,7 @@ type tplFile struct {
 }
 
 type tplCfg struct {
-	template template.Template
+	template *template.Template
 	tplFile
 	targetFileName string
 }
@@ -61,17 +61,17 @@ func (t *tplCfg) GetCodeDir(rootDir, structName string) string {
 }
 
 type tplParam struct {
-	PackageName   string
-	TableName     string
-	PackagePascal string
-	StructName    string
+	PackageName       string
+	TableName         string
+	PackagePascalName string
+	StructName        string
 }
 
-func Tmpl() {
+func tmplName() {
 	// 模板定义
-	tepl := "My name is {{.}}"
+	tpl := "My name is {{.}}"
 	// 解析模板
-	tmpl, err := template.New("test").Parse(tepl)
+	tmpl, err := template.New("test").Parse(tpl)
 	if err != nil {
 		panic(err)
 	}
@@ -115,30 +115,29 @@ func getTmplFiles(path string) ([]tplFile, error) {
 	return files, nil
 }
 
-func createFile(packageName, tableName string, tplList []tplCfg) error {
-	packagePascal := utils.SnakeToPascal(packageName)
+func createFile(packageName, tableName, rootDir string, tplList []tplCfg) error {
+	packagePascalName := utils.SnakeToPascal(packageName)
 	structName := utils.SnakeToPascal(tableName)
 	tmplParam := tplParam{
-		PackageName:   packageName,
-		TableName:     tableName,
-		PackagePascal: packagePascal,
-		StructName:    structName,
+		PackageName:       packageName,
+		TableName:         tableName,
+		PackagePascalName: packagePascalName,
+		StructName:        structName,
 	}
-	rootDir := "/Users/morehao/Documents/practice/go/go-tools/autoCode/tempAutoCode"
 	for _, tplItem := range tplList {
 		codeDir := tplItem.GetCodeDir(rootDir, structName)
 		if err := utils.CreateDir(codeDir); err != nil {
 			return err
 		}
-		fmt.Println(codeDir)
-		f, err := os.Open(fmt.Sprintf("%s/%s", codeDir, tplItem.originFilename))
+		codeFilepath := fmt.Sprintf("%s/%s", codeDir, tplItem.targetFileName)
+		f, err := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR, 0755)
 		if err != nil {
 			return err
 		}
-		if err = tplItem.template.Execute(f, tmplParam); err != nil {
+		if err = tplItem.template.Execute(f, &tmplParam); err != nil {
 			return err
 		}
-		// _ = f.Close()
+		_ = f.Close()
 	}
 	return nil
 }

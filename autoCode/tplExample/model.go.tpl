@@ -1,1 +1,1 @@
-package dao{{.PackagePascal}}
+package dao{{.PackagePascalName}}

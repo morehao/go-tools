@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-func TestTmpl(t *testing.T) {
-	Tmpl()
+func TestTmplName(t *testing.T) {
+	tmplName()
 }
 
 func TestGetTmplFiles(t *testing.T) {

@@ -28,14 +28,13 @@ func (m *mysqlImpl) Generate() error {
 
 	columList, getColumnErr := getColumn(m.db, dbName, m.cfg.TableName)
 	if getColumnErr != nil {
-		fmt.Println(getColumnErr)
 		return getColumnErr
 	}
 	fieldList := transferColumnFiled(columList)
 	fmt.Println(utils.ToJson(fieldList))
 
 	// 获取模板文件
-	tplFiles, getTplErr := getTmplFiles(m.cfg.TplPath)
+	tplFiles, getTplErr := getTmplFiles(m.cfg.TplDir)
 	if getTplErr != nil {
 		return getTplErr
 	}
@@ -53,16 +52,15 @@ func (m *mysqlImpl) Generate() error {
 	}
 	// 解析模板
 	for i, tplItem := range tplList {
-		tmpl, parseErr := template.New("test").Parse(tplItem.filepath)
+		tmpl, parseErr := template.ParseFiles(tplItem.filepath)
 		if parseErr != nil {
 			return parseErr
 		}
-		tplList[i].template = *tmpl
+		tplList[i].template = tmpl
 	}
-	fmt.Println(utils.ToJson(tplList))
 
 	// 渲染模板
-	if err := createFile(m.cfg.PackageName, m.cfg.TableName, tplList); err != nil {
+	if err := createFile(m.cfg.PackageName, m.cfg.TableName, m.cfg.RootDir, tplList); err != nil {
 		return err
 	}
 	return nil

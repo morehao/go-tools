@@ -16,12 +16,14 @@ func TestGenerate(t *testing.T) {
 	// 获取当前的运行路径
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
-	tplPath := fmt.Sprintf("%s/tplExample", workDir)
+	tplDir := fmt.Sprintf("%s/tplExample", workDir)
+	rootDir := fmt.Sprintf("%s/tempAutoCode", workDir)
 	cfg := &Cfg{
 		TableName:   "user",
 		PackageName: "user",
 		PrefixName:  "user",
-		TplPath:     tplPath,
+		TplDir:      tplDir,
+		RootDir:     rootDir,
 	}
 	autoCodeTool := NewAutoCode(db, cfg)
 	err := autoCodeTool.Generate()
