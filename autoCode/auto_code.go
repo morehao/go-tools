@@ -6,6 +6,8 @@ import (
 
 type AutoCode interface {
 	Generate() error
+	GetTemplateParam() (*TemplateParams, error)
+	CreateFile(param *CreateFileParam) error
 }
 
 type Cfg struct {

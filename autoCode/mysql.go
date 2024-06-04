@@ -14,30 +14,53 @@ type mysqlImpl struct {
 }
 
 func (m *mysqlImpl) Generate() error {
+	templateParam, getParamErr := m.GetTemplateParam()
+	if getParamErr != nil {
+		return getParamErr
+	}
+
+	params := &tplParam{
+		PackageName:       templateParam.PackageName,
+		TableName:         templateParam.TableName,
+		PackagePascalName: templateParam.PackagePascalName,
+		StructName:        templateParam.StructName,
+	}
+
+	// 渲染模板
+	for _, tplItem := range templateParam.TemplateList {
+		if err := createFile(tplItem.TargetDir, tplItem.TargetFileName, tplItem.Template, params); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 	dbName, getDbNameErr := getDbName(m.db)
 	if getDbNameErr != nil {
-		return getDbNameErr
+		return nil, getDbNameErr
 	}
 	m.dbName = dbName
 	tableList, getTableErr := getTableList(m.db, dbName)
 	if getTableErr != nil {
-		return getTableErr
+		return nil, getTableErr
 	}
 	tableMap := tableList.ToMap()
 	if _, ok := tableMap[m.cfg.TableName]; !ok {
-		return fmt.Errorf("table %s not exist", m.cfg.TableName)
+		return nil, fmt.Errorf("table %s not exist", m.cfg.TableName)
 	}
 
 	modelFieldList, getFieldErr := m.getModelField()
 	if getFieldErr != nil {
-		return getFieldErr
+		return nil, getFieldErr
 	}
 	fmt.Println(utils.ToJson(modelFieldList))
 
 	// 获取模板文件
 	tplFiles, getTplErr := getTmplFiles(m.cfg.TplDir)
 	if getTplErr != nil {
-		return getTplErr
+		return nil, getTplErr
 	}
 	var tplList []tplCfg
 	for _, file := range tplFiles {
@@ -55,28 +78,42 @@ func (m *mysqlImpl) Generate() error {
 	for i, tplItem := range tplList {
 		tmpl, parseErr := template.ParseFiles(tplItem.filepath)
 		if parseErr != nil {
-			return parseErr
+			return nil, parseErr
 		}
 		tplList[i].template = tmpl
 	}
-
 	packagePascalName := utils.SnakeToPascal(m.cfg.PackageName)
 	structName := utils.SnakeToPascal(m.cfg.TableName)
-	params := &tplParam{
-		PackageName:       m.cfg.PackageName,
-		TableName:         m.cfg.TableName,
-		PackagePascalName: packagePascalName,
-		StructName:        structName,
-	}
-
-	// 渲染模板
+	var templateList []TemplateItem
 	for _, tplItem := range tplList {
-		codeDir := tplItem.GetCodeDir(m.cfg.RootDir, structName)
-		if err := createFile(codeDir, &tplItem, params); err != nil {
+		templateList = append(templateList, TemplateItem{
+			Template:       tplItem.template,
+			Filename:       tplItem.filename,
+			Filepath:       tplItem.filepath,
+			OriginFilename: tplItem.originFilename,
+			TargetFileName: tplItem.targetFileName,
+			TargetDir:      tplItem.GetCodeDir(m.cfg.RootDir, structName),
+			LayerName:      tplItem.layerName,
+			LayerPrefix:    tplItem.layerPrefix,
+			ModelFields:    modelFieldList,
+		})
+	}
+	res := &TemplateParams{
+		PackageName:       m.cfg.PackageName,
+		PackagePascalName: packagePascalName,
+		TableName:         m.cfg.TableName,
+		StructName:        structName,
+		TemplateList:      templateList,
+	}
+	return res, nil
+}
+
+func (m *mysqlImpl) CreateFile(param *CreateFileParam) error {
+	for _, v := range param.Params {
+		if err := createFile(v.TargetDir, v.TargetFileName, v.Template, v.Param); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
