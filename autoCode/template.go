@@ -116,16 +116,7 @@ func getTmplFiles(path string) ([]tplFile, error) {
 	return files, nil
 }
 
-func createFile(packageName, tableName, rootDir string, tpl *tplCfg) error {
-	packagePascalName := utils.SnakeToPascal(packageName)
-	structName := utils.SnakeToPascal(tableName)
-	tmplParam := tplParam{
-		PackageName:       packageName,
-		TableName:         tableName,
-		PackagePascalName: packagePascalName,
-		StructName:        structName,
-	}
-	codeDir := tpl.GetCodeDir(rootDir, structName)
+func createFile(codeDir string, tpl *tplCfg, tplParam interface{}) error {
 	if err := utils.CreateDir(codeDir); err != nil {
 		return err
 	}
@@ -147,7 +138,7 @@ func createFile(packageName, tableName, rootDir string, tpl *tplCfg) error {
 				panic(err)
 			}
 		}()
-		if err := tpl.template.Execute(tempF, &tmplParam); err != nil {
+		if err := tpl.template.Execute(tempF, tplParam); err != nil {
 			return err
 		}
 		otherContent, trimErr := trimFileTitle(tmpFilepath)
@@ -172,7 +163,7 @@ func createFile(packageName, tableName, rootDir string, tpl *tplCfg) error {
 				panic(err)
 			}
 		}()
-		if err := tpl.template.Execute(f, &tmplParam); err != nil {
+		if err := tpl.template.Execute(f, &tplParam); err != nil {
 			return err
 		}
 	}

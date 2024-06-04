@@ -4,6 +4,9 @@ import "strings"
 
 // SnakeToPascal 蛇形转大驼峰
 func SnakeToPascal(s string) string {
+	if s == "" {
+		return ""
+	}
 	parts := strings.Split(s, "_")
 
 	for i := range parts {
