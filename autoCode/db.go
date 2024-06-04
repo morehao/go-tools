@@ -6,6 +6,10 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	dbTypeMysql = "mysql"
+)
+
 type TableColumn struct {
 	Field   string `json:"field" gorm:"column:field"`     // 数据库字段
 	Type    string `json:"type" gorm:"column:type"`       // 数据库字段类型

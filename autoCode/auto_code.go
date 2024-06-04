@@ -16,8 +16,14 @@ type Cfg struct {
 }
 
 func NewAutoCode(db *gorm.DB, cfg *Cfg) AutoCode {
-	return &mysqlImpl{
-		db:  db,
-		cfg: cfg,
+	dbType := db.Dialector.Name()
+	switch dbType {
+	case dbTypeMysql:
+		return &mysqlImpl{
+			db:  db,
+			cfg: cfg,
+		}
+	default:
+		panic("unsupported database type")
 	}
 }
