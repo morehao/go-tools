@@ -10,10 +10,10 @@ type AutoCode interface {
 }
 
 type Cfg struct {
-	TableName   string
-	PackageName string
-	TplDir      string
-	RootDir     string
+	TableName   string // 表名
+	PackageName string // 包名
+	TplDir      string // 模板目录
+	RootDir     string // 生成文件的根目录
 }
 
 func NewAutoCode(db *gorm.DB, cfg *Cfg) AutoCode {
