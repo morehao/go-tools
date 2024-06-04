@@ -38,8 +38,6 @@ var layerSpecialNameMap = map[string]string{
 	tplLayerNameResponse: tplLayerPrefixDto,
 }
 
-var layerFileNameMap = map[string]string{}
-
 type tplFile struct {
 	filepath       string
 	filename       string
@@ -54,7 +52,7 @@ type tplCfg struct {
 	targetFileName string
 }
 
-func (t *tplCfg) GetCodeDir(rootDir, structName string) string {
+func (t *tplCfg) BuildTargetDir(rootDir, structName string) string {
 	if t.layerPrefix == "" {
 		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
 	}
@@ -98,21 +96,6 @@ type tplParam struct {
 	TableName         string
 	PackagePascalName string
 	StructName        string
-}
-
-func tmplName() {
-	// 模板定义
-	tpl := "My name is {{.}}"
-	// 解析模板
-	tmpl, err := template.New("test").Parse(tpl)
-	if err != nil {
-		panic(err)
-	}
-	// 渲染模板
-	if err := tmpl.Execute(os.Stdout, "Jack"); err != nil {
-		panic(err)
-	}
-
 }
 
 // 获取指定目录下所有的模板文件
