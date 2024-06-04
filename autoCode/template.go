@@ -61,6 +61,37 @@ func (t *tplCfg) GetCodeDir(rootDir, structName string) string {
 	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
+type TemplateItem struct {
+	Template       *template.Template
+	Filepath       string
+	Filename       string
+	OriginFilename string
+	TargetFileName string
+	TargetDir      string
+	LayerName      string
+	LayerPrefix    string
+	ModelFields    []ModelField
+}
+
+type TemplateParams struct {
+	PackageName       string
+	TableName         string
+	PackagePascalName string
+	StructName        string
+	TemplateList      []TemplateItem
+}
+
+type CreateFileParam struct {
+	Params []CreateFileParamsItem
+}
+
+type CreateFileParamsItem struct {
+	Template       *template.Template
+	TargetDir      string
+	TargetFileName string
+	Param          interface{}
+}
+
 type tplParam struct {
 	PackageName       string
 	TableName         string
@@ -116,16 +147,16 @@ func getTmplFiles(path string) ([]tplFile, error) {
 	return files, nil
 }
 
-func createFile(codeDir string, tpl *tplCfg, tplParam interface{}) error {
-	if err := utils.CreateDir(codeDir); err != nil {
+func createFile(targetDir, targetFileName string, tpl *template.Template, tplParam interface{}) error {
+	if err := utils.CreateDir(targetDir); err != nil {
 		return err
 	}
-	codeFilepath := fmt.Sprintf("%s/%s", codeDir, tpl.targetFileName)
+	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFileName)
 	// 判断文件是否存在
 	if exist := utils.FileExists(codeFilepath); exist {
 		// 如果存在，先写入一个临时文件，再对既有文件进行追加
-		tempDir := fmt.Sprintf("%s/tmp", codeDir)
-		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, tpl.targetFileName)
+		tempDir := fmt.Sprintf("%s/tmp", targetDir)
+		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFileName)
 		if err := utils.CreateDir(tempDir); err != nil {
 			return err
 		}
@@ -138,7 +169,7 @@ func createFile(codeDir string, tpl *tplCfg, tplParam interface{}) error {
 				panic(err)
 			}
 		}()
-		if err := tpl.template.Execute(tempF, tplParam); err != nil {
+		if err := tpl.Execute(tempF, tplParam); err != nil {
 			return err
 		}
 		otherContent, trimErr := trimFileTitle(tmpFilepath)
@@ -163,7 +194,7 @@ func createFile(codeDir string, tpl *tplCfg, tplParam interface{}) error {
 				panic(err)
 			}
 		}()
-		if err := tpl.template.Execute(f, &tplParam); err != nil {
+		if err := tpl.Execute(f, &tplParam); err != nil {
 			return err
 		}
 	}
