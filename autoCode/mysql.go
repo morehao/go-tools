@@ -13,29 +13,6 @@ type mysqlImpl struct {
 	cfg    *Cfg
 }
 
-func (m *mysqlImpl) Generate() error {
-	templateParam, getParamErr := m.GetTemplateParam()
-	if getParamErr != nil {
-		return getParamErr
-	}
-
-	params := &tplParam{
-		PackageName:       templateParam.PackageName,
-		TableName:         templateParam.TableName,
-		PackagePascalName: templateParam.PackagePascalName,
-		StructName:        templateParam.StructName,
-	}
-
-	// 渲染模板
-	for _, tplItem := range templateParam.TemplateList {
-		if err := createFile(tplItem.TargetDir, tplItem.TargetFileName, tplItem.Template, params); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 	dbName, getDbNameErr := getDbName(m.db)
 	if getDbNameErr != nil {
@@ -91,7 +68,7 @@ func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 			Filepath:       tplItem.filepath,
 			OriginFilename: tplItem.originFilename,
 			TargetFileName: tplItem.targetFileName,
-			TargetDir:      tplItem.GetCodeDir(m.cfg.RootDir, structName),
+			TargetDir:      tplItem.BuildTargetDir(m.cfg.RootDir, structName),
 			LayerName:      tplItem.layerName,
 			LayerPrefix:    tplItem.layerPrefix,
 			ModelFields:    modelFieldList,
