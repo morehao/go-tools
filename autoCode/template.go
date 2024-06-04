@@ -30,6 +30,7 @@ var layerPrefixMap = map[string]string{
 	tplLayerNameController: tplLayerPrefixController,
 	tplLayerNameService:    tplLayerPrefixService,
 	tplLayerNameModel:      tplLayerPrefixModel,
+	tplLayerNameDto:        tplLayerPrefixDto,
 }
 
 var layerSpecialNameMap = map[string]string{

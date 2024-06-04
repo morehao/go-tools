@@ -55,7 +55,6 @@ func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 	if getFieldErr != nil {
 		return nil, getFieldErr
 	}
-	fmt.Println(utils.ToJson(modelFieldList))
 
 	// 获取模板文件
 	tplFiles, getTplErr := getTmplFiles(m.cfg.TplDir)
