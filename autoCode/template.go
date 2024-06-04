@@ -91,13 +91,6 @@ type CreateFileParamsItem struct {
 	Param          interface{}
 }
 
-type tplParam struct {
-	PackageName       string
-	TableName         string
-	PackagePascalName string
-	StructName        string
-}
-
 // 获取指定目录下所有的模板文件
 func getTmplFiles(path string) ([]tplFile, error) {
 	// 打开指定目录
