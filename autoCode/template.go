@@ -60,7 +60,7 @@ func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
 	if t.layerPrefix == "" {
 		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
 	}
-	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, packageName)
+	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, utils.SnakeToPascal(packageName))
 	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
