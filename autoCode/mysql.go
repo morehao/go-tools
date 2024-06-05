@@ -63,13 +63,17 @@ func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 	structName := utils.SnakeToPascal(m.cfg.TableName)
 	var templateList []TemplateItem
 	for _, tplItem := range tplList {
+		targetDir := tplItem.BuildTargetDir(m.cfg.RootDir, m.cfg.PackageName)
+		if appendDir, ok := layerAppendDirMap[tplItem.layerName]; ok {
+			targetDir = fmt.Sprintf("%s/%s", targetDir, appendDir)
+		}
 		templateList = append(templateList, TemplateItem{
 			Template:       tplItem.template,
 			Filename:       tplItem.filename,
 			Filepath:       tplItem.filepath,
 			OriginFilename: tplItem.originFilename,
 			TargetFileName: tplItem.targetFileName,
-			TargetDir:      tplItem.BuildTargetDir(m.cfg.RootDir, structName),
+			TargetDir:      targetDir,
 			LayerName:      tplItem.layerName,
 			LayerPrefix:    tplItem.layerPrefix,
 			ModelFields:    modelFieldList,
