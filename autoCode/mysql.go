@@ -8,9 +8,10 @@ import (
 )
 
 type mysqlImpl struct {
-	db     *gorm.DB
-	dbName string
-	cfg    *Cfg
+	db            *gorm.DB
+	dbName        string
+	columnTypeMap map[string]string
+	cfg           *Cfg
 }
 
 func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
@@ -99,11 +100,15 @@ func (m *mysqlImpl) getModelField() ([]ModelField, error) {
 	if err := m.db.Raw(getColumnSql).Scan(&entities).Error; err != nil {
 		return nil, err
 	}
+	columnTypeMap := columnFieldTypeMap
+	if len(m.cfg.ColumnTypeMap) > 0 {
+		columnTypeMap = m.cfg.ColumnTypeMap
+	}
 	var modelFieldList []ModelField
 	for _, v := range entities {
 		item := ModelField{
 			FiledName:  utils.SnakeToPascal(v.ColumnName),
-			FieldType:  columnFieldTypeMap[v.DataType],
+			FieldType:  columnTypeMap[v.DataType],
 			ColumnName: v.ColumnName,
 			ColumnType: v.DataType,
 			Comment:    v.ColumnComment,
