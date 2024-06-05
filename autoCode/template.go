@@ -38,6 +38,10 @@ var layerSpecialNameMap = map[string]string{
 	tplLayerNameResponse: tplLayerPrefixDto,
 }
 
+var layerAppendDirMap = map[string]string{
+	tplLayerNameRouter: "routerHttp",
+}
+
 type tplFile struct {
 	filepath       string
 	filename       string
@@ -52,11 +56,11 @@ type tplCfg struct {
 	targetFileName string
 }
 
-func (t *tplCfg) BuildTargetDir(rootDir, structName string) string {
+func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
 	if t.layerPrefix == "" {
 		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
 	}
-	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, structName)
+	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, packageName)
 	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
