@@ -6,10 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
-type DbType string
-
 const (
-	DbTypeMysql DbType = "mysql"
+	dbTypeMysql = "mysql"
 )
 
 // mysqlTableColumn represents a column in the INFORMATION_SCHEMA.COLUMNS table

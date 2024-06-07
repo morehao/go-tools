@@ -24,7 +24,7 @@ func TestCreateModuleFile(t *testing.T) {
 		TplDir:      tplDir,
 		RootDir:     rootDir,
 	}
-	autoCodeTool := NewAutoCode(DbTypeMysql)
+	autoCodeTool := NewAutoCode()
 	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParam(db, cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {
@@ -63,7 +63,7 @@ func TestCreateApiFile(t *testing.T) {
 		TplDir:         tplDir,
 		RootDir:        rootDir,
 	}
-	autoCodeTool := NewAutoCode(DbTypeMysql)
+	autoCodeTool := NewAutoCode()
 	templateParam, getParamErr := autoCodeTool.GetApiTemplateParam(cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {

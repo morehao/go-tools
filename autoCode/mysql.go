@@ -7,16 +7,9 @@ import (
 )
 
 type mysqlImpl struct {
-	baseImpl
 }
 
 func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModuleTemplateParams, error) {
-	if db == nil {
-		return nil, fmt.Errorf("db is nil")
-	}
-	if err := impl.checkCfg(cfg); err != nil {
-		return nil, err
-	}
 	dbName, getDbNameErr := getDbName(db)
 	if getDbNameErr != nil {
 		return nil, getDbNameErr
@@ -76,61 +69,6 @@ func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Mod
 		TemplateList:      templateList,
 	}
 	return res, nil
-}
-
-func (impl *mysqlImpl) checkCfg(cfg *ModuleCfg) error {
-	if cfg == nil {
-		return fmt.Errorf("cfg is nil")
-	}
-	requiredFields := map[string]string{
-		"packageName": cfg.PackageName,
-		"tableName":   cfg.TableName,
-		"tplDir":      cfg.TplDir,
-		"rootDir":     cfg.RootDir,
-	}
-
-	for field, value := range requiredFields {
-		if value == "" {
-			return fmt.Errorf("%s is required", field)
-		}
-	}
-	return nil
-}
-
-func (impl *mysqlImpl) CreateFile(param *CreateFileParam) error {
-	if err := impl.checkCreateFileParam(param); err != nil {
-		return err
-	}
-	for _, v := range param.Params {
-		if err := createFile(v.TargetDir, v.TargetFileName, v.Template, v.Param); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (impl *mysqlImpl) checkCreateFileParam(param *CreateFileParam) error {
-	if param == nil {
-		return fmt.Errorf("param is nil")
-	}
-	if len(param.Params) == 0 {
-		return fmt.Errorf("params is required")
-	}
-	for _, v := range param.Params {
-		if v.TargetDir == "" {
-			return fmt.Errorf("target dir is required")
-		}
-		if v.TargetFileName == "" {
-			return fmt.Errorf("target file name is required")
-		}
-		if v.Template == nil {
-			return fmt.Errorf("template is required")
-		}
-		if v.Param == nil {
-			return fmt.Errorf("param is required")
-		}
-	}
-	return nil
 }
 
 func (impl *mysqlImpl) getModelField(db *gorm.DB, dbName string, cfg *ModuleCfg) ([]ModelField, error) {

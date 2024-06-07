@@ -25,11 +25,6 @@ type AutoCode interface {
 	CreateFile(param *CreateFileParam) error
 }
 
-func NewAutoCode(dbType DbType) AutoCode {
-	switch dbType {
-	case DbTypeMysql:
-		return &mysqlImpl{}
-	default:
-		panic("unsupported database type")
-	}
+func NewAutoCode() AutoCode {
+	return &baseImpl{}
 }
