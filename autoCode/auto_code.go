@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type Cfg struct {
+type ModuleCfg struct {
 	PackageName   string            // 包名
 	TableName     string            // 表名
 	ColumnTypeMap map[string]string // 字段类型映射
@@ -13,18 +13,14 @@ type Cfg struct {
 }
 
 type AutoCode interface {
-	GetTemplateParam() (*TemplateParams, error)
+	GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*TemplateParams, error)
 	CreateFile(param *CreateFileParam) error
 }
 
-func NewAutoCode(db *gorm.DB, cfg *Cfg) AutoCode {
-	dbType := db.Dialector.Name()
+func NewAutoCode(dbType DbType) AutoCode {
 	switch dbType {
-	case dbTypeMysql:
-		return &mysqlImpl{
-			db:  db,
-			cfg: cfg,
-		}
+	case DbTypeMysql:
+		return &mysqlImpl{}
 	default:
 		panic("unsupported database type")
 	}

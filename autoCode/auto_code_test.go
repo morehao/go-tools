@@ -16,16 +16,16 @@ func TestCreateFile(t *testing.T) {
 	// 获取当前的运行路径
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
-	tplDir := fmt.Sprintf("%s/tplExample", workDir)
+	tplDir := fmt.Sprintf("%s/tplExample/module", workDir)
 	rootDir := fmt.Sprintf("%s/tmpAutoCode", workDir)
-	cfg := &Cfg{
-		TableName:   "user",
+	cfg := &ModuleCfg{
 		PackageName: "user",
+		TableName:   "user",
 		TplDir:      tplDir,
 		RootDir:     rootDir,
 	}
-	autoCodeTool := NewAutoCode(db, cfg)
-	templateParam, getParamErr := autoCodeTool.GetTemplateParam()
+	autoCodeTool := NewAutoCode(DbTypeMysql)
+	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParam(db, cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {
 		PackageName       string

@@ -8,34 +8,29 @@ import (
 )
 
 type mysqlImpl struct {
-	db            *gorm.DB
-	dbName        string
-	columnTypeMap map[string]string
-	cfg           *Cfg
 }
 
-func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
-	dbName, getDbNameErr := getDbName(m.db)
+func (m *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*TemplateParams, error) {
+	dbName, getDbNameErr := getDbName(db)
 	if getDbNameErr != nil {
 		return nil, getDbNameErr
 	}
-	m.dbName = dbName
-	tableList, getTableErr := getTableList(m.db, dbName)
+	tableList, getTableErr := getTableList(db, dbName)
 	if getTableErr != nil {
 		return nil, getTableErr
 	}
 	tableMap := tableList.ToMap()
-	if _, ok := tableMap[m.cfg.TableName]; !ok {
-		return nil, fmt.Errorf("table %s not exist", m.cfg.TableName)
+	if _, ok := tableMap[cfg.TableName]; !ok {
+		return nil, fmt.Errorf("table %s not exist", cfg.TableName)
 	}
 
-	modelFieldList, getFieldErr := m.getModelField()
+	modelFieldList, getFieldErr := m.getModelField(db, dbName, cfg)
 	if getFieldErr != nil {
 		return nil, getFieldErr
 	}
 
 	// 获取模板文件
-	tplFiles, getTplErr := getTmplFiles(m.cfg.TplDir)
+	tplFiles, getTplErr := getTmplFiles(cfg.TplDir)
 	if getTplErr != nil {
 		return nil, getTplErr
 	}
@@ -43,7 +38,7 @@ func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 	for _, file := range tplFiles {
 		targetFileName := file.originFilename
 		if file.layerName != tplLayerNameDto {
-			targetFileName = m.cfg.TableName + ".go"
+			targetFileName = cfg.TableName + ".go"
 		}
 		tplItem := tplCfg{
 			tplFile:        file,
@@ -59,11 +54,11 @@ func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 		}
 		tplList[i].template = tmpl
 	}
-	packagePascalName := utils.SnakeToPascal(m.cfg.PackageName)
-	structName := utils.SnakeToPascal(m.cfg.TableName)
+	packagePascalName := utils.SnakeToPascal(cfg.PackageName)
+	structName := utils.SnakeToPascal(cfg.TableName)
 	var templateList []TemplateItem
 	for _, tplItem := range tplList {
-		targetDir := tplItem.BuildTargetDir(m.cfg.RootDir, m.cfg.PackageName)
+		targetDir := tplItem.BuildTargetDir(cfg.RootDir, cfg.PackageName)
 		if appendDir, ok := layerAppendDirMap[tplItem.layerName]; ok {
 			targetDir = fmt.Sprintf("%s/%s", targetDir, appendDir)
 		}
@@ -80,9 +75,9 @@ func (m *mysqlImpl) GetTemplateParam() (*TemplateParams, error) {
 		})
 	}
 	res := &TemplateParams{
-		PackageName:       m.cfg.PackageName,
+		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,
-		TableName:         m.cfg.TableName,
+		TableName:         cfg.TableName,
 		StructName:        structName,
 		TemplateList:      templateList,
 	}
@@ -98,15 +93,15 @@ func (m *mysqlImpl) CreateFile(param *CreateFileParam) error {
 	return nil
 }
 
-func (m *mysqlImpl) getModelField() ([]ModelField, error) {
+func (m *mysqlImpl) getModelField(db *gorm.DB, dbName string, cfg *ModuleCfg) ([]ModelField, error) {
 	var entities []mysqlTableColumn
-	getColumnSql := fmt.Sprintf("SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s';", m.dbName, m.cfg.TableName)
-	if err := m.db.Raw(getColumnSql).Scan(&entities).Error; err != nil {
+	getColumnSql := fmt.Sprintf("SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s';", dbName, cfg.TableName)
+	if err := db.Raw(getColumnSql).Scan(&entities).Error; err != nil {
 		return nil, err
 	}
 	columnTypeMap := columnFieldTypeMap
-	if len(m.cfg.ColumnTypeMap) > 0 {
-		columnTypeMap = m.cfg.ColumnTypeMap
+	if len(cfg.ColumnTypeMap) > 0 {
+		columnTypeMap = cfg.ColumnTypeMap
 	}
 	var modelFieldList []ModelField
 	for _, v := range entities {
