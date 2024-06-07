@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func Test() {
+func {{.FunctionName}}(req {{.FunctionName}}Req) {{.FunctionName}}Res {
 	fmt.Println("test")
 	fmt.Println(strconv.Itoa(1))
 }

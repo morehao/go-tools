@@ -11,6 +11,7 @@ import (
 
 const (
 	tplFileSuffix = ".tpl"
+	goFileSuffix  = ".go"
 
 	tplLayerNameRouter     = "router"
 	tplLayerNameController = "controller"
@@ -64,7 +65,15 @@ func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
 	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
-type TemplateItem struct {
+type ModuleTemplateParams struct {
+	PackageName       string
+	TableName         string
+	PackagePascalName string
+	StructName        string
+	TemplateList      []ModuleTemplateParamsItem
+}
+
+type TemplateParamsItemBase struct {
 	Template       *template.Template
 	Filepath       string
 	Filename       string
@@ -73,15 +82,17 @@ type TemplateItem struct {
 	TargetDir      string
 	LayerName      string
 	LayerPrefix    string
-	ModelFields    []ModelField
 }
 
-type TemplateParams struct {
+type ModuleTemplateParamsItem struct {
+	TemplateParamsItemBase
+	ModelFields []ModelField
+}
+
+type ApiTemplateParams struct {
 	PackageName       string
-	TableName         string
 	PackagePascalName string
-	StructName        string
-	TemplateList      []TemplateItem
+	TemplateList      []TemplateParamsItemBase
 }
 
 type CreateFileParam struct {
@@ -96,7 +107,7 @@ type CreateFileParamsItem struct {
 }
 
 // 获取指定目录下所有的模板文件
-func getTmplFiles(path string) ([]tplFile, error) {
+func getTplFiles(path string) ([]tplFile, error) {
 	// 打开指定目录
 	dir, openErr := os.Open(path)
 	if openErr != nil {
@@ -112,7 +123,7 @@ func getTmplFiles(path string) ([]tplFile, error) {
 
 		// 判断是否是模板文件
 		if utils.GetFileSuffix(name) == tplFileSuffix {
-			layerName := strings.TrimSuffix(name, fmt.Sprintf(".go%s", tplFileSuffix))
+			layerName := strings.TrimSuffix(name, fmt.Sprintf("%s%s", goFileSuffix, tplFileSuffix))
 			if specialName, ok := layerSpecialNameMap[layerName]; ok {
 				layerName = specialName
 			}
@@ -126,6 +137,29 @@ func getTmplFiles(path string) ([]tplFile, error) {
 		}
 	}
 	return files, nil
+}
+
+func buildTplCfg(tplFiles []tplFile, defaultFilename string) ([]tplCfg, error) {
+	var tplList []tplCfg
+	for _, file := range tplFiles {
+		targetFileName := file.originFilename
+		if file.layerName != tplLayerNameDto {
+			targetFileName = defaultFilename
+		}
+		tplItem := tplCfg{
+			tplFile:        file,
+			targetFileName: targetFileName,
+		}
+		tplList = append(tplList, tplItem)
+	}
+	for i, tplItem := range tplList {
+		tpl, parseErr := template.ParseFiles(tplItem.filepath)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		tplList[i].template = tpl
+	}
+	return tplList, nil
 }
 
 func createFile(targetDir, targetFileName string, tpl *template.Template, tplParam interface{}) error {
