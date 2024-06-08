@@ -4,28 +4,27 @@ import (
 	"gorm.io/gorm"
 )
 
-type Cfg struct {
-	PackageName   string            // 包名
-	TableName     string            // 表名
+type ModuleCfg struct {
+	PackageName   string            `validate:"required"` // 包名
+	TableName     string            `validate:"required"` // 表名
 	ColumnTypeMap map[string]string // 字段类型映射
-	TplDir        string            // 模板目录
-	RootDir       string            // 生成文件的根目录
+	TplDir        string            `validate:"required"` // 模板目录
+	RootDir       string            `validate:"required"` // 生成文件的根目录
+}
+
+type ApiCfg struct {
+	PackageName    string // 包名
+	TargetFilename string // 目标文件名
+	TplDir         string // 模板目录
+	RootDir        string // 生成文件的根目录
 }
 
 type AutoCode interface {
-	GetTemplateParam() (*TemplateParams, error)
+	GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModuleTemplateParams, error)
+	GetApiTemplateParam(cfg *ApiCfg) (*ApiTemplateParams, error)
 	CreateFile(param *CreateFileParam) error
 }
 
-func NewAutoCode(db *gorm.DB, cfg *Cfg) AutoCode {
-	dbType := db.Dialector.Name()
-	switch dbType {
-	case dbTypeMysql:
-		return &mysqlImpl{
-			db:  db,
-			cfg: cfg,
-		}
-	default:
-		panic("unsupported database type")
-	}
+func NewAutoCode() AutoCode {
+	return &baseImpl{}
 }
