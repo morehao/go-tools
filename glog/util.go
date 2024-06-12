@@ -20,8 +20,6 @@ func GetTraceId(ctx context.Context) string {
 	}
 
 	traceId := genTraceID()
-
-	ctx = context.WithValue(ctx, ContextKeyTraceId, traceId)
 	return traceId
 }
 
