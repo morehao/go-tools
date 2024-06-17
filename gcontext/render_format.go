@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+const tagNamePrecision = "precision"
+
 func ResponseFormat(data interface{}) {
 	if data == nil {
 		return
@@ -117,7 +119,7 @@ func handlePointer(val reflect.Value) {
 }
 
 func setFieldPrecision(field reflect.Value, typeField reflect.StructField) {
-	precisionTag := typeField.Tag.Get("precision")
+	precisionTag := typeField.Tag.Get(tagNamePrecision)
 	if precisionTag != "" && field.CanSet() {
 		precision, err := strconv.Atoi(precisionTag)
 		if err != nil {
@@ -129,7 +131,7 @@ func setFieldPrecision(field reflect.Value, typeField reflect.StructField) {
 }
 
 func setMapPrecision(field reflect.Value, typeField reflect.StructField) {
-	precisionTag := typeField.Tag.Get("precision")
+	precisionTag := typeField.Tag.Get(tagNamePrecision)
 	if precisionTag != "" {
 		precision, err := strconv.Atoi(precisionTag)
 		if err != nil {
