@@ -17,24 +17,11 @@ type ResponseRender interface {
 
 var newRender func() ResponseRender
 
-func RegisterRender(s func() ResponseRender) {
-	newRender = s
-}
-
 func newResponseRender() ResponseRender {
 	if newRender == nil {
 		newRender = newDefaultRender
 	}
 	return newRender()
-}
-
-func RenderJson(ctx *gin.Context, code int, msg string, data interface{}) {
-	r := newResponseRender()
-	r.SetCode(code)
-	r.SetMsg(msg)
-	r.SetData(data)
-	ctx.JSON(http.StatusOK, r)
-	return
 }
 
 func RenderSuccess(ctx *gin.Context, data interface{}) {
