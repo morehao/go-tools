@@ -2,6 +2,7 @@ package glog
 
 import (
 	"context"
+	"go.uber.org/zap"
 )
 
 type Logger interface {
@@ -26,14 +27,29 @@ type LoggerConfig struct {
 	InConsole   bool   `yaml:"in_console"`
 }
 
-// NewZapLogger 创建一个新的 Logger 实例
-func NewZapLogger(cfg *LoggerConfig) (Logger, error) {
-	logger, err := newZapLogger(cfg)
-	if err != nil {
-		return nil, err
+// InitLog 初始化日志
+func InitLog(loggerType LoggerType, cfg *LoggerConfig) error {
+	switch loggerType {
+	case LoggerTypeZap:
+		logger, err := newZapLogger(cfg)
+		if err != nil {
+			return err
+		}
+		// AddCallerSkip(2) 跳过两层调用，使得日志输出正确的业务文件名和函数
+		logger = logger.WithOptions(zap.AddCallerSkip(2))
+		logInstance = &zapLogger{
+			logger: logger,
+			cfg:    cfg,
+		}
+	default:
+		logger, err := newZapLogger(cfg)
+		if err != nil {
+			return err
+		}
+		logInstance = &zapLogger{
+			logger: logger,
+			cfg:    cfg,
+		}
 	}
-	return &zapLogger{
-		logger: logger,
-		cfg:    cfg,
-	}, nil
+	return nil
 }

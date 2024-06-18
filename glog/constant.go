@@ -4,6 +4,12 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+type LoggerType uint8
+
+const (
+	LoggerTypeZap LoggerType = iota + 1
+)
+
 const (
 	logOutputTypeStdout      = "stdout"     // 输出到控制台
 	logOutputTypeDefaultFile = "file"       // 输出到普通文件

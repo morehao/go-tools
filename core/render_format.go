@@ -1,4 +1,4 @@
-package gcontext
+package core
 
 import (
 	"fmt"
