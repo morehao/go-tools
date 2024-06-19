@@ -34,7 +34,7 @@ func InitZapLogger(cfg *LoggerConfig) error {
 	if err != nil {
 		return err
 	}
-	// AddCallerSkip(2) 跳过两层调用，使得日志输出正确的业务文件名和函数
+	// AddCallerSkip(3) 跳过三层调用，使得日志输出正确的业务文件名和函数
 	logger = logger.WithOptions(zap.AddCallerSkip(3))
 	logInstance = &zapLogger{
 		logger: logger,

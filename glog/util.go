@@ -12,7 +12,7 @@ func GetTraceId(ctx context.Context) string {
 		return genTraceID()
 	}
 	// 如果上下文有requestId，则直接返回
-	if traceIdVal := ctx.Value(ContextKeyTraceId); traceIdVal != nil {
+	if traceIdVal := ctx.Value(KeyTraceId); traceIdVal != nil {
 		if traceId := traceIdVal.(string); traceId != "" {
 			return traceId
 		}
@@ -37,7 +37,7 @@ func GetIp(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	if ip, ok := ctx.Value(ContextKeyIp).(string); ok {
+	if ip, ok := ctx.Value(KeyIp).(string); ok {
 		return ip
 	}
 	return ""
@@ -47,7 +47,7 @@ func GetUri(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	if uri, ok := ctx.Value(ContextKeyUri).(string); ok {
+	if uri, ok := ctx.Value(KeyUri).(string); ok {
 		return uri
 	}
 	return ""

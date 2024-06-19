@@ -25,11 +25,11 @@ var logOutputFileSuffixMap = map[string]string{
 }
 
 const (
-	ContextKeyTraceId = "traceId"
-	ContextKeySpanId  = "spanId"
-	ContextKeyIp      = "ip"
-	ContextKeyUri     = "uri"
-	HeaderKeyTraceId  = "X-Trace-Id"
+	KeyTraceId    = "trace-id"
+	KeyTraceFlags = "trace-flags"
+	KeySpanId     = "span-id"
+	KeyIp         = "ip"
+	KeyUri        = "uri"
 )
 
 type Level string
