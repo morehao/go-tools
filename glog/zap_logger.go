@@ -81,95 +81,101 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 }
 
 func (l *zapLogger) Debug(ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Debug(args...)
+	l.ctxLog(DebugLevel, ctx, args...)
 }
 func (l *zapLogger) Debugf(ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Debugf(format, args...)
+	l.ctxLogf(DebugLevel, ctx, format, args...)
 }
 
 func (l *zapLogger) Info(ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Info(args...)
+	l.ctxLog(InfoLevel, ctx, args...)
 }
 
 // Infof 记录一条 Info 级别的日志，并包含 context 信息
 func (l *zapLogger) Infof(ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Infof(format, args...)
+	l.ctxLogf(InfoLevel, ctx, format, args...)
 }
 
 func (l *zapLogger) Warn(ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Warn(args...)
+	l.ctxLog(WarnLevel, ctx, args...)
 }
 
 func (l *zapLogger) Warnf(ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Warnf(format, args...)
+	l.ctxLogf(WarnLevel, ctx, format, args...)
 }
 
 func (l *zapLogger) Error(ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Error(args...)
+	l.ctxLog(ErrorLevel, ctx, args...)
 }
 
 func (l *zapLogger) Errorf(ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Errorf(format, args...)
+	l.ctxLogf(ErrorLevel, ctx, format, args...)
 }
 
 func (l *zapLogger) Panic(ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Panic(args...)
+	l.ctxLog(PanicLevel, ctx, args...)
 }
 
 func (l *zapLogger) Panicf(ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Panicf(format, args...)
+	l.ctxLogf(PanicLevel, ctx, format, args...)
 }
 
 func (l *zapLogger) Fatal(ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
-		return
-	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Fatal(args...)
+	l.ctxLog(FatalLevel, ctx, args...)
 }
 
 func (l *zapLogger) Fatalf(ctx context.Context, format string, args ...interface{}) {
+	l.ctxLogf(PanicLevel, ctx, format, args...)
+}
+
+func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}) {
 	if nilCtx(ctx) {
 		return
 	}
-	l.logger.Sugar().With(l.extractFields(ctx)...).Fatalf(format, args...)
+	switch level {
+	case DebugLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debug(args...)
+	case InfoLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Info(args...)
+	case WarnLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warn(args...)
+	case ErrorLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Error(args...)
+	case PanicLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panic(args...)
+	case FatalLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatal(args...)
+	}
+}
+
+func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...interface{}) {
+	if nilCtx(ctx) {
+		return
+	}
+	switch level {
+	case DebugLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debugf(format, args...)
+	case InfoLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Infof(format, args...)
+	case WarnLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warnf(format, args...)
+	case ErrorLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Errorf(format, args...)
+	case PanicLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panicf(format, args...)
+	case FatalLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalf(format, args...)
+	}
 }
 
 // 提取 context 中的字段
-func (l *zapLogger) extractFields(ctx context.Context) []interface{} {
+func (l *zapLogger) extraFields(ctx context.Context) []interface{} {
 	var fields []interface{}
-	fields = append(fields, zap.String(ContextKeyTraceId, GetTraceId(ctx)))
-	fields = append(fields, zap.String(ContextKeyIp, GetIp(ctx)))
-	fields = append(fields, zap.String(ContextKeyUri, GetUri(ctx)))
+	for _, key := range l.cfg.ExtraKeys {
+		if v := ctx.Value(key); v != nil {
+			fields = append(fields, zap.Any(key, v))
+		}
+	}
 	return fields
 }
 

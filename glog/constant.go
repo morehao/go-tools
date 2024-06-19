@@ -35,21 +35,19 @@ const (
 type Level string
 
 const (
-	DebugLevel  Level = "debug"
-	InfoLevel   Level = "info"
-	WarnLevel   Level = "warn"
-	ErrorLevel  Level = "error"
-	DPanicLevel Level = "dpanic"
-	PanicLevel  Level = "panic"
-	FatalLevel  Level = "fatal"
+	DebugLevel Level = "debug"
+	InfoLevel  Level = "info"
+	WarnLevel  Level = "warn"
+	ErrorLevel Level = "error"
+	PanicLevel Level = "panic"
+	FatalLevel Level = "fatal"
 )
 
 var logLevelMap = map[Level]zapcore.Level{
-	DebugLevel:  zapcore.DebugLevel,
-	InfoLevel:   zapcore.InfoLevel,
-	WarnLevel:   zapcore.WarnLevel,
-	ErrorLevel:  zapcore.ErrorLevel,
-	DPanicLevel: zapcore.DPanicLevel,
-	PanicLevel:  zapcore.PanicLevel,
-	FatalLevel:  zapcore.FatalLevel,
+	DebugLevel: zapcore.DebugLevel,
+	InfoLevel:  zapcore.InfoLevel,
+	WarnLevel:  zapcore.WarnLevel,
+	ErrorLevel: zapcore.ErrorLevel,
+	PanicLevel: zapcore.PanicLevel,
+	FatalLevel: zapcore.FatalLevel,
 }
