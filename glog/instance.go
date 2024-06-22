@@ -71,6 +71,6 @@ func Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	logInstance.Fatalw(ctx, msg, keysAndValues...)
 }
 
-func Sync() {
-	logInstance.Sync()
+func Close() {
+	logInstance.Close()
 }

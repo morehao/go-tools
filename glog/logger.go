@@ -24,7 +24,7 @@ type Logger interface {
 	Fatal(ctx context.Context, args ...interface{})
 	Fatalf(ctx context.Context, format string, args ...interface{})
 	Fatalw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Sync()
+	Close()
 }
 
 type LoggerConfig struct {

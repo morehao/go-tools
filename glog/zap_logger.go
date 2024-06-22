@@ -152,7 +152,7 @@ func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...int
 	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) Sync() {
+func (l *zapLogger) Close() {
 	_ = l.logger.Sync()
 }
 
