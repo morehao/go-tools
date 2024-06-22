@@ -1,8 +1,8 @@
-package autoCode
+package codeGen
 
 import (
 	"fmt"
-	"github.com/morehao/go-tools/utils"
+	"github.com/morehao/go-tools/gutils"
 	"os"
 	"regexp"
 	"strings"
@@ -61,7 +61,7 @@ func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
 	if t.layerPrefix == "" {
 		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
 	}
-	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, utils.SnakeToPascal(packageName))
+	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, gutils.SnakeToPascal(packageName))
 	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
@@ -122,7 +122,7 @@ func getTplFiles(path string) ([]tplFile, error) {
 	for _, name := range names {
 
 		// 判断是否是模板文件
-		if utils.GetFileSuffix(name) == tplFileSuffix {
+		if gutils.GetFileSuffix(name) == tplFileSuffix {
 			layerName := strings.TrimSuffix(name, fmt.Sprintf("%s%s", goFileSuffix, tplFileSuffix))
 			if specialName, ok := layerSpecialNameMap[layerName]; ok {
 				layerName = specialName
@@ -163,16 +163,16 @@ func buildTplCfg(tplFiles []tplFile, defaultFilename string) ([]tplCfg, error) {
 }
 
 func createFile(targetDir, targetFileName string, tpl *template.Template, tplParam interface{}) error {
-	if err := utils.CreateDir(targetDir); err != nil {
+	if err := gutils.CreateDir(targetDir); err != nil {
 		return err
 	}
 	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFileName)
 	// 判断文件是否存在
-	if exist := utils.FileExists(codeFilepath); exist {
+	if exist := gutils.FileExists(codeFilepath); exist {
 		// 如果存在，先写入一个临时文件，再对既有文件进行追加
 		tempDir := fmt.Sprintf("%s/tmp", targetDir)
 		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFileName)
-		if err := utils.CreateDir(tempDir); err != nil {
+		if err := gutils.CreateDir(tempDir); err != nil {
 			return err
 		}
 		tempF, openTempErr := os.OpenFile(tmpFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)

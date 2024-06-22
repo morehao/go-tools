@@ -15,7 +15,7 @@
 go get github.com/morehao/go-tools
 ```
 ### 使用
-使用示例参照[autoCode单测](./autoCode/auto_code_test.go)
+使用示例参照[autoCode单测](codeGen/auto_code_test.go)
 
 ## excel
 

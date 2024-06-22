@@ -1,8 +1,8 @@
-package autoCode
+package codeGen
 
 import (
 	"fmt"
-	"github.com/morehao/go-tools/utils"
+	"github.com/morehao/go-tools/gutils"
 	"gorm.io/gorm"
 )
 
@@ -59,8 +59,8 @@ func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Mod
 			ModelFields: modelFieldList,
 		})
 	}
-	packagePascalName := utils.SnakeToPascal(cfg.PackageName)
-	structName := utils.SnakeToPascal(cfg.TableName)
+	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
+	structName := gutils.SnakeToPascal(cfg.TableName)
 	res := &ModuleTemplateParams{
 		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,
@@ -84,7 +84,7 @@ func (impl *mysqlImpl) getModelField(db *gorm.DB, dbName string, cfg *ModuleCfg)
 	var modelFieldList []ModelField
 	for _, v := range entities {
 		item := ModelField{
-			FiledName:  utils.SnakeToPascal(v.ColumnName),
+			FiledName:  gutils.SnakeToPascal(v.ColumnName),
 			FieldType:  columnTypeMap[v.DataType],
 			ColumnName: v.ColumnName,
 			ColumnType: v.DataType,
