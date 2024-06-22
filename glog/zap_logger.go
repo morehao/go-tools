@@ -38,7 +38,7 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	var stdLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= logLevel && lvl >= zapcore.DebugLevel
 	})
-	if cfg.InConsole {
+	if cfg.Stdout {
 		c := zapcore.NewCore(
 			getZapEncoder(),
 			getZapLogWriter(cfg, logOutputTypeStdout),
@@ -280,7 +280,7 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 		w = os.Stdout
 	} else {
 		var err error
-		director := strings.TrimSuffix(cfg.LogDir, "/") + "/" + time.Now().Format("20060102")
+		director := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
 		if ok := gutils.FileExists(director); !ok {
 			_ = os.MkdirAll(director, os.ModePerm)
 		}
@@ -294,10 +294,10 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
 		}
 		rotator, err := rotatelogs.New(
-			path.Join(strings.TrimSuffix(cfg.LogDir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
-			rotatelogs.WithClock(rotatelogs.Local),                                // 使用本地时间
-			rotatelogs.WithRotationTime(time.Hour*24),                             // 日志切割时间间隔
-			rotatelogs.WithMaxAge(time.Hour*24*30),                                // 保留旧文件的最大时间
+			path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
+			rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
+			rotatelogs.WithRotationTime(time.Hour*24),                          // 日志切割时间间隔
+			rotatelogs.WithMaxAge(time.Hour*24*30),                             // 保留旧文件的最大时间
 		)
 		if err != nil {
 			panic(err)

@@ -10,8 +10,8 @@ func TestZapLogger(t *testing.T) {
 	err := InitZapLogger(&LoggerConfig{
 		ServiceName: "myApp",
 		Level:       DebugLevel,
-		LogDir:      "./log",
-		InConsole:   true,
+		Dir:         "./log",
+		Stdout:      true,
 	})
 	defer Close()
 	assert.Nil(t, err)
@@ -28,8 +28,8 @@ func TestZapExtraKeys(t *testing.T) {
 	err := InitZapLogger(&LoggerConfig{
 		ServiceName: "myApp",
 		Level:       DebugLevel,
-		LogDir:      "./log",
-		InConsole:   true,
+		Dir:         "./log",
+		Stdout:      true,
 		ExtraKeys:   []string{"key1", "key2"},
 	})
 	defer Close()

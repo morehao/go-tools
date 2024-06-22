@@ -17,7 +17,7 @@ func TestCreateModuleFile(t *testing.T) {
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
 	tplDir := fmt.Sprintf("%s/tplExample/module", workDir)
-	rootDir := fmt.Sprintf("%s/tmpAutoCode", workDir)
+	rootDir := fmt.Sprintf("%s/tmp", workDir)
 	cfg := &ModuleCfg{
 		PackageName: "user",
 		TableName:   "user",
@@ -56,7 +56,7 @@ func TestCreateApiFile(t *testing.T) {
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
 	tplDir := fmt.Sprintf("%s/tplExample/api", workDir)
-	rootDir := fmt.Sprintf("%s/tmpAutoCode", workDir)
+	rootDir := fmt.Sprintf("%s/tmp", workDir)
 	cfg := &ApiCfg{
 		PackageName:    "user",
 		TargetFilename: "user.go",

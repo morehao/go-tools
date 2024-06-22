@@ -30,16 +30,16 @@ type Logger interface {
 type LoggerConfig struct {
 	ServiceName string   `yaml:"service_name"`
 	Level       Level    `yaml:"level"`
-	LogDir      string   `yaml:"log_dir"`
-	InConsole   bool     `yaml:"in_console"`
+	Dir         string   `yaml:"dir"`
+	Stdout      bool     `yaml:"Stdout"`
 	ExtraKeys   []string `yaml:"extra_keys"`
 }
 
 // InitZapLogger 初始化zapLogger
-func InitZapLogger(cfg *LoggerConfig) error {
+func InitZapLogger(cfg *LoggerConfig) {
 	logger, err := newZapLogger(cfg)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	// AddCallerSkip(3) 跳过三层调用，使得日志输出正确的业务文件名和函数
 	logger = logger.WithOptions(zap.AddCallerSkip(3))
@@ -47,5 +47,4 @@ func InitZapLogger(cfg *LoggerConfig) error {
 		logger: logger,
 		cfg:    cfg,
 	}
-	return nil
 }
