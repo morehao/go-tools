@@ -10,7 +10,7 @@ import (
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/morehao/go-tools/utils"
+	"github.com/morehao/go-tools/gutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -83,17 +83,25 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 func (l *zapLogger) Debug(ctx context.Context, args ...interface{}) {
 	l.ctxLog(DebugLevel, ctx, args...)
 }
+
 func (l *zapLogger) Debugf(ctx context.Context, format string, args ...interface{}) {
 	l.ctxLogf(DebugLevel, ctx, format, args...)
+}
+
+func (l *zapLogger) Debugw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.ctxLogw(DebugLevel, ctx, msg, keysAndValues...)
 }
 
 func (l *zapLogger) Info(ctx context.Context, args ...interface{}) {
 	l.ctxLog(InfoLevel, ctx, args...)
 }
 
-// Infof 记录一条 Info 级别的日志，并包含 context 信息
 func (l *zapLogger) Infof(ctx context.Context, format string, args ...interface{}) {
 	l.ctxLogf(InfoLevel, ctx, format, args...)
+}
+
+func (l *zapLogger) Infow(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.ctxLogw(InfoLevel, ctx, msg, keysAndValues...)
 }
 
 func (l *zapLogger) Warn(ctx context.Context, args ...interface{}) {
@@ -104,12 +112,20 @@ func (l *zapLogger) Warnf(ctx context.Context, format string, args ...interface{
 	l.ctxLogf(WarnLevel, ctx, format, args...)
 }
 
+func (l *zapLogger) Warnw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.ctxLogw(WarnLevel, ctx, msg, keysAndValues...)
+}
+
 func (l *zapLogger) Error(ctx context.Context, args ...interface{}) {
 	l.ctxLog(ErrorLevel, ctx, args...)
 }
 
 func (l *zapLogger) Errorf(ctx context.Context, format string, args ...interface{}) {
 	l.ctxLogf(ErrorLevel, ctx, format, args...)
+}
+
+func (l *zapLogger) Errorw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.ctxLogw(ErrorLevel, ctx, msg, keysAndValues...)
 }
 
 func (l *zapLogger) Panic(ctx context.Context, args ...interface{}) {
@@ -120,12 +136,24 @@ func (l *zapLogger) Panicf(ctx context.Context, format string, args ...interface
 	l.ctxLogf(PanicLevel, ctx, format, args...)
 }
 
+func (l *zapLogger) Panicw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.ctxLogw(PanicLevel, ctx, msg, keysAndValues...)
+}
+
 func (l *zapLogger) Fatal(ctx context.Context, args ...interface{}) {
 	l.ctxLog(FatalLevel, ctx, args...)
 }
 
 func (l *zapLogger) Fatalf(ctx context.Context, format string, args ...interface{}) {
 	l.ctxLogf(PanicLevel, ctx, format, args...)
+}
+
+func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
+}
+
+func (l *zapLogger) Sync() {
+	_ = l.logger.Sync()
 }
 
 func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}) {
@@ -165,6 +193,26 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, arg
 		l.logger.Sugar().With(l.extraFields(ctx)...).Panicf(format, args...)
 	case FatalLevel:
 		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalf(format, args...)
+	}
+}
+
+func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...interface{}) {
+	if nilCtx(ctx) {
+		return
+	}
+	switch level {
+	case DebugLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debugw(msg, keysAndValues...)
+	case InfoLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Infow(msg, keysAndValues...)
+	case WarnLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warnw(msg, keysAndValues...)
+	case ErrorLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Errorw(msg, keysAndValues...)
+	case PanicLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panicw(msg, keysAndValues...)
+	case FatalLevel:
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalw(msg, keysAndValues...)
 	}
 }
 
@@ -233,7 +281,7 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 	} else {
 		var err error
 		director := strings.TrimSuffix(cfg.LogDir, "/") + "/" + time.Now().Format("20060102")
-		if ok := utils.FileExists(director); !ok {
+		if ok := gutils.FileExists(director); !ok {
 			_ = os.MkdirAll(director, os.ModePerm)
 		}
 		var logFilename string

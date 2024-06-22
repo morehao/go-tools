@@ -1,4 +1,4 @@
-package core
+package gcore
 
 // ResponseRender 返回数据格式化
 type ResponseRender interface {

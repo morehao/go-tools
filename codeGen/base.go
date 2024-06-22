@@ -1,8 +1,8 @@
-package autoCode
+package codeGen
 
 import (
 	"fmt"
-	"github.com/morehao/go-tools/utils"
+	"github.com/morehao/go-tools/gutils"
 	"gorm.io/gorm"
 	"strings"
 )
@@ -76,7 +76,7 @@ func (impl *baseImpl) GetApiTemplateParam(cfg *ApiCfg) (*ApiTemplateParams, erro
 			LayerPrefix:    tplItem.layerPrefix,
 		})
 	}
-	packagePascalName := utils.SnakeToPascal(cfg.PackageName)
+	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
 	res := &ApiTemplateParams{
 		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,

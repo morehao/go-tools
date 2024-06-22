@@ -8,16 +8,23 @@ import (
 type Logger interface {
 	Debug(ctx context.Context, args ...interface{})
 	Debugf(ctx context.Context, format string, args ...interface{})
+	Debugw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Info(ctx context.Context, args ...interface{})
 	Infof(ctx context.Context, format string, args ...interface{})
+	Infow(ctx context.Context, msg string, keysAndValues ...interface{})
 	Warn(ctx context.Context, args ...interface{})
 	Warnf(ctx context.Context, format string, args ...interface{})
+	Warnw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Error(ctx context.Context, args ...interface{})
 	Errorf(ctx context.Context, format string, args ...interface{})
+	Errorw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Panic(ctx context.Context, args ...interface{})
 	Panicf(ctx context.Context, format string, args ...interface{})
+	Panicw(ctx context.Context, msg string, keysAndValues ...interface{})
 	Fatal(ctx context.Context, args ...interface{})
 	Fatalf(ctx context.Context, format string, args ...interface{})
+	Fatalw(ctx context.Context, msg string, keysAndValues ...interface{})
+	Sync()
 }
 
 type LoggerConfig struct {

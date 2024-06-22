@@ -25,11 +25,38 @@ var logOutputFileSuffixMap = map[string]string{
 }
 
 const (
-	KeyTraceId    = "trace-id"
-	KeyTraceFlags = "trace-flags"
-	KeySpanId     = "span-id"
-	KeyIp         = "ip"
-	KeyUri        = "uri"
+	KeyRequestId  = "requestId"
+	KeyTraceId    = "traceId"
+	KeyTraceFlags = "traceFlags"
+	KeySpanId     = "spanId"
+
+	MsgFlagNotice = "notice"
+	MsgFlagMysql  = "mysql"
+	MsgFlagRedis  = "redis"
+
+	KeyHost             = "host"
+	KeyClientIp         = "clientIp"
+	KeyHandle           = "handle"
+	KeyProto            = "proto"
+	KeyRefer            = "refer"
+	KeyUserAgent        = "userAgent"
+	KeyHeader           = "header"
+	KeyCookie           = "cookie"
+	KeyUri              = "uri"
+	KeyMethod           = "method"
+	KeyHttpStatusCode   = "httpStatusCode"
+	KeyRequestQuery     = "requestQuery"
+	KeyRequestBody      = "requestBody"
+	KeyRequestBodySize  = "requestBodySize"
+	KeyResponseCode     = "responseCode"
+	KeyResponseBody     = "responseBody"
+	KeyResponseBodySize = "responseBodySize"
+	KeyRequestStartTime = "requestStartTime"
+	KeyRequestEndTime   = "requestEndTime"
+	KeyCostTime         = "cost"
+	KeyRequestErr       = "requestErr"
+	KeyErrorCode        = "errorCode"
+	KeyErrorMsg         = "errorMsg"
 )
 
 type Level string

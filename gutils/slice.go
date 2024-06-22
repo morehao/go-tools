@@ -1,4 +1,4 @@
-package utils
+package gutils
 
 // SliceDiff 返回在 a 中但不在 b 中的元素
 func SliceDiff[T comparable](a, b []T) []T {

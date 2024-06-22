@@ -1,4 +1,4 @@
-package autoCode
+package codeGen
 
 import (
 	"database/sql"
