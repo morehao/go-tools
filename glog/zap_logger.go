@@ -12,7 +12,6 @@ import (
 	"github.com/morehao/go-tools/gutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Logger 是一个封装 zap.Logger 的结构体
@@ -292,6 +291,8 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 		default:
 			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
 		}
+
+		// 使用 rotatelogs 进行日志切割，需要注意rotatelogs已停止维护
 		// rotator, err := rotatelogs.New(
 		// 	path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
 		// 	rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
@@ -302,15 +303,24 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 		// 	panic(err)
 		// }
 		logFilepath := path.Join(director, logFilename)
-		l := &lumberjack.Logger{
-			Filename:   logFilepath, // 分割后的文件名称
-			MaxSize:    50,          // 单个日志文件的最大大小
-			MaxBackups: 3,           // 要保留的旧日志文件的最大数量
-			MaxAge:     7,           // 日志文件的最大保存天数
-			LocalTime:  true,        // 使用本地时间
-			Compress:   true,        // 是否压缩旧的日志文件
+
+		// 使用 lumberjack 进行日志切割
+		// l := &lumberjack.Logger{
+		// 	Filename:   logFilepath, // 分割后的文件名称
+		// 	MaxSize:    50,          // 单个日志文件的最大大小
+		// 	MaxBackups: 3,           // 要保留的旧日志文件的最大数量
+		// 	MaxAge:     7,           // 日志文件的最大保存天数
+		// 	LocalTime:  true,        // 使用本地时间
+		// 	Compress:   true,        // 是否压缩旧的日志文件
+		// }
+		// w = zapcore.AddSync(l)
+
+		file, err := os.OpenFile(logFilepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
 		}
-		w = zapcore.AddSync(l)
+		w = file
+
 	}
 
 	flushInterval := 5 * time.Second
