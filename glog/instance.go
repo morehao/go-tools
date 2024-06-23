@@ -1,8 +1,15 @@
 package glog
 
-import "context"
+import (
+	"context"
+)
 
-var logInstance Logger
+type instance struct {
+	Logger
+	logType LoggerType
+}
+
+var logInstance instance
 
 func Debug(ctx context.Context, args ...interface{}) {
 	logInstance.Debug(ctx, args...)
@@ -69,6 +76,10 @@ func Fatalf(ctx context.Context, format string, args ...interface{}) {
 
 func Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	logInstance.Fatalw(ctx, msg, keysAndValues...)
+}
+
+func WithOptions(opts ...Option) {
+	logInstance.WithOptions(opts...)
 }
 
 func Close() {

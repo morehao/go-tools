@@ -151,6 +151,14 @@ func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...int
 	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
 }
 
+func (l *zapLogger) WithOptions(opts ...Option) {
+	cfg := &optConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+	l.logger.WithOptions(cfg.zapOpts...)
+}
+
 func (l *zapLogger) Close() {
 	_ = l.logger.Sync()
 }

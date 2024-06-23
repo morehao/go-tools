@@ -24,6 +24,7 @@ type Logger interface {
 	Fatal(ctx context.Context, args ...interface{})
 	Fatalf(ctx context.Context, format string, args ...interface{})
 	Fatalw(ctx context.Context, msg string, keysAndValues ...interface{})
+	WithOptions(opts ...Option)
 	Close()
 }
 
@@ -31,7 +32,7 @@ type LoggerConfig struct {
 	ServiceName string   `yaml:"service_name"`
 	Level       Level    `yaml:"level"`
 	Dir         string   `yaml:"dir"`
-	Stdout      bool     `yaml:"Stdout"`
+	Stdout      bool     `yaml:"stdout"`
 	ExtraKeys   []string `yaml:"extra_keys"`
 }
 
@@ -43,8 +44,11 @@ func InitZapLogger(cfg *LoggerConfig) {
 	}
 	// AddCallerSkip(3) 跳过三层调用，使得日志输出正确的业务文件名和函数
 	logger = logger.WithOptions(zap.AddCallerSkip(3))
-	logInstance = &zapLogger{
-		logger: logger,
-		cfg:    cfg,
+	logInstance = instance{
+		Logger: &zapLogger{
+			logger: logger,
+			cfg:    cfg,
+		},
+		logType: LoggerTypeZap,
 	}
 }
