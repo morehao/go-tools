@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/morehao/go-tools/gutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Logger 是一个封装 zap.Logger 的结构体
@@ -279,7 +279,6 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 	if logOutputType == logOutputTypeStdout {
 		w = os.Stdout
 	} else {
-		var err error
 		director := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
 		if ok := gutils.FileExists(director); !ok {
 			_ = os.MkdirAll(director, os.ModePerm)
@@ -293,16 +292,25 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 		default:
 			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
 		}
-		rotator, err := rotatelogs.New(
-			path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
-			rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
-			rotatelogs.WithRotationTime(time.Hour*24),                          // 日志切割时间间隔
-			rotatelogs.WithMaxAge(time.Hour*24*30),                             // 保留旧文件的最大时间
-		)
-		if err != nil {
-			panic(err)
+		// rotator, err := rotatelogs.New(
+		// 	path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
+		// 	rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
+		// 	rotatelogs.WithRotationTime(time.Hour*24),                          // 日志切割时间间隔
+		// 	rotatelogs.WithMaxAge(time.Hour*24*7),                             // 保留旧文件的最大时间
+		// )
+		// if err != nil {
+		// 	panic(err)
+		// }
+		logFilepath := path.Join(director, logFilename)
+		l := &lumberjack.Logger{
+			Filename:   logFilepath, // 分割后的文件名称
+			MaxSize:    50,          // 单个日志文件的最大大小
+			MaxBackups: 3,           // 要保留的旧日志文件的最大数量
+			MaxAge:     7,           // 日志文件的最大保存天数
+			LocalTime:  true,        // 使用本地时间
+			Compress:   true,        // 是否压缩旧的日志文件
 		}
-		w = zapcore.AddSync(rotator)
+		w = zapcore.AddSync(l)
 	}
 
 	flushInterval := 5 * time.Second
