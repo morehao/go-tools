@@ -2,16 +2,19 @@ package glog
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestZapLogger(t *testing.T) {
-	InitZapLogger(&LoggerConfig{
+	if err := InitZapLogger(&LoggerConfig{
 		ServiceName: "myApp",
 		Level:       DebugLevel,
 		Dir:         "./log",
 		Stdout:      true,
-	})
+	}); err != nil {
+		assert.Nil(t, err)
+	}
 	defer Close()
 	ctx := context.Background()
 	Info(ctx, "hello world")
@@ -23,13 +26,15 @@ func TestZapLogger(t *testing.T) {
 }
 
 func TestZapExtraKeys(t *testing.T) {
-	InitZapLogger(&LoggerConfig{
+	if err := InitZapLogger(&LoggerConfig{
 		ServiceName: "myApp",
 		Level:       DebugLevel,
 		Dir:         "./log",
 		Stdout:      true,
 		ExtraKeys:   []string{"key1", "key2"},
-	})
+	}); err != nil {
+		assert.Nil(t, err)
+	}
 	defer Close()
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "key1", "value1")

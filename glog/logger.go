@@ -24,7 +24,7 @@ type Logger interface {
 	Fatal(ctx context.Context, args ...interface{})
 	Fatalf(ctx context.Context, format string, args ...interface{})
 	Fatalw(ctx context.Context, msg string, keysAndValues ...interface{})
-	WithOptions(opts ...Option)
+	getLogger(opts ...Option) Logger
 	Close()
 }
 
@@ -37,10 +37,10 @@ type LoggerConfig struct {
 }
 
 // InitZapLogger 初始化zapLogger
-func InitZapLogger(cfg *LoggerConfig) {
+func InitZapLogger(cfg *LoggerConfig) error {
 	logger, err := newZapLogger(cfg)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	// AddCallerSkip(3) 跳过三层调用，使得日志输出正确的业务文件名和函数
 	logger = logger.WithOptions(zap.AddCallerSkip(3))
@@ -51,4 +51,5 @@ func InitZapLogger(cfg *LoggerConfig) {
 		},
 		logType: LoggerTypeZap,
 	}
+	return nil
 }

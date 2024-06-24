@@ -2,14 +2,14 @@ package ginRender
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/morehao/go-tools/gcore"
+	"github.com/morehao/go-tools/gcontext"
 	"github.com/morehao/go-tools/gerror"
 	"github.com/pkg/errors"
 	"net/http"
 )
 
 func RenderSuccess(ctx *gin.Context, data interface{}) {
-	r := gcore.NewResponseRender()
+	r := gcontext.NewResponseRender()
 	r.SetCode(0)
 	r.SetMsg("success")
 	r.SetData(data)
@@ -18,7 +18,7 @@ func RenderSuccess(ctx *gin.Context, data interface{}) {
 }
 
 func RenderSuccessWithFormat(ctx *gin.Context, data interface{}) {
-	r := gcore.NewResponseRender()
+	r := gcontext.NewResponseRender()
 	r.SetCode(0)
 	r.SetMsg("success")
 	r.SetDataWithFormat(data)
@@ -27,7 +27,7 @@ func RenderSuccessWithFormat(ctx *gin.Context, data interface{}) {
 }
 
 func RenderFail(ctx *gin.Context, err error) {
-	r := gcore.NewResponseRender()
+	r := gcontext.NewResponseRender()
 
 	var code int
 	var msg string
@@ -49,7 +49,7 @@ func RenderFail(ctx *gin.Context, err error) {
 }
 
 func RenderAbort(ctx *gin.Context, err error) {
-	r := gcore.NewResponseRender()
+	r := gcontext.NewResponseRender()
 
 	var gErr gerror.Error
 	if errors.As(err, &gErr) {

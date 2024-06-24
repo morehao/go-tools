@@ -78,8 +78,8 @@ func Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	logInstance.Fatalw(ctx, msg, keysAndValues...)
 }
 
-func WithOptions(opts ...Option) {
-	logInstance.WithOptions(opts...)
+func GetLogger(opts ...Option) Logger {
+	return logInstance.Logger.getLogger(opts...)
 }
 
 func Close() {

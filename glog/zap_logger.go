@@ -3,6 +3,7 @@ package glog
 import (
 	"context"
 	"fmt"
+	"github.com/morehao/go-tools/gcontext"
 	"io"
 	"os"
 	"path"
@@ -38,29 +39,41 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 		return lvl >= logLevel && lvl >= zapcore.DebugLevel
 	})
 	if cfg.Stdout {
+		writer, getWriterErr := getZapLogWriter(cfg, logOutputTypeStdout)
+		if getWriterErr != nil {
+			return nil, getWriterErr
+		}
 		c := zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeStdout),
+			writer,
 			stdLevel)
 		zapCores = append(zapCores, c)
 	}
 
+	defaultWriter, getDefaultWriterErr := getZapLogWriter(cfg, logOutputTypeDefaultFile)
+	if getDefaultWriterErr != nil {
+		return nil, getDefaultWriterErr
+	}
 	zapCores = append(zapCores,
 		zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeDefaultFile),
+			defaultWriter,
 			infoLevel))
 
 	zapCores = append(zapCores,
 		zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeDefaultFile),
+			defaultWriter,
 			errorLevel))
 
+	wfWriter, getWfWriterErr := getZapLogWriter(cfg, logOutputTypeWarnFatal)
+	if getWfWriterErr != nil {
+		return nil, getWfWriterErr
+	}
 	zapCores = append(zapCores,
 		zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeWarnFatal),
+			wfWriter,
 			errorLevel))
 
 	core := zapcore.NewTee(zapCores...)
@@ -151,12 +164,16 @@ func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...int
 	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) WithOptions(opts ...Option) {
+func (l *zapLogger) getLogger(opts ...Option) Logger {
 	cfg := &optConfig{}
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
-	l.logger.WithOptions(cfg.zapOpts...)
+	logger := l.logger.WithOptions(cfg.zapOpts...)
+	return &zapLogger{
+		logger: logger,
+		cfg:    l.cfg,
+	}
 }
 
 func (l *zapLogger) Close() {
@@ -164,7 +181,7 @@ func (l *zapLogger) Close() {
 }
 
 func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
+	if gcontext.NilCtx(ctx) {
 		return
 	}
 	switch level {
@@ -184,7 +201,7 @@ func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}
 }
 
 func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
+	if gcontext.NilCtx(ctx) {
 		return
 	}
 	switch level {
@@ -204,7 +221,7 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, arg
 }
 
 func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...interface{}) {
-	if nilCtx(ctx) {
+	if gcontext.NilCtx(ctx) {
 		return
 	}
 	switch level {
@@ -281,7 +298,7 @@ func getZapColorEncoder() zapcore.Encoder {
 	return zapcore.NewJSONEncoder(encoderCfg)
 }
 
-func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteSyncer) {
+func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSyncer, error) {
 	var w io.Writer
 	if logOutputType == logOutputTypeStdout {
 		w = os.Stdout
@@ -323,9 +340,9 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 		// }
 		// w = zapcore.AddSync(l)
 
-		file, err := os.OpenFile(logFilepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			panic(err)
+		file, openErr := os.OpenFile(logFilepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if openErr != nil {
+			return nil, openErr
 		}
 		w = file
 
@@ -335,12 +352,12 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteS
 	if logOutputType == logOutputTypeStdout {
 		flushInterval = 1 * time.Second
 	}
-	ws = &zapcore.BufferedWriteSyncer{
+	ws := &zapcore.BufferedWriteSyncer{
 		WS:            zapcore.AddSync(w),
 		Size:          256 * 1024,
 		FlushInterval: flushInterval,
 		Clock:         nil,
 	}
 
-	return ws
+	return ws, nil
 }
