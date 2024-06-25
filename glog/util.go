@@ -20,5 +20,6 @@ func FormatRequestTime(time time.Time) string {
 }
 
 func GetRequestCost(start, end time.Time) float64 {
+	// 比起直接除以1e6，避免了直接将大整数转换为浮点数的精度损失
 	return float64(end.Sub(start).Nanoseconds()/1e4) / 100.0
 }

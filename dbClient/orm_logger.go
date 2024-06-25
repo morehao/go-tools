@@ -1,4 +1,4 @@
-package gcore
+package dbClient
 
 import (
 	"context"
@@ -13,16 +13,17 @@ import (
 )
 
 type ormLogger struct {
-	Service   string
-	Address   string
-	Database  string
-	MaxSqlLen int
-	Logger    glog.Logger
+	Service       string
+	Addr          string
+	Database      string
+	MaxSqlLen     int
+	SlowThreshold time.Duration
+	Logger        glog.Logger
 }
 
 type ormConfig struct {
 	Service   string
-	Address   string
+	Addr      string
 	Database  string
 	MaxSqlLen int
 }
@@ -35,7 +36,7 @@ func newOrmLogger(cfg *ormConfig) *ormLogger {
 
 	return &ormLogger{
 		Service:   s,
-		Address:   cfg.Address,
+		Addr:      cfg.Addr,
 		Database:  cfg.Database,
 		MaxSqlLen: cfg.MaxSqlLen,
 		Logger:    glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(2))),
@@ -49,58 +50,64 @@ func (l *ormLogger) LogMode(level logger.LogLevel) logger.Interface {
 
 // Info print info
 func (l *ormLogger) Info(ctx context.Context, msg string, data ...interface{}) {
-	m := fmt.Sprintf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
-	l.Logger.Debugw(ctx, m, l.commonFields(ctx)...)
+	formatMsg := fmt.Sprintf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	l.Logger.Infow(ctx, formatMsg, l.commonFields(ctx)...)
 }
 
 // Warn print warn messages
 func (l *ormLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
-	m := fmt.Sprintf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
-	l.Logger.Warnw(ctx, m, l.commonFields(ctx)...)
+	formatMsg := fmt.Sprintf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	l.Logger.Warnw(ctx, formatMsg, l.commonFields(ctx)...)
 }
 
 // Error print error messages
 func (l *ormLogger) Error(ctx context.Context, msg string, data ...interface{}) {
-	m := fmt.Sprintf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
-	l.Logger.Errorw(ctx, m, l.commonFields(ctx)...)
+	formatMsg := fmt.Sprintf(msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	l.Logger.Errorw(ctx, formatMsg, l.commonFields(ctx)...)
 }
 
 // Trace print sql message
 func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	end := time.Now()
-	elapsed := end.Sub(begin)
-	cost := float64(elapsed.Nanoseconds()/1e4) / 100.0
+	cost := glog.GetRequestCost(begin, end)
 
 	msg := "sql execute success"
-	ralCode := -0
+	var ralCode int
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		// 没有找到记录不统计在请求错误中
+		// 过滤未找到数据的错误
 		msg = err.Error()
 		ralCode = -1
 	}
 	sql, rows := fc()
+	if len(sql) > l.MaxSqlLen {
+		sql = sql[:l.MaxSqlLen]
+	}
 
 	fileLineNum := utils.FileWithLineNum()
 	fields := l.commonFields(ctx)
 	fields = append(fields,
-		// zap.String("msg", msg),
-		zap.Int64("affectedRow", rows),
-		zap.String("requestEndTime", glog.FormatRequestTime(end)),
-		zap.String("requestStartTime", glog.FormatRequestTime(begin)),
-		zap.String("file", fileLineNum),
-		zap.Float64("cost", cost),
-		zap.Int("ralCode", ralCode),
-		zap.String("sql", sql),
+		"affectedRow", rows,
+		"requestStartTime", glog.FormatRequestTime(begin),
+		"requestEndTime", glog.FormatRequestTime(end),
+		"file", fileLineNum,
+		"cost", cost,
+		"ralCode", ralCode,
+		"sql", sql,
 	)
 
-	l.Logger.Infow(ctx, msg, fields...)
+	if l.SlowThreshold > 0 && cost >= float64(l.SlowThreshold/time.Millisecond) {
+		msg = "slow sql"
+		l.Logger.Warnw(ctx, msg, fields...)
+	} else {
+		l.Logger.Infow(ctx, msg, fields...)
+	}
 }
 
 func (l *ormLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
 		glog.KeyProto, "mysql",
 		"service", l.Service,
-		"address", l.Address,
+		"addr", l.Addr,
 		"database", l.Database,
 	}
 	return fields

@@ -29,11 +29,11 @@ type Logger interface {
 }
 
 type LoggerConfig struct {
-	ServiceName string   `yaml:"service_name"`
-	Level       Level    `yaml:"level"`
-	Dir         string   `yaml:"dir"`
-	Stdout      bool     `yaml:"stdout"`
-	ExtraKeys   []string `yaml:"extra_keys"`
+	Service   string   `yaml:"service"`
+	Level     Level    `yaml:"level"`
+	Dir       string   `yaml:"dir"`
+	Stdout    bool     `yaml:"stdout"`
+	ExtraKeys []string `yaml:"extra_keys"`
 }
 
 // InitZapLogger 初始化zapLogger

@@ -8,10 +8,10 @@ import (
 
 func TestZapLogger(t *testing.T) {
 	if err := InitZapLogger(&LoggerConfig{
-		ServiceName: "myApp",
-		Level:       DebugLevel,
-		Dir:         "./log",
-		Stdout:      true,
+		Service: "myApp",
+		Level:   DebugLevel,
+		Dir:     "./log",
+		Stdout:  true,
 	}); err != nil {
 		assert.Nil(t, err)
 	}
@@ -27,11 +27,11 @@ func TestZapLogger(t *testing.T) {
 
 func TestZapExtraKeys(t *testing.T) {
 	if err := InitZapLogger(&LoggerConfig{
-		ServiceName: "myApp",
-		Level:       DebugLevel,
-		Dir:         "./log",
-		Stdout:      true,
-		ExtraKeys:   []string{"key1", "key2"},
+		Service:   "myApp",
+		Level:     DebugLevel,
+		Dir:       "./log",
+		Stdout:    true,
+		ExtraKeys: []string{"key1", "key2"},
 	}); err != nil {
 		assert.Nil(t, err)
 	}

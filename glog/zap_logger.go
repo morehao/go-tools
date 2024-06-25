@@ -310,11 +310,11 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSync
 		var logFilename string
 		switch logOutputType {
 		case logOutputTypeDefaultFile:
-			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileDefaultSuffix)
 		case logOutputTypeWarnFatal:
-			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileWarnFatalSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileWarnFatalSuffix)
 		default:
-			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileDefaultSuffix)
 		}
 
 		// 使用 rotatelogs 进行日志切割，需要注意rotatelogs已停止维护
