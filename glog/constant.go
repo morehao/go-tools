@@ -31,9 +31,8 @@ const (
 	KeySpanId     = "spanId"
 
 	MsgFlagNotice = "notice"
-	MsgFlagMysql  = "mysql"
-	MsgFlagRedis  = "redis"
 
+	KeyService          = "service"
 	KeyHost             = "host"
 	KeyClientIp         = "clientIp"
 	KeyHandle           = "handle"
@@ -53,10 +52,22 @@ const (
 	KeyResponseBodySize = "responseBodySize"
 	KeyRequestStartTime = "requestStartTime"
 	KeyRequestEndTime   = "requestEndTime"
-	KeyCostTime         = "cost"
+	KeyCost             = "cost"
 	KeyRequestErr       = "requestErr"
 	KeyErrorCode        = "errorCode"
 	KeyErrorMsg         = "errorMsg"
+	KeyAffectedRows     = "affectedRows"
+	KeyAddr             = "addr"
+	KeyDatabase         = "database"
+	KeySql              = "sql"
+	KeyCmd              = "cmd"
+	KeyCmdContent       = "cmdContent"
+	KeyRalCode          = "ralCode"
+	KeyFile             = "file"
+
+	ValueProtoHttp  = "http"
+	ValueProtoMysql = "mysql"
+	ValueProtoRedis = "redis"
 )
 
 type Level string

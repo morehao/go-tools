@@ -257,11 +257,11 @@ func getZapEncoder() zapcore.Encoder {
 
 	// 配置编码器配置
 	encoderCfg := zapcore.EncoderConfig{
-		LevelKey:       "level",                       // 日志级别的键名，例如 "INFO", "ERROR"
-		TimeKey:        "time",                        // 时间戳的键名，记录日志生成的时间
-		StacktraceKey:  "stacktrace",                  // 堆栈跟踪的键名，记录日志产生时的堆栈信息
-		CallerKey:      "file",                        // 调用者的键名，记录日志调用的位置 (文件名和行号)
-		FunctionKey:    "function",                    // 函数名的键名，记录调用函数的名称
+		LevelKey:      "level",      // 日志级别的键名，例如 "INFO", "ERROR"
+		TimeKey:       "time",       // 时间戳的键名，记录日志生成的时间
+		StacktraceKey: "stacktrace", // 堆栈跟踪的键名，记录日志产生时的堆栈信息
+		CallerKey:     "file",       // 调用者的键名，记录日志调用的位置 (文件名和行号)
+		// FunctionKey:    "function",                    // 函数名的键名，记录调用函数的名称
 		MessageKey:     "msg",                         // 日志消息的键名，记录实际的日志内容
 		LineEnding:     zapcore.DefaultLineEnding,     // 日志行的结束符，默认使用换行符
 		EncodeCaller:   zapcore.ShortCallerEncoder,    // 调用者编码器，使用短格式 (文件名:行号)

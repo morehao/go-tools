@@ -76,7 +76,7 @@ func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 		begin := time.Now()
 		fields := l.commonFields(ctx)
 		fields = append(fields,
-			"cmd", cmd.FullName(),
+			glog.KeyCmd, cmd.FullName(),
 		)
 		var ralCode int
 		if err := cmd.Err(); err != nil {
@@ -85,11 +85,11 @@ func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 			end := time.Now()
 			cost := glog.GetRequestCost(begin, end)
 			fields = append(fields,
-				"cmdContent", cmd.String(),
-				"ralCode", ralCode,
-				"requestStartTime", glog.FormatRequestTime(begin),
-				"requestEndTime", glog.FormatRequestTime(end),
-				"cost", cost,
+				glog.KeyCmdContent, cmd.String(),
+				glog.KeyRalCode, ralCode,
+				glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
+				glog.KeyRequestEndTime, glog.FormatRequestTime(end),
+				glog.KeyCost, cost,
 			)
 			l.Logger.Errorw(ctx, msg, fields...)
 			return err
@@ -100,11 +100,11 @@ func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 		end := time.Now()
 		cost := glog.GetRequestCost(begin, end)
 		fields = append(fields,
-			"cmdContent", cmd.String(),
-			"ralCode", ralCode,
-			"requestStartTime", glog.FormatRequestTime(begin),
-			"requestEndTime", glog.FormatRequestTime(end),
-			"cost", cost,
+			glog.KeyCmdContent, cmd.String(),
+			glog.KeyRalCode, ralCode,
+			glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
+			glog.KeyRequestEndTime, glog.FormatRequestTime(end),
+			glog.KeyCost, cost,
 		)
 
 		l.Logger.Infow(ctx, "redis execute success", fields...)
@@ -121,10 +121,10 @@ func (l redisLogger) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.P
 
 func (l *redisLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
-		glog.KeyProto, "redis",
-		"service", l.Service,
-		"addr", l.Addr,
-		"database", l.Database,
+		glog.KeyProto, glog.ValueProtoRedis,
+		glog.KeyService, l.Service,
+		glog.KeyAddr, l.Addr,
+		glog.KeyDatabase, l.Database,
 	}
 	return fields
 }

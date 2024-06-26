@@ -79,20 +79,20 @@ func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (strin
 		ralCode = -1
 	}
 	sql, rows := fc()
-	if len(sql) > l.MaxSqlLen {
+	if len(sql) > l.MaxSqlLen && l.MaxSqlLen > 0 {
 		sql = sql[:l.MaxSqlLen]
 	}
 
 	fileLineNum := utils.FileWithLineNum()
 	fields := l.commonFields(ctx)
 	fields = append(fields,
-		"affectedRow", rows,
-		"requestStartTime", glog.FormatRequestTime(begin),
-		"requestEndTime", glog.FormatRequestTime(end),
-		"file", fileLineNum,
-		"cost", cost,
-		"ralCode", ralCode,
-		"sql", sql,
+		glog.KeyAffectedRows, rows,
+		glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
+		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
+		glog.KeyFile, fileLineNum,
+		glog.KeyCost, cost,
+		glog.KeyRalCode, ralCode,
+		glog.KeySql, sql,
 	)
 
 	if l.SlowThreshold > 0 && cost >= float64(l.SlowThreshold/time.Millisecond) {
@@ -105,10 +105,10 @@ func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (strin
 
 func (l *ormLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
-		glog.KeyProto, "mysql",
-		"service", l.Service,
-		"addr", l.Addr,
-		"database", l.Database,
+		glog.KeyProto, glog.ValueProtoMysql,
+		glog.KeyService, l.Service,
+		glog.KeyAddr, l.Addr,
+		glog.KeyDatabase, l.Database,
 	}
 	return fields
 }
