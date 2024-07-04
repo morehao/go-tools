@@ -23,3 +23,5 @@ go.work.sum
 
 .idea/
 autoCode/tmpAutoCode/*
+glog/log/*
+dbClient/log/*

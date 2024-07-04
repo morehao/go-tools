@@ -116,6 +116,7 @@ func (m *mysqlImpl) getModelField() ([]ModelField, error) {
 			ColumnName: v.ColumnName,
 			ColumnType: v.DataType,
 			Comment:    v.ColumnComment,
+			ColumnKey:  v.ColumnKey,
 		}
 		modelFieldList = append(modelFieldList, item)
 	}
