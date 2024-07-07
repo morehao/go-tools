@@ -2,9 +2,9 @@ package dbClient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/morehao/go-tools/glog"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

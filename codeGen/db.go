@@ -39,7 +39,7 @@ type ModelField struct {
 	ColumnSize        int    // 字段长度
 	IsNull            bool   // 是否允许为空
 	DefaultValue      string // 默认值
-	IndexKey          string // 索引类型
+	ColumnKey         string // 索引类型
 	Comment           string // 字段注释
 	NumericPrecision  int64  // 数值列的精度
 	NumericScale      int64  // 数值列的小数位数

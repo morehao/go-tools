@@ -88,6 +88,7 @@ func (impl *mysqlImpl) getModelField(db *gorm.DB, dbName string, cfg *ModuleCfg)
 			FieldType:  columnTypeMap[v.DataType],
 			ColumnName: v.ColumnName,
 			ColumnType: v.DataType,
+			ColumnKey:  v.ColumnKey,
 			Comment:    v.ColumnComment,
 		}
 		modelFieldList = append(modelFieldList, item)
