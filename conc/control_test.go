@@ -11,7 +11,7 @@ func TestControl_Run(t *testing.T) {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "requestId", "123456")
 	// 实例化并发控制器，设置并发数为3
-	cc := NewControl(5)
+	ctrl := NewControl(5)
 	var userIds []uint64
 	for i := 0; i < 100; i++ {
 		userIds = append(userIds, uint64(i+1))
@@ -27,19 +27,16 @@ func TestControl_Run(t *testing.T) {
 	}
 	for _, ids := range groupIds {
 		tempIds := ids
-		cc.Run(func(ctx context.Context) error {
+		ctrl.Run(func(ctx context.Context) error {
 			time.Sleep(time.Second * 3)
 			fmt.Println("ids:", tempIds)
 			return nil
 		})
 	}
-
-	// 关闭并发控制器，等待所有任务完成
-	cc.Close()
+	ctrl.Wait()
 
 	// 获取并打印所有错误
-	errors, failedCount := cc.Errors()
-	fmt.Printf("Total failed tasks: %d\n", failedCount)
+	errors := ctrl.Errors()
 	for _, err := range errors {
 		fmt.Println("Error:", err)
 	}
