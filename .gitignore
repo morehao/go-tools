@@ -25,4 +25,4 @@ go.work.sum
 codeGen/tmp/*
 glog/log/*
 dbClient/log/*
-concur/log/*
+conc/log/*
