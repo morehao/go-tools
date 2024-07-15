@@ -1,19 +1,24 @@
 package gast
 
 type User interface {
-	GetName() string
 }
 
-type userImpl struct{}
+type userImpl struct {
+	Name string
+	Age  int64
+}
 
 func NewUser() User {
 	return &userImpl{}
 }
 
-func (i *userImpl) GetName() string {
-	return "user"
+func (impl *userImpl) GetName() string {
+	return impl.Name
 }
 
-func (i *userImpl) GetAge() int64 {
-	return 10
+func (impl *userImpl) GetAge() int64 {
+	return impl.Age
+}
+func GetName() string {
+	return "test"
 }
