@@ -65,12 +65,12 @@ func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
 	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
 }
 
-type ModuleTemplateParams struct {
+type ModelTemplateParamsRes struct {
 	PackageName       string
 	TableName         string
 	PackagePascalName string
 	StructName        string
-	TemplateList      []ModuleTemplateParamsItem
+	TemplateList      []ModelTemplateParamsItem
 }
 
 type TemplateParamsItemBase struct {
@@ -84,22 +84,22 @@ type TemplateParamsItemBase struct {
 	LayerPrefix    string
 }
 
-type ModuleTemplateParamsItem struct {
+type ModelTemplateParamsItem struct {
 	TemplateParamsItemBase
 	ModelFields []ModelField
 }
 
-type ApiTemplateParams struct {
+type ControllerTemplateParams struct {
 	PackageName       string
 	PackagePascalName string
 	TemplateList      []TemplateParamsItemBase
 }
 
-type CreateFileParam struct {
-	Params []CreateFileParamsItem
+type GenParam struct {
+	Params []GenParamsItem
 }
 
-type CreateFileParamsItem struct {
+type GenParamsItem struct {
 	Template       *template.Template
 	TargetDir      string
 	TargetFileName string

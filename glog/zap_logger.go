@@ -84,10 +84,10 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	development := zap.Development()
 
 	// 设置初始化字段
-	filed := zap.Fields()
+	field := zap.Fields()
 
 	// 构造logger
-	logger := zap.New(core, filed, caller, development)
+	logger := zap.New(core, field, caller, development)
 
 	return logger, nil
 }
@@ -310,11 +310,11 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSync
 		var logFilename string
 		switch logOutputType {
 		case logOutputTypeDefaultFile:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileDefaultSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
 		case logOutputTypeWarnFatal:
 			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileWarnFatalSuffix)
 		default:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileDefaultSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
 		}
 
 		// 使用 rotatelogs 进行日志切割，需要注意rotatelogs已停止维护

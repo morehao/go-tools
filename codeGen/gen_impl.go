@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-type baseImpl struct{}
+type generatorImpl struct{}
 
-func (impl *baseImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModuleTemplateParams, error) {
+func (impl *generatorImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db is nil")
 	}
@@ -26,7 +26,7 @@ func (impl *baseImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Modu
 	}
 }
 
-func (impl *baseImpl) checkModuleCfg(cfg *ModuleCfg) error {
+func (impl *generatorImpl) checkModuleCfg(cfg *ModuleCfg) error {
 	if cfg == nil {
 		return fmt.Errorf("cfg is nil")
 	}
@@ -45,8 +45,8 @@ func (impl *baseImpl) checkModuleCfg(cfg *ModuleCfg) error {
 	return nil
 }
 
-func (impl *baseImpl) GetApiTemplateParam(cfg *ApiCfg) (*ApiTemplateParams, error) {
-	if err := impl.checkApiCfg(cfg); err != nil {
+func (impl *generatorImpl) GetControllerTemplateParam(cfg *ControllerCfg) (*ControllerTemplateParams, error) {
+	if err := impl.checkControllerCfg(cfg); err != nil {
 		return nil, err
 	}
 	// 获取模板文件
@@ -77,7 +77,7 @@ func (impl *baseImpl) GetApiTemplateParam(cfg *ApiCfg) (*ApiTemplateParams, erro
 		})
 	}
 	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
-	res := &ApiTemplateParams{
+	res := &ControllerTemplateParams{
 		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,
 		TemplateList:      templateList,
@@ -85,13 +85,14 @@ func (impl *baseImpl) GetApiTemplateParam(cfg *ApiCfg) (*ApiTemplateParams, erro
 	return res, nil
 }
 
-func (impl *baseImpl) checkApiCfg(cfg *ApiCfg) error {
+func (impl *generatorImpl) checkControllerCfg(cfg *ControllerCfg) error {
 	if cfg == nil {
 		return fmt.Errorf("cfg is nil")
 	}
 	requiredFields := map[string]string{
 		"packageName":    cfg.PackageName,
 		"targetFilename": cfg.TargetFilename,
+		"functionName":   cfg.FunctionName,
 		"tplDir":         cfg.TplDir,
 		"rootDir":        cfg.RootDir,
 	}
@@ -107,8 +108,8 @@ func (impl *baseImpl) checkApiCfg(cfg *ApiCfg) error {
 	return nil
 }
 
-func (impl *baseImpl) CreateFile(param *CreateFileParam) error {
-	if err := impl.checkCreateFileParam(param); err != nil {
+func (impl *generatorImpl) Gen(param *GenParam) error {
+	if err := impl.checkGenParam(param); err != nil {
 		return err
 	}
 	for _, v := range param.Params {
@@ -119,7 +120,7 @@ func (impl *baseImpl) CreateFile(param *CreateFileParam) error {
 	return nil
 }
 
-func (impl *baseImpl) checkCreateFileParam(param *CreateFileParam) error {
+func (impl *generatorImpl) checkGenParam(param *GenParam) error {
 	if param == nil {
 		return fmt.Errorf("param is nil")
 	}

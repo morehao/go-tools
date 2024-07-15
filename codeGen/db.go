@@ -32,7 +32,7 @@ type mysqlTableColumn struct {
 }
 
 type ModelField struct {
-	FiledName         string // 字段名称
+	FieldName         string // 字段名称
 	FieldType         string // 字段数据类型，如int、string
 	ColumnName        string // 列名
 	ColumnType        string // 列数据类型，如varchar(255)

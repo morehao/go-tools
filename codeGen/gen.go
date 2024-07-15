@@ -12,19 +12,20 @@ type ModuleCfg struct {
 	RootDir       string            `validate:"required"` // 生成文件的根目录
 }
 
-type ApiCfg struct {
+type ControllerCfg struct {
 	PackageName    string // 包名
 	TargetFilename string // 目标文件名
+	FunctionName   string // 函数名
 	TplDir         string // 模板目录
 	RootDir        string // 生成文件的根目录
 }
 
-type AutoCode interface {
-	GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModuleTemplateParams, error)
-	GetApiTemplateParam(cfg *ApiCfg) (*ApiTemplateParams, error)
-	CreateFile(param *CreateFileParam) error
+type Generator interface {
+	GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error)
+	GetControllerTemplateParam(cfg *ControllerCfg) (*ControllerTemplateParams, error)
+	Gen(param *GenParam) error
 }
 
-func NewAutoCode() AutoCode {
-	return &baseImpl{}
+func NewGenerator() Generator {
+	return &generatorImpl{}
 }

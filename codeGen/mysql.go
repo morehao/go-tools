@@ -9,7 +9,7 @@ import (
 type mysqlImpl struct {
 }
 
-func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModuleTemplateParams, error) {
+func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error) {
 	dbName, getDbNameErr := getDbName(db)
 	if getDbNameErr != nil {
 		return nil, getDbNameErr
@@ -39,13 +39,13 @@ func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Mod
 	}
 
 	// 构造模板参数
-	var templateList []ModuleTemplateParamsItem
+	var templateList []ModelTemplateParamsItem
 	for _, tplItem := range tplList {
 		targetDir := tplItem.BuildTargetDir(cfg.RootDir, cfg.PackageName)
 		if appendDir, ok := layerAppendDirMap[tplItem.layerName]; ok {
 			targetDir = fmt.Sprintf("%s/%s", targetDir, appendDir)
 		}
-		templateList = append(templateList, ModuleTemplateParamsItem{
+		templateList = append(templateList, ModelTemplateParamsItem{
 			TemplateParamsItemBase: TemplateParamsItemBase{
 				Template:       tplItem.template,
 				Filename:       tplItem.filename,
@@ -61,7 +61,7 @@ func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Mod
 	}
 	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
 	structName := gutils.SnakeToPascal(cfg.TableName)
-	res := &ModuleTemplateParams{
+	res := &ModelTemplateParamsRes{
 		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,
 		TableName:         cfg.TableName,
@@ -84,7 +84,7 @@ func (impl *mysqlImpl) getModelField(db *gorm.DB, dbName string, cfg *ModuleCfg)
 	var modelFieldList []ModelField
 	for _, v := range entities {
 		item := ModelField{
-			FiledName:  gutils.SnakeToPascal(v.ColumnName),
+			FieldName:  gutils.SnakeToPascal(v.ColumnName),
 			FieldType:  columnTypeMap[v.DataType],
 			ColumnName: v.ColumnName,
 			ColumnType: v.DataType,

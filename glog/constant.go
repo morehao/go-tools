@@ -15,12 +15,12 @@ const (
 	logOutputTypeDefaultFile = "file"       // 输出到普通文件
 	logOutputTypeWarnFatal   = "warn_fatal" // 输出到警告和致命错误日志文件
 
-	logOutputFileDefaultSuffix   = ".log"
+	logOutputFieldDefaultSuffix  = ".log"
 	logOutputFileWarnFatalSuffix = ".wf.log"
 )
 
 var logOutputFileSuffixMap = map[string]string{
-	logOutputTypeDefaultFile: logOutputFileDefaultSuffix,
+	logOutputTypeDefaultFile: logOutputFieldDefaultSuffix,
 	logOutputTypeWarnFatal:   logOutputFileWarnFatalSuffix,
 }
 
