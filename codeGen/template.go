@@ -2,9 +2,9 @@ package codeGen
 
 import (
 	"fmt"
+	"github.com/morehao/go-tools/gast"
 	"github.com/morehao/go-tools/gutils"
 	"os"
-	"regexp"
 	"strings"
 	"text/template"
 )
@@ -12,43 +12,14 @@ import (
 const (
 	tplFileSuffix = ".tpl"
 	goFileSuffix  = ".go"
-
-	tplLayerNameRouter     = "router"
-	tplLayerNameController = "controller"
-	tplLayerNameService    = "service"
-	tplLayerNameDto        = "dto"
-	tplLayerNameRequest    = "request"
-	tplLayerNameResponse   = "response"
-	tplLayerNameModel      = "model"
-
-	tplLayerPrefixController = "ctr"
-	tplLayerPrefixService    = "svc"
-	tplLayerPrefixDto        = "dto"
-	tplLayerPrefixModel      = "dao"
 )
-
-var layerPrefixMap = map[string]string{
-	tplLayerNameController: tplLayerPrefixController,
-	tplLayerNameService:    tplLayerPrefixService,
-	tplLayerNameModel:      tplLayerPrefixModel,
-	tplLayerNameDto:        tplLayerPrefixDto,
-}
-
-var layerSpecialNameMap = map[string]string{
-	tplLayerNameRequest:  tplLayerPrefixDto,
-	tplLayerNameResponse: tplLayerPrefixDto,
-}
-
-var layerAppendDirMap = map[string]string{
-	tplLayerNameRouter: "routerHttp",
-}
 
 type tplFile struct {
 	filepath       string
 	filename       string
 	originFilename string
-	layerName      string
-	layerPrefix    string
+	layerName      LayerName
+	layerPrefix    LayerPrefix
 }
 
 type tplCfg struct {
@@ -74,14 +45,15 @@ type ModelTemplateParamsRes struct {
 }
 
 type TemplateParamsItemBase struct {
-	Template       *template.Template
-	Filepath       string
-	Filename       string
-	OriginFilename string
-	TargetFileName string
-	TargetDir      string
-	LayerName      string
-	LayerPrefix    string
+	Template        *template.Template
+	TplFilepath     string
+	TplFilename     string
+	OriginFilename  string
+	TargetDir       string
+	TargetFilename  string
+	TargetFileExist bool
+	LayerName       LayerName
+	LayerPrefix     LayerPrefix
 }
 
 type ModelTemplateParamsItem struct {
@@ -89,7 +61,7 @@ type ModelTemplateParamsItem struct {
 	ModelFields []ModelField
 }
 
-type ControllerTemplateParams struct {
+type ControllerTemplateParamsRes struct {
 	PackageName       string
 	PackagePascalName string
 	TemplateList      []TemplateParamsItemBase
@@ -107,14 +79,14 @@ type GenParamsItem struct {
 }
 
 // 获取指定目录下所有的模板文件
-func getTplFiles(path string) ([]tplFile, error) {
+func getTplFiles(tplDir string, layerNameMap map[LayerName]LayerName, layerPrefixMap map[LayerName]LayerPrefix) ([]tplFile, error) {
 	// 打开指定目录
-	dir, openErr := os.Open(path)
+	file, openErr := os.Open(tplDir)
 	if openErr != nil {
 		return nil, openErr
 	}
 	// 读取目录下所有文件
-	names, readErr := dir.Readdirnames(-1)
+	names, readErr := file.Readdirnames(-1)
 	if readErr != nil {
 		return nil, readErr
 	}
@@ -123,16 +95,24 @@ func getTplFiles(path string) ([]tplFile, error) {
 
 		// 判断是否是模板文件
 		if gutils.GetFileSuffix(name) == tplFileSuffix {
-			layerName := strings.TrimSuffix(name, fmt.Sprintf("%s%s", goFileSuffix, tplFileSuffix))
-			if specialName, ok := layerSpecialNameMap[layerName]; ok {
+			layerName := LayerName(strings.TrimSuffix(name, fmt.Sprintf("%s%s", goFileSuffix, tplFileSuffix)))
+			if specialName, ok := defaultLayerSpecialNameMap[layerName]; ok {
+				layerName = specialName
+			}
+			layerPrefix := defaultLayerPrefixMap[layerName]
+			if prefix, ok := layerPrefixMap[layerName]; ok {
+				layerPrefix = prefix
+			}
+
+			if specialName, ok := layerNameMap[layerName]; ok {
 				layerName = specialName
 			}
 			files = append(files, tplFile{
-				filepath:       fmt.Sprintf("%s/%s", path, name),
+				filepath:       fmt.Sprintf("%s/%s", tplDir, name),
 				filename:       name,
 				originFilename: name[:len(name)-len(tplFileSuffix)],
 				layerName:      layerName,
-				layerPrefix:    layerPrefixMap[layerName],
+				layerPrefix:    layerPrefix,
 			})
 		}
 	}
@@ -143,7 +123,7 @@ func buildTplCfg(tplFiles []tplFile, defaultFilename string) ([]tplCfg, error) {
 	var tplList []tplCfg
 	for _, file := range tplFiles {
 		targetFileName := file.originFilename
-		if file.layerName != tplLayerNameDto {
+		if file.layerName != LayerNameDto {
 			targetFileName = defaultFilename
 		}
 		tplItem := tplCfg{
@@ -187,15 +167,39 @@ func createFile(targetDir, targetFileName string, tpl *template.Template, tplPar
 		if err := tpl.Execute(tempF, tplParam); err != nil {
 			return err
 		}
-		otherContent, trimErr := trimFileTitle(tmpFilepath)
-		if trimErr != nil {
-			return trimErr
+
+		// 判断文件是否包含package和import关键字
+		hasPackage, checkPackageErr := gast.HasPackageKeywords(tmpFilepath)
+		if checkPackageErr != nil {
+			return checkPackageErr
 		}
+		hasImport, checkImportErr := gast.HasImportKeywords(tmpFilepath)
+		if checkImportErr != nil {
+			return checkImportErr
+		}
+
+		// 获取追加的文件内容
+		var appendContent string
+		if hasPackage || hasImport {
+			trimTitleContent, trimErr := gast.TrimFileTitle(tmpFilepath)
+			if trimErr != nil {
+				return trimErr
+			}
+			appendContent = trimTitleContent
+		} else {
+			content, readErr := os.ReadFile(tmpFilepath)
+			if readErr != nil {
+				return readErr
+			}
+			appendContent = string(content)
+		}
+
+		// 追加到原文件
 		f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 		if openErr != nil {
 			return openErr
 		}
-		_, writeErr := f.WriteString(otherContent)
+		_, writeErr := f.WriteString(appendContent)
 		if writeErr != nil {
 			return writeErr
 		}
@@ -214,45 +218,4 @@ func createFile(targetDir, targetFileName string, tpl *template.Template, tplPar
 		}
 	}
 	return nil
-}
-
-func trimFileTitle(file string) (string, error) {
-	content, readErr := os.ReadFile(file)
-	if readErr != nil {
-		return "", readErr
-	}
-	fileContent := string(content)
-
-	// 正则表达式匹配 package 语句
-	packagePattern := regexp.MustCompile(`package\s+\w+\s*\n`)
-	// 查找 package 语句的位置
-	// 查找 package 语句的位置
-	packageMatch := packagePattern.FindStringIndex(fileContent)
-	var importStartIndex int
-	if packageMatch != nil {
-		importStartIndex = packageMatch[1]
-	} else {
-		importStartIndex = 0
-	}
-
-	// 正则表达式匹配 import 块和单个 import 语句
-	importBlockPattern := regexp.MustCompile(`(?s)import \((.|\n)*?\)\n`)
-	singleImportPattern := regexp.MustCompile(`import ".*?"\n`)
-	// 查找 import 块和单个 import 语句的位置
-	importBlockMatch := importBlockPattern.FindStringIndex(fileContent[importStartIndex:])
-	singleImportMatch := singleImportPattern.FindStringIndex(fileContent[importStartIndex:])
-
-	// 确定 import 语句及其块的结束位置
-	var importEndIndex int
-	if importBlockMatch != nil {
-		importEndIndex = importStartIndex + importBlockMatch[1]
-	} else if singleImportMatch != nil {
-		importEndIndex = importStartIndex + singleImportMatch[1]
-	} else {
-		importEndIndex = importStartIndex
-	}
-
-	// 分割文件内容
-	otherContent := fileContent[importEndIndex:]
-	return otherContent, nil
 }

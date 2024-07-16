@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/format"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"os"
 )
@@ -39,36 +40,107 @@ func ParseFile(file string) (interface{}, error) {
 	return nil, err
 }
 
+func HasPackageKeywords(file string) (bool, error) {
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
+	if parseErr != nil {
+		return false, parseErr
+	}
+	return node.Name != nil, nil
+}
+
+func HasImportKeywords(file string) (bool, error) {
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
+	if parseErr != nil {
+		return false, parseErr
+	}
+	for _, decl := range node.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if ok && genDecl.Tok == token.IMPORT {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// TrimFileTitle 去除文件中的package和import声明，返回剩余数据
+func TrimFileTitle(file string) (string, error) {
+	// 解析文件以获取AST
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
+	if parseErr != nil {
+		return "", parseErr
+	}
+
+	// 创建一个新的AST打印配置
+	var buf bytes.Buffer
+	printConfig := printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
+
+	// 遍历文件的顶层声明
+	for i, decl := range node.Decls {
+		// 跳过package和import声明
+		genDecl, isGenDecl := decl.(*ast.GenDecl)
+		if isGenDecl && (genDecl.Tok == token.IMPORT || genDecl.Tok == token.PACKAGE) {
+			continue
+		}
+		// 打印其他节点
+		err := printConfig.Fprint(&buf, fileSet, decl)
+		if err != nil {
+			return "", err
+		}
+		// 在声明之间添加换行符
+		if i < len(node.Decls)-1 {
+			buf.WriteString("\n\n") // 添加两个换行符以分隔顶层声明
+		}
+	}
+
+	// 返回修改后的文件内容
+	return buf.String(), nil
+}
+
 // FindFunctionInFile 在指定的文件中查找函数，注意，这里只查找非方法函数
-func FindFunctionInFile(file *ast.File, functionName string) (*ast.FuncDecl, bool) {
-	for _, decl := range file.Decls {
+func FindFunctionInFile(file string, functionName string) (*ast.FuncDecl, bool, error) {
+	// 解析文件以获取AST
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
+	if parseErr != nil {
+		return nil, false, parseErr
+	}
+	for _, decl := range node.Decls {
 		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
 			if funcDecl.Recv == nil {
 				if funcDecl.Name.Name == functionName {
-					return funcDecl, true
+					return funcDecl, true, nil
 				}
 			}
 		}
 	}
-	return nil, false
+	return nil, false, nil
 }
 
 // FindMethodInFile 在指定的文件中查找方法, 注意，这里只查找指定接收者类型的方法
-func FindMethodInFile(file *ast.File, receiverTypeName, methodName string) (*ast.FuncDecl, bool) {
-	for _, decl := range file.Decls {
+func FindMethodInFile(file string, receiverTypeName, methodName string) (*ast.FuncDecl, bool, error) {
+	// 解析文件以获取AST
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
+	if parseErr != nil {
+		return nil, false, parseErr
+	}
+	for _, decl := range node.Decls {
 		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
 			if funcDecl.Recv != nil {
 				for _, recv := range funcDecl.Recv.List {
 					if recvType, ok := recv.Type.(*ast.StarExpr); ok {
 						if ident, ok := recvType.X.(*ast.Ident); ok && ident.Name == receiverTypeName {
 							if funcDecl.Name.Name == methodName {
-								return funcDecl, true
+								return funcDecl, true, nil
 							}
 						}
 					} else if ident, ok := recv.Type.(*ast.Ident); ok {
 						if ident.Name == receiverTypeName {
 							if funcDecl.Name.Name == methodName {
-								return funcDecl, true
+								return funcDecl, true, nil
 							}
 						}
 					}
@@ -76,24 +148,17 @@ func FindMethodInFile(file *ast.File, receiverTypeName, methodName string) (*ast
 			}
 		}
 	}
-	return nil, false
+	return nil, false, nil
 }
 
 // AddMethodToInterfaceInFile 在指定的文件中查找指定的接口，并在其中添加指定的方法
-func AddMethodToInterfaceInFile(filePath, interfaceName, receiverTypeName, methodName string) error {
-	src, err := os.ReadFile(filePath)
-	if err != nil {
-		return err
-	}
-
-	fileSet := token.NewFileSet()
-	file, parseFileErr := parser.ParseFile(fileSet, filePath, src, parser.ParseComments)
-	if parseFileErr != nil {
-		return parseFileErr
-	}
+func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodName string) error {
 
 	// 查找接收者类型的方法声明
-	methodDecl, found := FindMethodInFile(file, receiverTypeName, methodName)
+	methodDecl, found, findErr := FindMethodInFile(file, receiverTypeName, methodName)
+	if findErr != nil {
+		return findErr
+	}
 	if !found {
 		return errors.New("method not found: " + methodName)
 	}
@@ -101,8 +166,19 @@ func AddMethodToInterfaceInFile(filePath, interfaceName, receiverTypeName, metho
 
 	methodExists := false
 
+	src, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	fileSet := token.NewFileSet()
+	node, parseFileErr := parser.ParseFile(fileSet, file, src, parser.ParseComments)
+	if parseFileErr != nil {
+		return parseFileErr
+	}
+
 	// 遍历文件中的所有类型声明，查找指定的接口
-	ast.Inspect(file, func(n ast.Node) bool {
+	ast.Inspect(node, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.TypeSpec:
 			if x.Name.Name == interfaceName {
@@ -131,12 +207,12 @@ func AddMethodToInterfaceInFile(filePath, interfaceName, receiverTypeName, metho
 	if !methodExists {
 		// 根据修改后的AST生成新代码
 		var buf bytes.Buffer
-		if err := format.Node(&buf, fileSet, file); err != nil {
+		if err := format.Node(&buf, fileSet, node); err != nil {
 			return err
 		}
 
 		// 重写文件
-		if err := os.WriteFile(filePath, buf.Bytes(), 0644); err != nil {
+		if err := os.WriteFile(file, buf.Bytes(), 0644); err != nil {
 			return err
 		}
 	}

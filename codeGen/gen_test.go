@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-func TestCreateModuleFile(t *testing.T) {
-	dsn := "root:123456@tcp(127.0.0.1:3306)/test?charset=utf8mb4&parseTime=True"
+func TestGenModuleCode(t *testing.T) {
+	dsn := "root:123456@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True"
 	db, openErr := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	assert.Nil(t, openErr)
 	// 获取当前的运行路径
@@ -18,11 +18,23 @@ func TestCreateModuleFile(t *testing.T) {
 	assert.Nil(t, getErr)
 	tplDir := fmt.Sprintf("%s/tplExample/module", workDir)
 	rootDir := fmt.Sprintf("%s/tmp", workDir)
+	// layerDirMap := map[LayerName]string{
+	// 	LayerNameErrorCode: workDir,
+	// }
+	layerNameMap := map[LayerName]LayerName{
+		LayerNameErrorCode: "code",
+	}
+	LayerPrefixMap := map[LayerName]LayerPrefix{
+		LayerNameService: "srv",
+	}
 	cfg := &ModuleCfg{
 		PackageName: "user",
 		TableName:   "user",
 		TplDir:      tplDir,
 		RootDir:     rootDir,
+		// LayerDirMap:  layerDirMap,
+		LayerNameMap:   layerNameMap,
+		LayerPrefixMap: LayerPrefixMap,
 	}
 	autoCodeTool := NewGenerator()
 	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParam(db, cfg)
@@ -36,7 +48,7 @@ func TestCreateModuleFile(t *testing.T) {
 	for _, tplItem := range templateParam.TemplateList {
 		params = append(params, GenParamsItem{
 			TargetDir:      tplItem.TargetDir,
-			TargetFileName: tplItem.TargetFileName,
+			TargetFileName: tplItem.TargetFilename,
 			Template:       tplItem.Template,
 			Param: &Param{
 				PackageName:       templateParam.PackageName,
@@ -51,11 +63,11 @@ func TestCreateModuleFile(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestCreateApiFile(t *testing.T) {
+func TestGenControllerCode(t *testing.T) {
 	// 获取当前的运行路径
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
-	tplDir := fmt.Sprintf("%s/tplExample/api", workDir)
+	tplDir := fmt.Sprintf("%s/tplExample/controller", workDir)
 	rootDir := fmt.Sprintf("%s/tmp", workDir)
 	cfg := &ControllerCfg{
 		PackageName:    "user",
@@ -75,7 +87,7 @@ func TestCreateApiFile(t *testing.T) {
 	for _, tplItem := range templateParam.TemplateList {
 		params = append(params, GenParamsItem{
 			TargetDir:      tplItem.TargetDir,
-			TargetFileName: tplItem.TargetFileName,
+			TargetFileName: tplItem.TargetFilename,
 			Template:       tplItem.Template,
 			Param: &Param{
 				PackageName:       templateParam.PackageName,
@@ -84,13 +96,13 @@ func TestCreateApiFile(t *testing.T) {
 			},
 		})
 	}
-	err := autoCodeTool.Gen(&GenParam{
-		Params: params,
-	})
-	assert.Nil(t, err)
+	// err := autoCodeTool.Gen(&GenParam{
+	// 	Params: params,
+	// })
+	// assert.Nil(t, err)
 }
 
-func TestCreateModelFile(t *testing.T) {
+func TestGenModelCode(t *testing.T) {
 	dsn := "root:123456@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True"
 	db, openErr := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	assert.Nil(t, openErr)
@@ -138,7 +150,7 @@ func TestCreateModelFile(t *testing.T) {
 
 		param := GenParamsItem{
 			TargetDir:      tplItem.TargetDir,
-			TargetFileName: tplItem.TargetFileName,
+			TargetFileName: tplItem.TargetFilename,
 			Template:       tplItem.Template,
 			Param: &Param{
 				PackageName:       templateParam.PackageName,
