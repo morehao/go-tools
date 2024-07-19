@@ -37,7 +37,7 @@ func TestGenModuleCode(t *testing.T) {
 		LayerPrefixMap: LayerPrefixMap,
 	}
 	autoCodeTool := NewGenerator()
-	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParam(db, cfg)
+	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParams(db, cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {
 		PackageName       string
@@ -50,15 +50,15 @@ func TestGenModuleCode(t *testing.T) {
 			TargetDir:      tplItem.TargetDir,
 			TargetFileName: tplItem.TargetFilename,
 			Template:       tplItem.Template,
-			Param: &Param{
+			ExtraParams: &Param{
 				PackageName:       templateParam.PackageName,
 				PackagePascalName: templateParam.PackagePascalName,
 				StructName:        templateParam.StructName,
 			},
 		})
 	}
-	err := autoCodeTool.Gen(&GenParam{
-		Params: params,
+	err := autoCodeTool.Gen(&GenParams{
+		ParamsList: params,
 	})
 	assert.Nil(t, err)
 }
@@ -76,7 +76,7 @@ func TestGenControllerCode(t *testing.T) {
 		RootDir:        rootDir,
 	}
 	autoCodeTool := NewGenerator()
-	templateParam, getParamErr := autoCodeTool.GetControllerTemplateParam(cfg)
+	templateParam, getParamErr := autoCodeTool.GetControllerTemplateParams(cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {
 		PackageName       string
@@ -89,15 +89,15 @@ func TestGenControllerCode(t *testing.T) {
 			TargetDir:      tplItem.TargetDir,
 			TargetFileName: tplItem.TargetFilename,
 			Template:       tplItem.Template,
-			Param: &Param{
+			ExtraParams: &Param{
 				PackageName:       templateParam.PackageName,
 				PackagePascalName: templateParam.PackagePascalName,
 				FunctionName:      "UserSetting",
 			},
 		})
 	}
-	// err := autoCodeTool.Gen(&GenParam{
-	// 	Params: params,
+	// err := autoCodeTool.Gen(&GenParams{
+	// 	ParamsList: params,
 	// })
 	// assert.Nil(t, err)
 }
@@ -118,7 +118,7 @@ func TestGenModelCode(t *testing.T) {
 		RootDir:     rootDir,
 	}
 	autoCodeTool := NewGenerator()
-	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParam(db, cfg)
+	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParams(db, cfg)
 	assert.Nil(t, getParamErr)
 	type ModelFieldItem struct {
 		FieldName    string
@@ -152,7 +152,7 @@ func TestGenModelCode(t *testing.T) {
 			TargetDir:      tplItem.TargetDir,
 			TargetFileName: tplItem.TargetFilename,
 			Template:       tplItem.Template,
-			Param: &Param{
+			ExtraParams: &Param{
 				PackageName:       templateParam.PackageName,
 				PackagePascalName: templateParam.PackagePascalName,
 				StructName:        templateParam.StructName,
@@ -161,8 +161,8 @@ func TestGenModelCode(t *testing.T) {
 		}
 		params = append(params, param)
 	}
-	err := autoCodeTool.Gen(&GenParam{
-		Params: params,
+	err := autoCodeTool.Gen(&GenParams{
+		ParamsList: params,
 	})
 	assert.Nil(t, err)
 }

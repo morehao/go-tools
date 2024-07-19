@@ -8,6 +8,8 @@ import (
 
 const (
 	dbTypeMysql = "mysql"
+
+	ColumnKeyPRI = "PRI" // 主键
 )
 
 // mysqlTableColumn represents a column in the INFORMATION_SCHEMA.COLUMNS table

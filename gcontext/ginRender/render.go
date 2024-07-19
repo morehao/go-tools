@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func RenderSuccess(ctx *gin.Context, data interface{}) {
+func Success(ctx *gin.Context, data interface{}) {
 	r := gcontext.NewResponseRender()
 	r.SetCode(0)
 	r.SetMsg("success")
@@ -17,7 +17,7 @@ func RenderSuccess(ctx *gin.Context, data interface{}) {
 	return
 }
 
-func RenderSuccessWithFormat(ctx *gin.Context, data interface{}) {
+func SuccessWithFormat(ctx *gin.Context, data interface{}) {
 	r := gcontext.NewResponseRender()
 	r.SetCode(0)
 	r.SetMsg("success")
@@ -26,7 +26,7 @@ func RenderSuccessWithFormat(ctx *gin.Context, data interface{}) {
 	return
 }
 
-func RenderFail(ctx *gin.Context, err error) {
+func Fail(ctx *gin.Context, err error) {
 	r := gcontext.NewResponseRender()
 
 	var code int
@@ -48,7 +48,7 @@ func RenderFail(ctx *gin.Context, err error) {
 	return
 }
 
-func RenderAbort(ctx *gin.Context, err error) {
+func Abort(ctx *gin.Context, err error) {
 	r := gcontext.NewResponseRender()
 
 	var gErr gerror.Error

@@ -67,15 +67,15 @@ type ControllerTemplateParamsRes struct {
 	TemplateList      []TemplateParamsItemBase
 }
 
-type GenParam struct {
-	Params []GenParamsItem
+type GenParams struct {
+	ParamsList []GenParamsItem
 }
 
 type GenParamsItem struct {
 	Template       *template.Template
 	TargetDir      string
 	TargetFileName string
-	Param          interface{}
+	ExtraParams    interface{}
 }
 
 // 获取指定目录下所有的模板文件

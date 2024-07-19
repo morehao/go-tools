@@ -19,5 +19,5 @@ func TestLoadConfig(t *testing.T) {
 	}
 	var config Config
 	LoadConfig("./config_example.yaml", &config)
-	fmt.Println(gutils.ToJson(config))
+	fmt.Println(gutils.ToJsonString(config))
 }

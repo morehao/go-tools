@@ -8,9 +8,9 @@ import (
 )
 
 type Generator interface {
-	GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error)
-	GetControllerTemplateParam(cfg *ControllerCfg) (*ControllerTemplateParamsRes, error)
-	Gen(param *GenParam) error
+	GetModuleTemplateParams(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error)
+	GetControllerTemplateParams(cfg *ControllerCfg) (*ControllerTemplateParamsRes, error)
+	Gen(params *GenParams) error
 }
 
 func NewGenerator() Generator {
@@ -19,7 +19,7 @@ func NewGenerator() Generator {
 
 type generatorImpl struct{}
 
-func (impl *generatorImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error) {
+func (impl *generatorImpl) GetModuleTemplateParams(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db is nil")
 	}
@@ -55,7 +55,7 @@ func (impl *generatorImpl) checkModuleCfg(cfg *ModuleCfg) error {
 	return nil
 }
 
-func (impl *generatorImpl) GetControllerTemplateParam(cfg *ControllerCfg) (*ControllerTemplateParamsRes, error) {
+func (impl *generatorImpl) GetControllerTemplateParams(cfg *ControllerCfg) (*ControllerTemplateParamsRes, error) {
 	if err := impl.checkControllerCfg(cfg); err != nil {
 		return nil, err
 	}
@@ -122,26 +122,26 @@ func (impl *generatorImpl) checkControllerCfg(cfg *ControllerCfg) error {
 	return nil
 }
 
-func (impl *generatorImpl) Gen(param *GenParam) error {
-	if err := impl.checkGenParam(param); err != nil {
+func (impl *generatorImpl) Gen(params *GenParams) error {
+	if err := impl.checkGenParams(params); err != nil {
 		return err
 	}
-	for _, v := range param.Params {
-		if err := createFile(v.TargetDir, v.TargetFileName, v.Template, v.Param); err != nil {
+	for _, v := range params.ParamsList {
+		if err := createFile(v.TargetDir, v.TargetFileName, v.Template, v.ExtraParams); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (impl *generatorImpl) checkGenParam(param *GenParam) error {
-	if param == nil {
-		return fmt.Errorf("param is nil")
+func (impl *generatorImpl) checkGenParams(params *GenParams) error {
+	if params == nil {
+		return fmt.Errorf("params is nil")
 	}
-	if len(param.Params) == 0 {
+	if len(params.ParamsList) == 0 {
 		return fmt.Errorf("params is required")
 	}
-	for _, v := range param.Params {
+	for _, v := range params.ParamsList {
 		if v.TargetDir == "" {
 			return fmt.Errorf("target dir is required")
 		}
@@ -151,8 +151,8 @@ func (impl *generatorImpl) checkGenParam(param *GenParam) error {
 		if v.Template == nil {
 			return fmt.Errorf("template is required")
 		}
-		if v.Param == nil {
-			return fmt.Errorf("param is required")
+		if v.ExtraParams == nil {
+			return fmt.Errorf("params is required")
 		}
 	}
 	return nil

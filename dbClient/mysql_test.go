@@ -32,5 +32,5 @@ func TestInitMysql(t *testing.T) {
 	var res []interface{}
 	findErr := mysqlClient.WithContext(ctx).Table("user").Find(&res).Error
 	assert.Nil(t, findErr)
-	t.Log(gutils.ToJson(res))
+	t.Log(gutils.ToJsonString(res))
 }
