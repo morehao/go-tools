@@ -27,6 +27,4 @@ func (impl *userImpl) Print() {
 	fmt.Println("Name: ", impl.Name, " Age: ", impl.Age)
 }
 
-func GetName() string {
-	return "test"
-}
+func GetName() {}

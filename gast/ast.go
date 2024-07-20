@@ -243,17 +243,20 @@ func AddContentToFunc(content, functionName, functionFilepath string) error {
 		return errors.New("function does not exist")
 	}
 
-	// 解析新的表达式
-	expr, parseExprErr := parser.ParseExpr(content)
-	if parseExprErr != nil {
-		return fmt.Errorf("failed to parse new expression: %v", parseExprErr)
+	// 直接插入内容
+	newStmt := &ast.ExprStmt{
+		X: &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: content,
+		},
 	}
+	funcDecl.Body.List = append(funcDecl.Body.List, newStmt)
 
-	// 创建表达式语句
-	callExprStmt := &ast.ExprStmt{X: expr}
-
-	// 将新的语句添加到目标函数的末尾
-	funcDecl.Body.List = append(funcDecl.Body.List, callExprStmt)
+	// 使用 bytes.Buffer 处理修改后的内容
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, fileSet, node); err != nil {
+		return fmt.Errorf("failed to write updated content: %w", err)
+	}
 
 	// 打开已存在的目标文件
 	file, openErr := os.OpenFile(functionFilepath, os.O_WRONLY|os.O_TRUNC, 0644)
@@ -262,9 +265,9 @@ func AddContentToFunc(content, functionName, functionFilepath string) error {
 	}
 	defer file.Close()
 
-	// 将修改后的AST写回文件
-	if err := printer.Fprint(file, fileSet, node); err != nil {
-		return fmt.Errorf("failed to write updated content: %w", err)
+	// 将处理后的代码写回文件
+	if _, writeErr := file.Write(buf.Bytes()); writeErr != nil {
+		return fmt.Errorf("failed to write content: %w", writeErr)
 	}
 	return nil
 }
