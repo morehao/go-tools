@@ -28,16 +28,18 @@ func TestGenModuleCode(t *testing.T) {
 		LayerNameService: "srv",
 	}
 	cfg := &ModuleCfg{
-		PackageName: "user",
-		TableName:   "user",
-		TplDir:      tplDir,
-		RootDir:     rootDir,
-		// LayerDirMap:  layerDirMap,
-		LayerNameMap:   layerNameMap,
-		LayerPrefixMap: LayerPrefixMap,
+		CommonConfig: CommonConfig{
+			PackageName: "user",
+			TplDir:      tplDir,
+			RootDir:     rootDir,
+			// LayerDirMap:  layerDirMap,
+			LayerNameMap:   layerNameMap,
+			LayerPrefixMap: LayerPrefixMap,
+		},
+		TableName: "user",
 	}
 	autoCodeTool := NewGenerator()
-	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParams(db, cfg)
+	templateParam, getParamErr := autoCodeTool.AnalysisModuleTpl(db, cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {
 		PackageName       string
@@ -45,7 +47,7 @@ func TestGenModuleCode(t *testing.T) {
 		StructName        string
 	}
 	var params []GenParamsItem
-	for _, tplItem := range templateParam.TemplateList {
+	for _, tplItem := range templateParam.TplAnalysisList {
 		params = append(params, GenParamsItem{
 			TargetDir:      tplItem.TargetDir,
 			TargetFileName: tplItem.TargetFilename,
@@ -63,20 +65,22 @@ func TestGenModuleCode(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestGenControllerCode(t *testing.T) {
+func TestGenApiCode(t *testing.T) {
 	// 获取当前的运行路径
 	workDir, getErr := os.Getwd()
 	assert.Nil(t, getErr)
-	tplDir := fmt.Sprintf("%s/tplExample/controller", workDir)
+	tplDir := fmt.Sprintf("%s/tplExample/api", workDir)
 	rootDir := fmt.Sprintf("%s/tmp", workDir)
-	cfg := &ControllerCfg{
-		PackageName:    "user",
+	cfg := &ApiCfg{
+		CommonConfig: CommonConfig{
+			PackageName: "user",
+			TplDir:      tplDir,
+			RootDir:     rootDir,
+		},
 		TargetFilename: "user.go",
-		TplDir:         tplDir,
-		RootDir:        rootDir,
 	}
 	autoCodeTool := NewGenerator()
-	templateParam, getParamErr := autoCodeTool.GetControllerTemplateParams(cfg)
+	templateParam, getParamErr := autoCodeTool.AnalysisApiTpl(cfg)
 	assert.Nil(t, getParamErr)
 	type Param struct {
 		PackageName       string
@@ -84,7 +88,7 @@ func TestGenControllerCode(t *testing.T) {
 		FunctionName      string
 	}
 	var params []GenParamsItem
-	for _, tplItem := range templateParam.TemplateList {
+	for _, tplItem := range templateParam.TplAnalysisList {
 		params = append(params, GenParamsItem{
 			TargetDir:      tplItem.TargetDir,
 			TargetFileName: tplItem.TargetFilename,
@@ -96,10 +100,10 @@ func TestGenControllerCode(t *testing.T) {
 			},
 		})
 	}
-	// err := autoCodeTool.Gen(&GenParams{
-	// 	ParamsList: params,
-	// })
-	// assert.Nil(t, err)
+	err := autoCodeTool.Gen(&GenParams{
+		ParamsList: params,
+	})
+	assert.Nil(t, err)
 }
 
 func TestGenModelCode(t *testing.T) {
@@ -112,13 +116,15 @@ func TestGenModelCode(t *testing.T) {
 	tplDir := fmt.Sprintf("%s/tplExample/model", workDir)
 	rootDir := fmt.Sprintf("%s/tmp", workDir)
 	cfg := &ModuleCfg{
-		PackageName: "user",
-		TableName:   "user",
-		TplDir:      tplDir,
-		RootDir:     rootDir,
+		CommonConfig: CommonConfig{
+			PackageName: "user",
+			TplDir:      tplDir,
+			RootDir:     rootDir,
+		},
+		TableName: "user",
 	}
 	autoCodeTool := NewGenerator()
-	templateParam, getParamErr := autoCodeTool.GetModuleTemplateParams(db, cfg)
+	templateParam, getParamErr := autoCodeTool.AnalysisModuleTpl(db, cfg)
 	assert.Nil(t, getParamErr)
 	type ModelFieldItem struct {
 		FieldName    string
@@ -136,7 +142,7 @@ func TestGenModelCode(t *testing.T) {
 	}
 
 	var params []GenParamsItem
-	for _, tplItem := range templateParam.TemplateList {
+	for _, tplItem := range templateParam.TplAnalysisList {
 		var modelFields []ModelFieldItem
 
 		for _, field := range tplItem.ModelFields {

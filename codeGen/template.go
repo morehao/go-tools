@@ -10,41 +10,19 @@ import (
 )
 
 const (
-	tplFileSuffix = ".tpl"
-	goFileSuffix  = ".go"
+	tplFileExtension = ".tpl"
+	goFileExtension  = ".go"
 )
 
-type tplFile struct {
-	filepath       string
-	filename       string
-	originFilename string
-	layerName      LayerName
-	layerPrefix    LayerPrefix
-}
-
-type tplCfg struct {
-	template *template.Template
-	tplFile
-	targetFileName string
-}
-
-func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
-	if t.layerPrefix == "" {
-		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
-	}
-	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, gutils.SnakeToPascal(packageName))
-	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
-}
-
-type ModelTemplateParamsRes struct {
+type ModuleTplAnalysisRes struct {
 	PackageName       string
 	TableName         string
 	PackagePascalName string
 	StructName        string
-	TemplateList      []ModelTemplateParamsItem
+	TplAnalysisList   []ModuleTplAnalysisItem
 }
 
-type TemplateParamsItemBase struct {
+type TplAnalysisItem struct {
 	Template        *template.Template
 	TplFilepath     string
 	TplFilename     string
@@ -56,15 +34,15 @@ type TemplateParamsItemBase struct {
 	LayerPrefix     LayerPrefix
 }
 
-type ModelTemplateParamsItem struct {
-	TemplateParamsItemBase
+type ModuleTplAnalysisItem struct {
+	TplAnalysisItem
 	ModelFields []ModelField
 }
 
-type ControllerTemplateParamsRes struct {
+type ApiTplAnalysisRes struct {
 	PackageName       string
 	PackagePascalName string
-	TemplateList      []TemplateParamsItemBase
+	TplAnalysisList   []TplAnalysisItem
 }
 
 type GenParams struct {
@@ -79,79 +57,103 @@ type GenParamsItem struct {
 }
 
 // 获取指定目录下所有的模板文件
-func getTplFiles(tplDir string, layerNameMap map[LayerName]LayerName, layerPrefixMap map[LayerName]LayerPrefix) ([]tplFile, error) {
+func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnalysisItem, error) {
 	// 打开指定目录
-	file, openErr := os.Open(tplDir)
+	file, openErr := os.Open(cfg.TplDir)
 	if openErr != nil {
 		return nil, openErr
 	}
 	// 读取目录下所有文件
-	names, readErr := file.Readdirnames(-1)
+	tplFilenameList, readErr := file.Readdirnames(-1)
 	if readErr != nil {
 		return nil, readErr
 	}
-	var files []tplFile
-	for _, name := range names {
-
+	var analysisList []TplAnalysisItem
+	rootDir := cfg.RootDir
+	for _, tplFilename := range tplFilenameList {
 		// 判断是否是模板文件
-		if gutils.GetFileSuffix(name) == tplFileSuffix {
-			layerName := LayerName(strings.TrimSuffix(name, fmt.Sprintf("%s%s", goFileSuffix, tplFileSuffix)))
-			if specialName, ok := defaultLayerSpecialNameMap[layerName]; ok {
-				layerName = specialName
-			}
-			layerPrefix := defaultLayerPrefixMap[layerName]
-			if prefix, ok := layerPrefixMap[layerName]; ok {
-				layerPrefix = prefix
-			}
+		if gutils.GetFileExtension(tplFilename) != tplFileExtension {
+			continue
+		}
 
-			if specialName, ok := layerNameMap[layerName]; ok {
-				layerName = specialName
-			}
-			files = append(files, tplFile{
-				filepath:       fmt.Sprintf("%s/%s", tplDir, name),
-				filename:       name,
-				originFilename: name[:len(name)-len(tplFileSuffix)],
-				layerName:      layerName,
-				layerPrefix:    layerPrefix,
-			})
+		// 构造文件层级名称，如controller
+		defaultLayerName := LayerName(strings.TrimSuffix(tplFilename, fmt.Sprintf("%s%s", goFileExtension, tplFileExtension)))
+		layerName := defaultLayerName
+		if specialName, ok := defaultLayerSpecialNameMap[layerName]; ok {
+			layerName = specialName
 		}
-	}
-	return files, nil
-}
+		if customLayerName, ok := cfg.LayerNameMap[defaultLayerName]; ok {
+			layerName = customLayerName
+		}
 
-func buildTplCfg(tplFiles []tplFile, defaultFilename string) ([]tplCfg, error) {
-	var tplList []tplCfg
-	for _, file := range tplFiles {
-		targetFileName := file.originFilename
-		if file.layerName != LayerNameDto {
-			targetFileName = defaultFilename
+		// 构造生成文件所在模块的模块前缀
+		defaultLayerPrefix := defaultLayerPrefixMap[defaultLayerName]
+		layerPrefix := defaultLayerPrefix
+		if prefix, ok := cfg.LayerPrefixMap[defaultLayerName]; ok {
+			layerPrefix = prefix
 		}
-		tplItem := tplCfg{
-			tplFile:        file,
-			targetFileName: targetFileName,
+
+		// 构造生成文件所在目录的名称
+		if layerDir, ok := cfg.LayerDirMap[defaultLayerName]; ok {
+			rootDir = layerDir
 		}
-		tplList = append(tplList, tplItem)
-	}
-	for i, tplItem := range tplList {
-		tpl, parseErr := template.ParseFiles(tplItem.filepath)
+		var targetDir string
+		if defaultLayerPrefix.String() == "" {
+			targetDir = fmt.Sprintf("%s/%s", rootDir, layerName)
+		} else {
+			targetFileParentDir := fmt.Sprintf("%s%s", layerPrefix, gutils.SnakeToPascal(cfg.PackageName))
+			targetDir = fmt.Sprintf("%s/%s/%s", rootDir, layerName, targetFileParentDir)
+		}
+
+		// 构造生成文件的文件名称
+		originFilename := gutils.TrimFileExtension(gutils.TrimFileExtension(tplFilename))
+		var targetFilename string
+		switch defaultLayerName {
+		case LayerNameRequest, LayerNameResponse:
+			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
+		case LayerNameRouter:
+			targetFilename = fmt.Sprintf("%s%s", cfg.PackageName, goFileExtension)
+		default:
+			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)
+		}
+
+		var targetFileExist bool
+		if gutils.FileExists(fmt.Sprintf("%s/%s", targetDir, targetFilename)) {
+			targetFileExist = true
+		}
+		tplFilepath := fmt.Sprintf("%s/%s", cfg.TplDir, tplFilename)
+
+		fileTemplate, parseErr := template.ParseFiles(tplFilepath)
 		if parseErr != nil {
 			return nil, parseErr
 		}
-		tplList[i].template = tpl
+
+		analysisList = append(analysisList, TplAnalysisItem{
+			Template:        fileTemplate,
+			TplFilepath:     tplFilepath,
+			TplFilename:     tplFilename,
+			LayerName:       layerName,
+			LayerPrefix:     layerPrefix,
+			OriginFilename:  originFilename,
+			TargetDir:       targetDir,
+			TargetFilename:  targetFilename,
+			TargetFileExist: targetFileExist,
+		})
+
 	}
-	return tplList, nil
+	return analysisList, nil
 }
 
-func createFile(targetDir, targetFileName string, tpl *template.Template, tplParam interface{}) error {
+func createFile(targetDir, targetFilename string, tpl *template.Template, tplParam interface{}) error {
 	if err := gutils.CreateDir(targetDir); err != nil {
 		return err
 	}
-	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFileName)
+	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFilename)
 	// 判断文件是否存在
 	if exist := gutils.FileExists(codeFilepath); exist {
 		// 如果存在，先写入一个临时文件，再对既有文件进行追加
 		tempDir := fmt.Sprintf("%s/tmp", targetDir)
-		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFileName)
+		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFilename)
 		if err := gutils.CreateDir(tempDir); err != nil {
 			return err
 		}

@@ -9,7 +9,7 @@ import (
 type mysqlImpl struct {
 }
 
-func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error) {
+func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*ModuleTplAnalysisRes, error) {
 	dbName, getDbNameErr := getDbName(db)
 	if getDbNameErr != nil {
 		return nil, getDbNameErr
@@ -29,49 +29,27 @@ func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Mod
 	}
 
 	// 获取模板文件
-	tplFiles, getTplErr := getTplFiles(cfg.TplDir, cfg.LayerNameMap, cfg.LayerPrefixMap)
-	if getTplErr != nil {
-		return nil, getTplErr
-	}
-	tplList, buildErr := buildTplCfg(tplFiles, fmt.Sprintf("%s%s", cfg.TableName, goFileSuffix))
-	if buildErr != nil {
-		return nil, buildErr
+	tplAnalysisList, analysisErr := analysisTplFiles(cfg.CommonConfig, cfg.TableName)
+	if analysisErr != nil {
+		return nil, analysisErr
 	}
 
 	// 构造模板参数
-	var templateList []ModelTemplateParamsItem
-	for _, tplItem := range tplList {
-		rootDir := cfg.RootDir
-		if layerDir, ok := cfg.LayerDirMap[tplItem.layerName]; ok {
-			rootDir = layerDir
-		}
-		targetDir := tplItem.BuildTargetDir(rootDir, cfg.PackageName)
-		tplParamsItem := TemplateParamsItemBase{
-			Template:       tplItem.template,
-			TplFilename:    tplItem.filename,
-			TplFilepath:    tplItem.filepath,
-			OriginFilename: tplItem.originFilename,
-			TargetFilename: tplItem.targetFileName,
-			TargetDir:      targetDir,
-			LayerName:      tplItem.layerName,
-			LayerPrefix:    tplItem.layerPrefix,
-		}
-		if gutils.FileExists(fmt.Sprintf("%s/%s", targetDir, tplItem.targetFileName)) {
-			tplParamsItem.TargetFileExist = true
-		}
-		templateList = append(templateList, ModelTemplateParamsItem{
-			TemplateParamsItemBase: tplParamsItem,
-			ModelFields:            modelFieldList,
+	var moduleAnalysisList []ModuleTplAnalysisItem
+	for _, v := range tplAnalysisList {
+		moduleAnalysisList = append(moduleAnalysisList, ModuleTplAnalysisItem{
+			TplAnalysisItem: v,
+			ModelFields:     modelFieldList,
 		})
 	}
 	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
 	structName := gutils.SnakeToPascal(cfg.TableName)
-	res := &ModelTemplateParamsRes{
+	res := &ModuleTplAnalysisRes{
 		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,
 		TableName:         cfg.TableName,
 		StructName:        structName,
-		TemplateList:      templateList,
+		TplAnalysisList:   moduleAnalysisList,
 	}
 	return res, nil
 }

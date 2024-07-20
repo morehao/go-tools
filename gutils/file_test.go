@@ -5,7 +5,12 @@ import (
 	"testing"
 )
 
-func TestGetFileSuffix(t *testing.T) {
+func TestGetFileExtension(t *testing.T) {
 	name := "test.go"
-	fmt.Println(GetFileSuffix(name))
+	fmt.Println(GetFileExtension(name))
+}
+
+func TestTrimFileExtension(t *testing.T) {
+	name := "test.go"
+	fmt.Println(TrimFileExtension(name))
 }

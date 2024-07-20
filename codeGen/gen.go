@@ -8,8 +8,8 @@ import (
 )
 
 type Generator interface {
-	GetModuleTemplateParams(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error)
-	GetControllerTemplateParams(cfg *ControllerCfg) (*ControllerTemplateParamsRes, error)
+	AnalysisModuleTpl(db *gorm.DB, cfg *ModuleCfg) (*ModuleTplAnalysisRes, error)
+	AnalysisApiTpl(cfg *ApiCfg) (*ApiTplAnalysisRes, error)
 	Gen(params *GenParams) error
 }
 
@@ -19,7 +19,7 @@ func NewGenerator() Generator {
 
 type generatorImpl struct{}
 
-func (impl *generatorImpl) GetModuleTemplateParams(db *gorm.DB, cfg *ModuleCfg) (*ModelTemplateParamsRes, error) {
+func (impl *generatorImpl) AnalysisModuleTpl(db *gorm.DB, cfg *ModuleCfg) (*ModuleTplAnalysisRes, error) {
 	if db == nil {
 		return nil, fmt.Errorf("db is nil")
 	}
@@ -55,52 +55,26 @@ func (impl *generatorImpl) checkModuleCfg(cfg *ModuleCfg) error {
 	return nil
 }
 
-func (impl *generatorImpl) GetControllerTemplateParams(cfg *ControllerCfg) (*ControllerTemplateParamsRes, error) {
+func (impl *generatorImpl) AnalysisApiTpl(cfg *ApiCfg) (*ApiTplAnalysisRes, error) {
 	if err := impl.checkControllerCfg(cfg); err != nil {
 		return nil, err
 	}
-	// 获取模板文件
-	tplFiles, getTplErr := getTplFiles(cfg.TplDir, cfg.LayerNameMap, cfg.LayerPrefixMap)
-	if getTplErr != nil {
-		return nil, getTplErr
-	}
-	tplList, buildErr := buildTplCfg(tplFiles, cfg.TargetFilename)
-	if buildErr != nil {
-		return nil, buildErr
+	// 解析模板文件
+	tplAnalysisList, analysisErr := analysisTplFiles(cfg.CommonConfig, cfg.TargetFilename)
+	if analysisErr != nil {
+		return nil, analysisErr
 	}
 	// 构造模板参数
-	var templateList []TemplateParamsItemBase
-	for _, tplItem := range tplList {
-		rootDir := cfg.RootDir
-		if layerDir, ok := cfg.LayerDirMap[tplItem.layerName]; ok {
-			rootDir = layerDir
-		}
-		targetDir := tplItem.BuildTargetDir(rootDir, cfg.PackageName)
-		tplParamsItem := TemplateParamsItemBase{
-			Template:       tplItem.template,
-			TplFilename:    tplItem.filename,
-			TplFilepath:    tplItem.filepath,
-			OriginFilename: tplItem.originFilename,
-			TargetFilename: tplItem.targetFileName,
-			TargetDir:      targetDir,
-			LayerName:      tplItem.layerName,
-			LayerPrefix:    tplItem.layerPrefix,
-		}
-		if gutils.FileExists(fmt.Sprintf("%s/%s", targetDir, tplItem.targetFileName)) {
-			tplParamsItem.TargetFileExist = true
-		}
-		templateList = append(templateList, tplParamsItem)
-	}
 	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
-	res := &ControllerTemplateParamsRes{
+	res := &ApiTplAnalysisRes{
 		PackageName:       cfg.PackageName,
 		PackagePascalName: packagePascalName,
-		TemplateList:      templateList,
+		TplAnalysisList:   tplAnalysisList,
 	}
 	return res, nil
 }
 
-func (impl *generatorImpl) checkControllerCfg(cfg *ControllerCfg) error {
+func (impl *generatorImpl) checkControllerCfg(cfg *ApiCfg) error {
 	if cfg == nil {
 		return fmt.Errorf("cfg is nil")
 	}
@@ -116,8 +90,8 @@ func (impl *generatorImpl) checkControllerCfg(cfg *ControllerCfg) error {
 			return fmt.Errorf("%s is required", field)
 		}
 	}
-	if !strings.HasSuffix(cfg.TargetFilename, goFileSuffix) {
-		return fmt.Errorf("targetFilename should end with %s", goFileSuffix)
+	if !strings.HasSuffix(cfg.TargetFilename, goFileExtension) {
+		return fmt.Errorf("targetFilename should end with %s", goFileExtension)
 	}
 	return nil
 }
