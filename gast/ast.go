@@ -271,3 +271,65 @@ func AddContentToFunc(content, functionName, functionFilepath string) error {
 	}
 	return nil
 }
+
+// AddFunction 将指定的函数内容添加到指定文件中，如果文件不存在包声明则添加包声明
+func AddFunction(content, functionFilepath, pkgName string) error {
+	// 解析目标文件
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, functionFilepath, nil, parser.ParseComments)
+	if parseErr != nil {
+		// 如果文件解析失败，认为文件不存在或是空文件，创建新的文件节点
+		node = &ast.File{
+			Name: &ast.Ident{Name: pkgName},
+		}
+	}
+
+	// 解析新的函数声明
+	newFuncNode, parseFuncErr := parser.ParseFile(fileSet, "", "package "+pkgName+"\n"+content, parser.ParseComments)
+	if parseFuncErr != nil {
+		return fmt.Errorf("failed to parse new function: %w", parseFuncErr)
+	}
+
+	// 查找新的函数声明
+	var newFuncDecl *ast.FuncDecl
+	for _, decl := range newFuncNode.Decls {
+		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+			newFuncDecl = funcDecl
+			break
+		}
+	}
+	if newFuncDecl == nil {
+		return fmt.Errorf("no function declaration found in content")
+	}
+
+	// 检查目标文件中是否有包声明
+	hasPackage := node.Name != nil && node.Name.Name != ""
+
+	// 如果目标文件没有包声明，设置包声明
+	if !hasPackage {
+		node.Name = &ast.Ident{Name: pkgName}
+	}
+
+	// 将新的函数声明添加到目标文件的声明列表中
+	node.Decls = append(node.Decls, newFuncDecl)
+
+	// 使用 bytes.Buffer 处理修改后的内容
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, fileSet, node); err != nil {
+		return fmt.Errorf("failed to write updated content: %w", err)
+	}
+
+	// 打开目标文件进行写入
+	file, openErr := os.OpenFile(functionFilepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if openErr != nil {
+		return fmt.Errorf("failed to open destination file: %v", openErr)
+	}
+	defer file.Close()
+
+	// 将处理后的代码写回文件
+	if _, writeErr := file.Write(buf.Bytes()); writeErr != nil {
+		return fmt.Errorf("failed to write content: %w", writeErr)
+	}
+
+	return nil
+}
