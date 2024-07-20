@@ -71,3 +71,11 @@ func TestAddMethodToInterface(t *testing.T) {
 	err := AddMethodToInterfaceInFile(filePath, interfaceName, "userImpl", methodName)
 	assert.Nil(t, err)
 }
+
+func TestAddContentToFunc(t *testing.T) {
+	filePath := "./instance.go"
+	content := "fmt.Println(1)"
+
+	err := AddContentToFunc(content, "GetName", filePath)
+	assert.Nil(t, err)
+}

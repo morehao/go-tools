@@ -3,6 +3,7 @@ package gast
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -217,5 +218,53 @@ func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodNam
 		}
 	}
 
+	return nil
+}
+
+// AddContentToFunc 将指定的内容添加到指定文件中的指定函数的末尾
+func AddContentToFunc(content, functionName, functionFilepath string) error {
+	// 解析整个文件
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, functionFilepath, nil, parser.AllErrors)
+	if parseErr != nil {
+		return fmt.Errorf("failed to parse file: %w", parseErr)
+	}
+
+	// 查找目标函数
+	var funcDecl *ast.FuncDecl
+	ast.Inspect(node, func(n ast.Node) bool {
+		if f, ok := n.(*ast.FuncDecl); ok && f.Name.Name == functionName {
+			funcDecl = f
+			return false
+		}
+		return true
+	})
+	if funcDecl == nil {
+		return errors.New("function does not exist")
+	}
+
+	// 解析新的表达式
+	expr, parseExprErr := parser.ParseExpr(content)
+	if parseExprErr != nil {
+		return fmt.Errorf("failed to parse new expression: %v", parseExprErr)
+	}
+
+	// 创建表达式语句
+	callExprStmt := &ast.ExprStmt{X: expr}
+
+	// 将新的语句添加到目标函数的末尾
+	funcDecl.Body.List = append(funcDecl.Body.List, callExprStmt)
+
+	// 打开已存在的目标文件
+	file, openErr := os.OpenFile(functionFilepath, os.O_WRONLY|os.O_TRUNC, 0644)
+	if openErr != nil {
+		return fmt.Errorf("failed to open destination file: %v", openErr)
+	}
+	defer file.Close()
+
+	// 将修改后的AST写回文件
+	if err := printer.Fprint(file, fileSet, node); err != nil {
+		return fmt.Errorf("failed to write updated content: %w", err)
+	}
 	return nil
 }
