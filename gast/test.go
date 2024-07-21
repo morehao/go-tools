@@ -34,9 +34,9 @@ func (impl *userImpl) Print() {
 func GetName() {}
 
 func platformRouter(privateRouter *gin.RouterGroup) {
-
 	routerGroup := privateRouter.Group("platform")
 	{
 		routerGroup.POST("test")
+		routerGroup.POST("test1")
 	}
 }

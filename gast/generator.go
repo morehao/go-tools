@@ -10,7 +10,6 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -84,9 +83,7 @@ func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodNam
 	return nil
 }
 
-// AddContentToFunc 在指定函数的函数体内添加内容，并根据 moveSteps 的值移动该内容。
-// moveSteps 参数为正数表示上移，为负数表示下移，为 0 表示不移动。
-
+// AddContentToFunc 在指定函数的函数体内添加内容
 func AddContentToFunc(content, functionName, functionFilepath string) error {
 	// 解析整个文件
 	fileSet := token.NewFileSet()
@@ -407,46 +404,76 @@ func exprToString(expr ast.Expr) string {
 	}
 }
 
-// AddTextToFunctionBody 在指定文件的指定函数体内添加文本。
-func AddTextToFunctionBody(filePath, functionName, textToAdd string) error {
-	// 解析文件以获取 AST。
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
-	if err != nil {
-		return err
+// AddContentToFuncWithLineNumber 将内容插入到指定文件内指定函数的函数体中的指定位置，并覆盖原函数体。
+func AddContentToFuncWithLineNumber(filePath, functionName, content string, lineNumber int) error {
+	// 解析整个文件
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, filePath, nil, parser.ParseComments)
+	if parseErr != nil {
+		return fmt.Errorf("failed to parse file: %w", parseErr)
 	}
 
-	// 遍历 AST 查找指定的函数。
+	// 查找目标函数
+	var funcDecl *ast.FuncDecl
 	ast.Inspect(node, func(n ast.Node) bool {
-		// 查找函数声明。
-		funcDecl, ok := n.(*ast.FuncDecl)
-		if !ok {
-			return true // 继续遍历 AST。
-		}
-
-		// 检查是否为指定的函数。
-		if funcDecl.Name.Name == functionName {
-			// 找到函数，添加文本到函数体内。
-			if funcDecl.Body != nil {
-				// 创建一个新的表达式语句来包含要添加的文本。
-				exprStmt := &ast.ExprStmt{
-					X: &ast.BasicLit{
-						Kind:  token.STRING,
-						Value: "`" + textToAdd + "`",
-					},
-				}
-				// 将新的表达式语句添加到函数体的最后。
-				funcDecl.Body.List = append(funcDecl.Body.List, exprStmt)
-			}
-			return false // 停止遍历 AST。
+		if f, ok := n.(*ast.FuncDecl); ok && f.Name.Name == functionName {
+			funcDecl = f
+			return false
 		}
 		return true
 	})
-
-	// 将修改后的 AST 写回文件。
-	var buf bytes.Buffer
-	if err := format.Node(&buf, fset, node); err != nil {
-		return err
+	if funcDecl == nil {
+		return errors.New("function does not exist")
 	}
-	return ioutil.WriteFile(filePath, buf.Bytes(), 0644)
+
+	// 获取函数体的文本表示
+	var funcBodyBuf bytes.Buffer
+	if err := format.Node(&funcBodyBuf, fileSet, funcDecl.Body); err != nil {
+		return fmt.Errorf("failed to write function body content: %w", err)
+	}
+	funcBodyLines := strings.Split(funcBodyBuf.String(), "\n")
+
+	// 如果 lineNumber 为 0，则直接返回原函数体
+	if lineNumber == 0 {
+		return nil
+	}
+
+	// 计算新内容的插入位置
+	insertIndex := lineNumber
+	if lineNumber < 0 {
+		// 从下到上计算行号
+		insertIndex = len(funcBodyLines) + lineNumber
+	}
+	if insertIndex < 0 {
+		insertIndex = 0 // 确保插入位置不超出函数体的起始范围
+	} else if insertIndex > len(funcBodyLines) {
+		insertIndex = len(funcBodyLines) // 确保插入位置不超出函数体的结束范围
+	}
+
+	// 将内容插入到计算出的位置
+	funcBodyLines = append(funcBodyLines[:insertIndex], append([]string{content}, funcBodyLines[insertIndex:]...)...)
+	newFuncBodyContent := strings.Join(funcBodyLines, "\n")
+
+	// 解析新的函数体内容为 AST
+	newFuncBodyAST, err := parser.ParseFile(fileSet, "", "package p\nfunc _()"+newFuncBodyContent, parser.ParseComments)
+	if err != nil {
+		fmt.Errorf("failed to parse new function body: %w", err)
+	}
+	newFuncBody := newFuncBodyAST.Decls[0].(*ast.FuncDecl).Body
+
+	// 替换原函数体
+	funcDecl.Body = newFuncBody
+
+	// 使用 bytes.Buffer 处理修改后的整个文件内容
+	var buf bytes.Buffer
+	if err := format.Node(&buf, fileSet, node); err != nil {
+		return fmt.Errorf("failed to write updated file content: %w", err)
+	}
+
+	// 写回文件
+	if err := os.WriteFile(filePath, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write back to file: %w", err)
+	}
+
+	return nil
 }

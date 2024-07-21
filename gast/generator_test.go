@@ -39,3 +39,10 @@ func TestAddMethodToInterface(t *testing.T) {
 	err = AddMethodToInterface(filePath, "userImpl", "GetAge", interfaceName)
 	assert.Nil(t, err)
 }
+
+func TestAddContentToFuncWithLineNumber(t *testing.T) {
+	filePath := "./test.go"
+	content := `routerGroup.POST("test1")`
+	err := AddContentToFuncWithLineNumber(filePath, "platformRouter", content, -2)
+	assert.Nil(t, err)
+}
