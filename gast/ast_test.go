@@ -65,10 +65,7 @@ func TestFindFunctionInFile(t *testing.T) {
 func TestAddMethodToInterface(t *testing.T) {
 	filePath := "./test.go"
 
-	interfaceName := "User"
-	methodName := "GetAge"
-
-	err := AddMethodToInterfaceInFile(filePath, interfaceName, "userImpl", methodName)
+	err := AddMethodToInterface(filePath, "userImpl", "GetAge", "User")
 	assert.Nil(t, err)
 }
 

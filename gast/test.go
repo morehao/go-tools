@@ -3,7 +3,6 @@ package gast
 import "fmt"
 
 type User interface {
-	GetAge() int64
 }
 
 type userImpl struct {
@@ -19,6 +18,8 @@ func (impl *userImpl) GetName() string {
 	return impl.Name
 }
 
+// GetAge 11
+// GetAge 12
 func (impl *userImpl) GetAge() int64 {
 	return impl.Age
 }

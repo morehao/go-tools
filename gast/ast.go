@@ -333,3 +333,96 @@ func AddFunction(content, functionFilepath, pkgName string) error {
 
 	return nil
 }
+
+// AddMethodToInterfaceInFileV2 adds a method from a receiver type to an interface
+func AddMethodToInterfaceInFileV2(filePath, receiverName, methodName, interfaceName string) error {
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+	if err != nil {
+		return fmt.Errorf("failed to parse file: %w", err)
+	}
+
+	var methodDecl *ast.FuncDecl
+
+	// Find the method declaration
+	ast.Inspect(node, func(n ast.Node) bool {
+		if fn, ok := n.(*ast.FuncDecl); ok {
+			if fn.Recv != nil && len(fn.Recv.List) > 0 {
+				if starExpr, ok := fn.Recv.List[0].Type.(*ast.StarExpr); ok {
+					if ident, ok := starExpr.X.(*ast.Ident); ok && ident.Name == receiverName && fn.Name.Name == methodName {
+						methodDecl = fn
+						return false
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	if methodDecl == nil {
+		return fmt.Errorf("method %s not found in receiver %s", methodName, receiverName)
+	}
+
+	// Extract method signature without comments
+	methodSig := removeCommentsFromFuncType(methodDecl.Type)
+
+	// Find the interface and add method signature
+	var interfaceType *ast.InterfaceType
+
+	ast.Inspect(node, func(n ast.Node) bool {
+		if ts, ok := n.(*ast.TypeSpec); ok {
+			if it, ok := ts.Type.(*ast.InterfaceType); ok && ts.Name.Name == interfaceName {
+				interfaceType = it
+				return false
+			}
+		}
+		return true
+	})
+
+	if interfaceType == nil {
+		return fmt.Errorf("interface %s not found", interfaceName)
+	}
+
+	// Add method signature to the interface
+	methodField := &ast.Field{
+		Names: []*ast.Ident{ast.NewIdent(methodName)},
+		Type:  methodSig,
+	}
+	interfaceType.Methods.List = append(interfaceType.Methods.List, methodField)
+
+	// Write modified AST back to file
+	f, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer f.Close()
+
+	if err := printer.Fprint(f, fset, node); err != nil {
+		return fmt.Errorf("failed to print AST: %w", err)
+	}
+
+	return nil
+}
+
+// removeCommentsFromFuncType removes comments from function type
+func removeCommentsFromFuncType(ft *ast.FuncType) *ast.FuncType {
+	return &ast.FuncType{
+		Params:  removeCommentsFromFieldList(ft.Params),
+		Results: removeCommentsFromFieldList(ft.Results),
+	}
+}
+
+// removeCommentsFromFieldList removes comments from field list
+func removeCommentsFromFieldList(fl *ast.FieldList) *ast.FieldList {
+	if fl == nil {
+		return nil
+	}
+	newList := make([]*ast.Field, len(fl.List))
+	for i, f := range fl.List {
+		newList[i] = &ast.Field{
+			Names: f.Names,
+			Type:  f.Type,
+		}
+	}
+	return &ast.FieldList{List: newList}
+}
