@@ -84,7 +84,7 @@ func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodNam
 }
 
 // AddContentToFunc 在指定函数的函数体内添加内容
-func AddContentToFunc(content, functionName, functionFilepath string) error {
+func AddContentToFunc(functionFilepath, functionName, content string) error {
 	// 解析整个文件
 	fileSet := token.NewFileSet()
 	node, parseErr := parser.ParseFile(fileSet, functionFilepath, nil, parser.AllErrors)
@@ -135,7 +135,7 @@ func AddContentToFunc(content, functionName, functionFilepath string) error {
 }
 
 // AddFunction 将指定的函数内容添加到指定文件中，如果文件不存在包声明则添加包声明
-func AddFunction(content, functionFilepath, pkgName string) error {
+func AddFunction(functionFilepath, content, pkgName string) error {
 	// 解析目标文件
 	fileSet := token.NewFileSet()
 	node, parseErr := parser.ParseFile(fileSet, functionFilepath, nil, parser.ParseComments)

@@ -16,7 +16,7 @@ func TestAddContentToFunc(t *testing.T) {
 	filePath := "./test.go"
 	content := `routerGroup.POST("test")`
 
-	err := AddContentToFunc(content, "platformRouter", filePath)
+	err := AddContentToFunc(filePath, "platformRouter", content)
 	assert.Nil(t, err)
 }
 
@@ -26,7 +26,7 @@ func NewFunction() {
 	fmt.Println("Hello, World!")
 }
 `
-	err := AddFunction(content, "test.go", "gast")
+	err := AddFunction("test.go", content, "gast")
 	assert.Nil(t, err)
 }
 
