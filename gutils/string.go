@@ -27,6 +27,13 @@ func FirstLetterToUpper(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
+func FirstLetterToLower(s string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
 func Trim(str string) string {
 	if len(str) == 0 {
 		return ""

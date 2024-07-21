@@ -1,21 +1,35 @@
-# go-tools
-`go-tools`是一个golang工具库，包含了一些个人在项目开发过程中总结的一些常用的工具函数和组件。
+# go-tools简介
+`go-tools`是一个golang工具组件库，包含了一些个人在项目开发过程中总结的一些常用的工具函数和组件。
 
-## autoCode
+组件列表：
+- [codeGen](#codegen) 代码生成工具
+- `conc` 简单的并发控制组件
+- `conf` 配置文件读取组件
+- `dbClient` 数据库组件
+- [excel](#excel) 简单读写excel组件
+- `gast` 语法树工具
+- `gcontext` 上下文工具组件
+- `gerror` 错误处理组件
+- `glog` 日志组件
+- `gutils` 一些常用的工具函数
 
-### 简介
-`autoCode` 是一个简单的代码生成工具，通过读取数据库表结构，支持生成基础的CRUD代码，router、controller、service、dto、model、errorCode等代码。
-### 特性
-- 支持MySQL数据库
-- 支持模板自定义和模板参数自定义
-- 支持生成基础的CRUD代码
-
-### 安装
+# 安装
 ```bash
 go get github.com/morehao/go-tools
 ```
+
+# 组件使用说明
+
+## codeGen
+
+### 简介
+`codeGen` 是一个简单的代码生成工具，通过读取数据库表结构，支持生成基础的CRUD代码，router、controller、service、dto、model、errorCode等代码。
+### 特性
+- 支持MySQL数据库
+- 支持模板自定义和模板参数自定义
+- 支持基于模板生成代码
 ### 使用
-使用示例参照[autoCode单测](codeGen/auto_code_test.go)
+使用示例参照[codeGen单测](codeGen/gen_test.go)
 
 ## excel
 
@@ -35,84 +49,4 @@ go get github.com/morehao/go-tools
 go get github.com/morehao/go-tools
 ```
 ### 使用
-### 读取Excel
-读取Excel的简单示例：
-```go 
-package main
-
-import (
-	"fmt"
-	"github.com/morehao/go-tools"
-	"github.com/xuri/excelize/v2"
-)
-
-type DataItem struct {
-	SerialNumber int64  `ex:"head:序号" validate:"min=10,max=100"`
-	UserName     string `ex:"head:姓名"`
-	Age          int64  `ex:"head:年龄"`
-}
-
-func main() {
-	f, openErr := excelize.OpenFile("test.xlsx")
-	if openErr != nil {
-		fmt.Println("open file error: ", openErr)
-		return
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			fmt.Println(err)
-		}
-	}()
-
-	reader := excel.NewReader(f, &excel.ReaderOption{
-		SheetNumber:  0,
-		HeadRow:      0,
-		DataStartRow: 1,
-	})
-	var dataList []DataItem
-	validateErrMap, readerErr := reader.Read(&dataList)
-	if readerErr != nil {
-		fmt.Println("read error: ", readerErr)
-		return
-	}
-	if len(validateErrMap) > 0 {
-		fmt.Println("validate error: ", validateErrMap)
-		return
-	}
-	for _, item := range dataList {
-		fmt.Println(item)
-	}
-}
-```
-### 写入Excel
-生成Excel的简单示例：
-```go
-package main
-
-import (
-	"fmt"
-	"github.com/morehao/go-tools"
-)
-
-type DataItem struct {
-	SerialNumber int64  `ex:"head:序号" validate:"min=10,max=100"`
-	UserName     string `ex:"head:姓名"`
-	Age          int64  `ex:"head:年龄"`
-}
-
-func main() {
-	var dataList []DataItem
-	dataList = append(dataList, DataItem{
-		SerialNumber: 1,
-		UserName:     "张三",
-		Age:          18,
-	})
-	excelWriter := excel.NewWrite(&excel.WriteOption{
-		SheetName: "Sheet1",
-		HeadRow:   0,
-	})
-	if err := excelWriter.SaveAs(dataList, "write.xlsx"); err != nil {
-		fmt.Println("write error: ", err)
-	}
-}
-```
+使用示例参照[excel使用说明](excel/README.md)

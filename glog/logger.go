@@ -24,15 +24,16 @@ type Logger interface {
 	Fatal(ctx context.Context, args ...interface{})
 	Fatalf(ctx context.Context, format string, args ...interface{})
 	Fatalw(ctx context.Context, msg string, keysAndValues ...interface{})
+	getLogger(opts ...Option) Logger
 	Close()
 }
 
 type LoggerConfig struct {
-	ServiceName string   `yaml:"service_name"`
-	Level       Level    `yaml:"level"`
-	LogDir      string   `yaml:"log_dir"`
-	InConsole   bool     `yaml:"in_console"`
-	ExtraKeys   []string `yaml:"extra_keys"`
+	Service   string   `yaml:"service"`
+	Level     Level    `yaml:"level"`
+	Dir       string   `yaml:"dir"`
+	Stdout    bool     `yaml:"stdout"`
+	ExtraKeys []string `yaml:"extra_keys"`
 }
 
 // InitZapLogger 初始化zapLogger
@@ -43,9 +44,12 @@ func InitZapLogger(cfg *LoggerConfig) error {
 	}
 	// AddCallerSkip(3) 跳过三层调用，使得日志输出正确的业务文件名和函数
 	logger = logger.WithOptions(zap.AddCallerSkip(3))
-	logInstance = &zapLogger{
-		logger: logger,
-		cfg:    cfg,
+	logInstance = instance{
+		Logger: &zapLogger{
+			logger: logger,
+			cfg:    cfg,
+		},
+		logType: LoggerTypeZap,
 	}
 	return nil
 }

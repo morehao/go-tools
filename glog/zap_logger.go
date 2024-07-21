@@ -3,13 +3,13 @@ package glog
 import (
 	"context"
 	"fmt"
+	"github.com/morehao/go-tools/gcontext"
 	"io"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/morehao/go-tools/gutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -38,30 +38,42 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	var stdLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= logLevel && lvl >= zapcore.DebugLevel
 	})
-	if cfg.InConsole {
+	if cfg.Stdout {
+		writer, getWriterErr := getZapLogWriter(cfg, logOutputTypeStdout)
+		if getWriterErr != nil {
+			return nil, getWriterErr
+		}
 		c := zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeStdout),
+			writer,
 			stdLevel)
 		zapCores = append(zapCores, c)
 	}
 
+	defaultWriter, getDefaultWriterErr := getZapLogWriter(cfg, logOutputTypeDefaultFile)
+	if getDefaultWriterErr != nil {
+		return nil, getDefaultWriterErr
+	}
 	zapCores = append(zapCores,
 		zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeDefaultFile),
+			defaultWriter,
 			infoLevel))
 
 	zapCores = append(zapCores,
 		zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeDefaultFile),
+			defaultWriter,
 			errorLevel))
 
+	wfWriter, getWfWriterErr := getZapLogWriter(cfg, logOutputTypeWarnFatal)
+	if getWfWriterErr != nil {
+		return nil, getWfWriterErr
+	}
 	zapCores = append(zapCores,
 		zapcore.NewCore(
 			getZapEncoder(),
-			getZapLogWriter(cfg, logOutputTypeWarnFatal),
+			wfWriter,
 			errorLevel))
 
 	core := zapcore.NewTee(zapCores...)
@@ -72,10 +84,10 @@ func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	development := zap.Development()
 
 	// 设置初始化字段
-	filed := zap.Fields()
+	field := zap.Fields()
 
 	// 构造logger
-	logger := zap.New(core, filed, caller, development)
+	logger := zap.New(core, field, caller, development)
 
 	return logger, nil
 }
@@ -152,12 +164,24 @@ func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...int
 	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
 }
 
+func (l *zapLogger) getLogger(opts ...Option) Logger {
+	cfg := &optConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+	logger := l.logger.WithOptions(cfg.zapOpts...)
+	return &zapLogger{
+		logger: logger,
+		cfg:    l.cfg,
+	}
+}
+
 func (l *zapLogger) Close() {
 	_ = l.logger.Sync()
 }
 
 func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}) {
-	if nilCtx(ctx) {
+	if gcontext.NilCtx(ctx) {
 		return
 	}
 	switch level {
@@ -177,7 +201,7 @@ func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}
 }
 
 func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...interface{}) {
-	if nilCtx(ctx) {
+	if gcontext.NilCtx(ctx) {
 		return
 	}
 	switch level {
@@ -197,7 +221,7 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, arg
 }
 
 func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...interface{}) {
-	if nilCtx(ctx) {
+	if gcontext.NilCtx(ctx) {
 		return
 	}
 	switch level {
@@ -233,11 +257,11 @@ func getZapEncoder() zapcore.Encoder {
 
 	// 配置编码器配置
 	encoderCfg := zapcore.EncoderConfig{
-		LevelKey:       "level",                       // 日志级别的键名，例如 "INFO", "ERROR"
-		TimeKey:        "time",                        // 时间戳的键名，记录日志生成的时间
-		StacktraceKey:  "stacktrace",                  // 堆栈跟踪的键名，记录日志产生时的堆栈信息
-		CallerKey:      "file",                        // 调用者的键名，记录日志调用的位置 (文件名和行号)
-		FunctionKey:    "function",                    // 函数名的键名，记录调用函数的名称
+		LevelKey:      "level",      // 日志级别的键名，例如 "INFO", "ERROR"
+		TimeKey:       "time",       // 时间戳的键名，记录日志生成的时间
+		StacktraceKey: "stacktrace", // 堆栈跟踪的键名，记录日志产生时的堆栈信息
+		CallerKey:     "file",       // 调用者的键名，记录日志调用的位置 (文件名和行号)
+		// FunctionKey:    "function",                    // 函数名的键名，记录调用函数的名称
 		MessageKey:     "msg",                         // 日志消息的键名，记录实际的日志内容
 		LineEnding:     zapcore.DefaultLineEnding,     // 日志行的结束符，默认使用换行符
 		EncodeCaller:   zapcore.ShortCallerEncoder,    // 调用者编码器，使用短格式 (文件名:行号)
@@ -274,47 +298,66 @@ func getZapColorEncoder() zapcore.Encoder {
 	return zapcore.NewJSONEncoder(encoderCfg)
 }
 
-func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (ws zapcore.WriteSyncer) {
+func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSyncer, error) {
 	var w io.Writer
 	if logOutputType == logOutputTypeStdout {
 		w = os.Stdout
 	} else {
-		var err error
-		director := strings.TrimSuffix(cfg.LogDir, "/") + "/" + time.Now().Format("20060102")
+		director := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
 		if ok := gutils.FileExists(director); !ok {
 			_ = os.MkdirAll(director, os.ModePerm)
 		}
 		var logFilename string
 		switch logOutputType {
 		case logOutputTypeDefaultFile:
-			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
 		case logOutputTypeWarnFatal:
-			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileWarnFatalSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileWarnFatalSuffix)
 		default:
-			logFilename = fmt.Sprintf("%s%s", cfg.ServiceName, logOutputFileDefaultSuffix)
+			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
 		}
-		rotator, err := rotatelogs.New(
-			path.Join(strings.TrimSuffix(cfg.LogDir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
-			rotatelogs.WithClock(rotatelogs.Local),                                // 使用本地时间
-			rotatelogs.WithRotationTime(time.Hour*24),                             // 日志切割时间间隔
-			rotatelogs.WithMaxAge(time.Hour*24*30),                                // 保留旧文件的最大时间
-		)
-		if err != nil {
-			panic(err)
+
+		// 使用 rotatelogs 进行日志切割，需要注意rotatelogs已停止维护
+		// rotator, err := rotatelogs.New(
+		// 	path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
+		// 	rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
+		// 	rotatelogs.WithRotationTime(time.Hour*24),                          // 日志切割时间间隔
+		// 	rotatelogs.WithMaxAge(time.Hour*24*7),                             // 保留旧文件的最大时间
+		// )
+		// if err != nil {
+		// 	panic(err)
+		// }
+		logFilepath := path.Join(director, logFilename)
+
+		// 使用 lumberjack 进行日志切割
+		// l := &lumberjack.Logger{
+		// 	Filename:   logFilepath, // 分割后的文件名称
+		// 	MaxSize:    50,          // 单个日志文件的最大大小
+		// 	MaxBackups: 3,           // 要保留的旧日志文件的最大数量
+		// 	MaxAge:     7,           // 日志文件的最大保存天数
+		// 	LocalTime:  true,        // 使用本地时间
+		// 	Compress:   true,        // 是否压缩旧的日志文件
+		// }
+		// w = zapcore.AddSync(l)
+
+		file, openErr := os.OpenFile(logFilepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if openErr != nil {
+			return nil, openErr
 		}
-		w = zapcore.AddSync(rotator)
+		w = file
+
 	}
 
 	flushInterval := 5 * time.Second
 	if logOutputType == logOutputTypeStdout {
 		flushInterval = 1 * time.Second
 	}
-	ws = &zapcore.BufferedWriteSyncer{
+	ws := &zapcore.BufferedWriteSyncer{
 		WS:            zapcore.AddSync(w),
 		Size:          256 * 1024,
 		FlushInterval: flushInterval,
 		Clock:         nil,
 	}
 
-	return ws
+	return ws, nil
 }

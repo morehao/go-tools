@@ -18,6 +18,6 @@ func TestLoadConfig(t *testing.T) {
 		Mysql MysqlConfig `yaml:"mysql"`
 	}
 	var config Config
-	LoadConfig("", "config_example.yaml", &config)
-	fmt.Println(gutils.ToJson(config))
+	LoadConfig("./config_example.yaml", &config)
+	fmt.Println(gutils.ToJsonString(config))
 }

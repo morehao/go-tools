@@ -21,6 +21,6 @@ func TestParseFieldTags(t *testing.T) {
 
 	fmt.Println("Parsed Tags")
 	for current := firstCtag; current != nil; current = current.next {
-		fmt.Printf("Tag: %s, Param: %s, Type: %d\n", current.tag, current.param, current.typeof)
+		fmt.Printf("Tag: %s, ParamsList: %s, Type: %d\n", current.tag, current.param, current.typeof)
 	}
 }

@@ -1,14 +1,12 @@
 package glog
 
 import (
-	"context"
 	"strconv"
 	"time"
 )
 
 // GenRequestID 生成requestId
 func GenRequestID() string {
-
 	// 生成纳秒时间戳
 	nanosecond := uint64(time.Now().UnixNano())
 	// nanosecond&0x7FFFFFFF 使用位运算与操作，将 nanosecond 的二进制表示的最高位（最高位是符号位）清零，将其转换为正整数。
@@ -22,9 +20,6 @@ func FormatRequestTime(time time.Time) string {
 }
 
 func GetRequestCost(start, end time.Time) float64 {
+	// 比起直接除以1e6，避免了直接将大整数转换为浮点数的精度损失
 	return float64(end.Sub(start).Nanoseconds()/1e4) / 100.0
-}
-
-func nilCtx(ctx context.Context) bool {
-	return ctx == nil
 }

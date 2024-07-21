@@ -2,14 +2,14 @@ package ginRender
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/morehao/go-tools/gcore"
+	"github.com/morehao/go-tools/gcontext"
 	"github.com/morehao/go-tools/gerror"
 	"github.com/pkg/errors"
 	"net/http"
 )
 
-func RenderSuccess(ctx *gin.Context, data interface{}) {
-	r := gcore.NewResponseRender()
+func Success(ctx *gin.Context, data interface{}) {
+	r := gcontext.NewResponseRender()
 	r.SetCode(0)
 	r.SetMsg("success")
 	r.SetData(data)
@@ -17,8 +17,8 @@ func RenderSuccess(ctx *gin.Context, data interface{}) {
 	return
 }
 
-func RenderSuccessWithFormat(ctx *gin.Context, data interface{}) {
-	r := gcore.NewResponseRender()
+func SuccessWithFormat(ctx *gin.Context, data interface{}) {
+	r := gcontext.NewResponseRender()
 	r.SetCode(0)
 	r.SetMsg("success")
 	r.SetDataWithFormat(data)
@@ -26,8 +26,8 @@ func RenderSuccessWithFormat(ctx *gin.Context, data interface{}) {
 	return
 }
 
-func RenderFail(ctx *gin.Context, err error) {
-	r := gcore.NewResponseRender()
+func Fail(ctx *gin.Context, err error) {
+	r := gcontext.NewResponseRender()
 
 	var code int
 	var msg string
@@ -48,8 +48,8 @@ func RenderFail(ctx *gin.Context, err error) {
 	return
 }
 
-func RenderAbort(ctx *gin.Context, err error) {
-	r := gcore.NewResponseRender()
+func Abort(ctx *gin.Context, err error) {
+	r := gcontext.NewResponseRender()
 
 	var gErr gerror.Error
 	if errors.As(err, &gErr) {

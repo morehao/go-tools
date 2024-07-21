@@ -22,5 +22,7 @@ go.work
 go.work.sum
 
 .idea/
-codeGen/tmpAutoCode/*
+codeGen/tmp/*
 glog/log/*
+dbClient/log/*
+conc/log/*

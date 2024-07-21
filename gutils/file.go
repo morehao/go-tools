@@ -2,13 +2,25 @@ package gutils
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
-// GetFileSuffix 获取文件后缀
-func GetFileSuffix(name string) string {
-	// 获取文件后缀
-	return name[strings.LastIndex(name, "."):]
+// GetFileExtension 获取文件扩展名
+func GetFileExtension(name string) string {
+	if len(name) == 0 {
+		return ""
+	}
+	return filepath.Ext(name)
+}
+
+// TrimFileExtension 去除文件扩展名
+func TrimFileExtension(name string) string {
+	if len(name) == 0 {
+		return ""
+	}
+	fileExt := filepath.Ext(name)
+	return strings.TrimSuffix(name, fileExt)
 }
 
 // FileExists 检查文件是否存在

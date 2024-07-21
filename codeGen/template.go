@@ -2,176 +2,158 @@ package codeGen
 
 import (
 	"fmt"
+	"github.com/morehao/go-tools/gast"
 	"github.com/morehao/go-tools/gutils"
 	"os"
-	"regexp"
 	"strings"
 	"text/template"
 )
 
 const (
-	tplFileSuffix = ".tpl"
-	goFileSuffix  = ".go"
-
-	tplLayerNameRouter     = "router"
-	tplLayerNameController = "controller"
-	tplLayerNameService    = "service"
-	tplLayerNameDto        = "dto"
-	tplLayerNameRequest    = "request"
-	tplLayerNameResponse   = "response"
-	tplLayerNameModel      = "model"
-
-	tplLayerPrefixController = "ctr"
-	tplLayerPrefixService    = "svc"
-	tplLayerPrefixDto        = "dto"
-	tplLayerPrefixModel      = "dao"
+	tplFileExtension = ".tpl"
+	goFileExtension  = ".go"
 )
 
-var layerPrefixMap = map[string]string{
-	tplLayerNameController: tplLayerPrefixController,
-	tplLayerNameService:    tplLayerPrefixService,
-	tplLayerNameModel:      tplLayerPrefixModel,
-	tplLayerNameDto:        tplLayerPrefixDto,
-}
-
-var layerSpecialNameMap = map[string]string{
-	tplLayerNameRequest:  tplLayerPrefixDto,
-	tplLayerNameResponse: tplLayerPrefixDto,
-}
-
-var layerAppendDirMap = map[string]string{
-	tplLayerNameRouter: "routerHttp",
-}
-
-type tplFile struct {
-	filepath       string
-	filename       string
-	originFilename string
-	layerName      string
-	layerPrefix    string
-}
-
-type tplCfg struct {
-	template *template.Template
-	tplFile
-	targetFileName string
-}
-
-func (t *tplCfg) BuildTargetDir(rootDir, packageName string) string {
-	if t.layerPrefix == "" {
-		return fmt.Sprintf("%s/%s", rootDir, t.layerName)
-	}
-	layerDirName := fmt.Sprintf("%s%s", t.layerPrefix, gutils.SnakeToPascal(packageName))
-	return fmt.Sprintf("%s/%s/%s", rootDir, t.layerName, layerDirName)
-}
-
-type ModuleTemplateParams struct {
+type ModuleTplAnalysisRes struct {
 	PackageName       string
 	TableName         string
 	PackagePascalName string
 	StructName        string
-	TemplateList      []ModuleTemplateParamsItem
+	TplAnalysisList   []ModuleTplAnalysisItem
 }
 
-type TemplateParamsItemBase struct {
-	Template       *template.Template
-	Filepath       string
-	Filename       string
-	OriginFilename string
-	TargetFileName string
-	TargetDir      string
-	LayerName      string
-	LayerPrefix    string
+type TplAnalysisItem struct {
+	Template        *template.Template
+	TplFilepath     string
+	TplFilename     string
+	OriginFilename  string
+	TargetDir       string
+	TargetFilename  string
+	TargetFileExist bool
+	LayerName       LayerName
+	LayerPrefix     LayerPrefix
 }
 
-type ModuleTemplateParamsItem struct {
-	TemplateParamsItemBase
+type ModuleTplAnalysisItem struct {
+	TplAnalysisItem
 	ModelFields []ModelField
 }
 
-type ApiTemplateParams struct {
+type ApiTplAnalysisRes struct {
 	PackageName       string
 	PackagePascalName string
-	TemplateList      []TemplateParamsItemBase
+	TplAnalysisList   []TplAnalysisItem
 }
 
-type CreateFileParam struct {
-	Params []CreateFileParamsItem
+type GenParams struct {
+	ParamsList []GenParamsItem
 }
 
-type CreateFileParamsItem struct {
+type GenParamsItem struct {
 	Template       *template.Template
 	TargetDir      string
 	TargetFileName string
-	Param          interface{}
+	ExtraParams    interface{}
 }
 
 // 获取指定目录下所有的模板文件
-func getTplFiles(path string) ([]tplFile, error) {
+func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnalysisItem, error) {
 	// 打开指定目录
-	dir, openErr := os.Open(path)
+	file, openErr := os.Open(cfg.TplDir)
 	if openErr != nil {
 		return nil, openErr
 	}
 	// 读取目录下所有文件
-	names, readErr := dir.Readdirnames(-1)
+	tplFilenameList, readErr := file.Readdirnames(-1)
 	if readErr != nil {
 		return nil, readErr
 	}
-	var files []tplFile
-	for _, name := range names {
-
+	var analysisList []TplAnalysisItem
+	rootDir := cfg.RootDir
+	for _, tplFilename := range tplFilenameList {
 		// 判断是否是模板文件
-		if gutils.GetFileSuffix(name) == tplFileSuffix {
-			layerName := strings.TrimSuffix(name, fmt.Sprintf("%s%s", goFileSuffix, tplFileSuffix))
-			if specialName, ok := layerSpecialNameMap[layerName]; ok {
-				layerName = specialName
-			}
-			files = append(files, tplFile{
-				filepath:       fmt.Sprintf("%s/%s", path, name),
-				filename:       name,
-				originFilename: name[:len(name)-len(tplFileSuffix)],
-				layerName:      layerName,
-				layerPrefix:    layerPrefixMap[layerName],
-			})
+		if gutils.GetFileExtension(tplFilename) != tplFileExtension {
+			continue
 		}
-	}
-	return files, nil
-}
 
-func buildTplCfg(tplFiles []tplFile, defaultFilename string) ([]tplCfg, error) {
-	var tplList []tplCfg
-	for _, file := range tplFiles {
-		targetFileName := file.originFilename
-		if file.layerName != tplLayerNameDto {
-			targetFileName = defaultFilename
+		// 构造文件层级名称，如controller
+		defaultLayerName := LayerName(strings.TrimSuffix(tplFilename, fmt.Sprintf("%s%s", goFileExtension, tplFileExtension)))
+		layerName := defaultLayerName
+		if specialName, ok := defaultLayerSpecialNameMap[layerName]; ok {
+			layerName = specialName
 		}
-		tplItem := tplCfg{
-			tplFile:        file,
-			targetFileName: targetFileName,
+		if customLayerName, ok := cfg.LayerNameMap[defaultLayerName]; ok {
+			layerName = customLayerName
 		}
-		tplList = append(tplList, tplItem)
-	}
-	for i, tplItem := range tplList {
-		tpl, parseErr := template.ParseFiles(tplItem.filepath)
+
+		// 构造生成文件所在模块的模块前缀
+		defaultLayerPrefix := defaultLayerPrefixMap[defaultLayerName]
+		layerPrefix := defaultLayerPrefix
+		if prefix, ok := cfg.LayerPrefixMap[defaultLayerName]; ok {
+			layerPrefix = prefix
+		}
+
+		// 构造生成文件所在目录的名称
+		if layerDir, ok := cfg.LayerDirMap[defaultLayerName]; ok {
+			rootDir = layerDir
+		}
+		var targetDir string
+		if defaultLayerPrefix.String() == "" {
+			targetDir = fmt.Sprintf("%s/%s", rootDir, layerName)
+		} else {
+			targetFileParentDir := fmt.Sprintf("%s%s", layerPrefix, gutils.SnakeToPascal(cfg.PackageName))
+			targetDir = fmt.Sprintf("%s/%s/%s", rootDir, layerName, targetFileParentDir)
+		}
+
+		// 构造生成文件的文件名称
+		originFilename := gutils.TrimFileExtension(gutils.TrimFileExtension(tplFilename))
+		var targetFilename string
+		switch defaultLayerName {
+		case LayerNameRequest, LayerNameResponse:
+			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
+		case LayerNameRouter:
+			targetFilename = fmt.Sprintf("%s%s", cfg.PackageName, goFileExtension)
+		default:
+			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)
+		}
+
+		var targetFileExist bool
+		if gutils.FileExists(fmt.Sprintf("%s/%s", targetDir, targetFilename)) {
+			targetFileExist = true
+		}
+		tplFilepath := fmt.Sprintf("%s/%s", cfg.TplDir, tplFilename)
+
+		fileTemplate, parseErr := template.ParseFiles(tplFilepath)
 		if parseErr != nil {
 			return nil, parseErr
 		}
-		tplList[i].template = tpl
+
+		analysisList = append(analysisList, TplAnalysisItem{
+			Template:        fileTemplate,
+			TplFilepath:     tplFilepath,
+			TplFilename:     tplFilename,
+			LayerName:       layerName,
+			LayerPrefix:     layerPrefix,
+			OriginFilename:  originFilename,
+			TargetDir:       targetDir,
+			TargetFilename:  targetFilename,
+			TargetFileExist: targetFileExist,
+		})
+
 	}
-	return tplList, nil
+	return analysisList, nil
 }
 
-func createFile(targetDir, targetFileName string, tpl *template.Template, tplParam interface{}) error {
+func createFile(targetDir, targetFilename string, tpl *template.Template, tplParam interface{}) error {
 	if err := gutils.CreateDir(targetDir); err != nil {
 		return err
 	}
-	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFileName)
+	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFilename)
 	// 判断文件是否存在
 	if exist := gutils.FileExists(codeFilepath); exist {
 		// 如果存在，先写入一个临时文件，再对既有文件进行追加
 		tempDir := fmt.Sprintf("%s/tmp", targetDir)
-		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFileName)
+		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFilename)
 		if err := gutils.CreateDir(tempDir); err != nil {
 			return err
 		}
@@ -187,15 +169,39 @@ func createFile(targetDir, targetFileName string, tpl *template.Template, tplPar
 		if err := tpl.Execute(tempF, tplParam); err != nil {
 			return err
 		}
-		otherContent, trimErr := trimFileTitle(tmpFilepath)
-		if trimErr != nil {
-			return trimErr
+
+		// 判断文件是否包含package和import关键字
+		hasPackage, checkPackageErr := gast.HasPackageKeywords(tmpFilepath)
+		if checkPackageErr != nil {
+			return checkPackageErr
 		}
+		hasImport, checkImportErr := gast.HasImportKeywords(tmpFilepath)
+		if checkImportErr != nil {
+			return checkImportErr
+		}
+
+		// 获取追加的文件内容
+		var appendContent string
+		if hasPackage || hasImport {
+			trimTitleContent, trimErr := gast.TrimFileTitle(tmpFilepath)
+			if trimErr != nil {
+				return trimErr
+			}
+			appendContent = trimTitleContent
+		} else {
+			content, readErr := os.ReadFile(tmpFilepath)
+			if readErr != nil {
+				return readErr
+			}
+			appendContent = string(content)
+		}
+
+		// 追加到原文件
 		f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 		if openErr != nil {
 			return openErr
 		}
-		_, writeErr := f.WriteString(otherContent)
+		_, writeErr := f.WriteString(appendContent)
 		if writeErr != nil {
 			return writeErr
 		}
@@ -214,45 +220,4 @@ func createFile(targetDir, targetFileName string, tpl *template.Template, tplPar
 		}
 	}
 	return nil
-}
-
-func trimFileTitle(file string) (string, error) {
-	content, readErr := os.ReadFile(file)
-	if readErr != nil {
-		return "", readErr
-	}
-	fileContent := string(content)
-
-	// 正则表达式匹配 package 语句
-	packagePattern := regexp.MustCompile(`package\s+\w+\s*\n`)
-	// 查找 package 语句的位置
-	// 查找 package 语句的位置
-	packageMatch := packagePattern.FindStringIndex(fileContent)
-	var importStartIndex int
-	if packageMatch != nil {
-		importStartIndex = packageMatch[1]
-	} else {
-		importStartIndex = 0
-	}
-
-	// 正则表达式匹配 import 块和单个 import 语句
-	importBlockPattern := regexp.MustCompile(`(?s)import \((.|\n)*?\)\n`)
-	singleImportPattern := regexp.MustCompile(`import ".*?"\n`)
-	// 查找 import 块和单个 import 语句的位置
-	importBlockMatch := importBlockPattern.FindStringIndex(fileContent[importStartIndex:])
-	singleImportMatch := singleImportPattern.FindStringIndex(fileContent[importStartIndex:])
-
-	// 确定 import 语句及其块的结束位置
-	var importEndIndex int
-	if importBlockMatch != nil {
-		importEndIndex = importStartIndex + importBlockMatch[1]
-	} else if singleImportMatch != nil {
-		importEndIndex = importStartIndex + singleImportMatch[1]
-	} else {
-		importEndIndex = importStartIndex
-	}
-
-	// 分割文件内容
-	otherContent := fileContent[importEndIndex:]
-	return otherContent, nil
 }

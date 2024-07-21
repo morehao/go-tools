@@ -8,6 +8,8 @@ import (
 
 const (
 	dbTypeMysql = "mysql"
+
+	ColumnKeyPRI = "PRI" // 主键
 )
 
 // mysqlTableColumn represents a column in the INFORMATION_SCHEMA.COLUMNS table
@@ -32,14 +34,14 @@ type mysqlTableColumn struct {
 }
 
 type ModelField struct {
-	FiledName         string // 字段名称
+	FieldName         string // 字段名称
 	FieldType         string // 字段数据类型，如int、string
 	ColumnName        string // 列名
 	ColumnType        string // 列数据类型，如varchar(255)
 	ColumnSize        int    // 字段长度
 	IsNull            bool   // 是否允许为空
 	DefaultValue      string // 默认值
-	IndexKey          string // 索引类型
+	ColumnKey         string // 索引类型
 	Comment           string // 字段注释
 	NumericPrecision  int64  // 数值列的精度
 	NumericScale      int64  // 数值列的小数位数
@@ -54,70 +56,6 @@ func (l TableList) ToMap() map[string]struct{} {
 		m[v] = struct{}{}
 	}
 	return m
-}
-
-const (
-	// 数值类型
-	columnTypeInt       = "int"
-	columnTypeTinyint   = "tinyint"
-	columnTypeSmallint  = "smallint"
-	columnTypeMediumint = "mediumint"
-	columnTypeBigint    = "bigint"
-	columnTypeDecimal   = "decimal"
-	columnTypeNumeric   = "numeric"
-	columnTypeFloat     = "float"
-	columnTypeDouble    = "double"
-	columnTypeBit       = "bit"
-	columnTypeBool      = "bool"
-	columnTypeBoolean   = "boolean"
-
-	// 日期和时间类型
-	columnTypeDate      = "date"
-	columnTypeDatetime  = "datetime"
-	columnTypeTimestamp = "timestamp"
-	columnTypeTime      = "time"
-	columnTypeYear      = "year"
-
-	// 字符串类型
-	columnTypeChar       = "char"
-	columnTypeVarchar    = "varchar"
-	columnTypeBinary     = "binary"
-	columnTypeVarbinary  = "varbinary"
-	columnTypeTinyblob   = "tinyblob"
-	columnTypeBlob       = "blob"
-	columnTypeMediumblob = "mediumblob"
-	columnTypeLongblob   = "longblob"
-	columnTypeTinytext   = "tinytext"
-	columnTypeText       = "text"
-	columnTypeMediumtext = "mediumtext"
-	columnTypeLongtext   = "longtext"
-	columnTypeEnum       = "enum"
-	columnTypeSet        = "set"
-
-	// JSON 类型
-	columnTypeJSON = "json"
-
-	// 空间数据类型
-	columnTypeGeometry           = "geometry"
-	columnTypePoint              = "point"
-	columnTypeLinestring         = "linestring"
-	columnTypePolygon            = "polygon"
-	columnTypeMultiPoint         = "multipoint"
-	columnTypeMultiLinestring    = "multilinestring"
-	columnTypeMultiPolygon       = "multipolygon"
-	columnTypeGeometryCollection = "geometrycollection"
-)
-
-var columnFieldTypeMap = map[string]string{
-	"int":      "int64",
-	"tinyint":  "int8",
-	"smallint": "int",
-	"bigint":   "int64",
-	"varchar":  "string",
-	"longtext": "string",
-	"text":     "string",
-	"blob":     "string",
-	"datetime": "time.Time",
 }
 
 func getTableList(db *gorm.DB, dbName string) (tableList TableList, err error) {
