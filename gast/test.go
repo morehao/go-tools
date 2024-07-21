@@ -1,6 +1,9 @@
 package gast
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+)
 
 type User interface {
 	GetName() string
@@ -20,8 +23,6 @@ func (impl *userImpl) GetName() string {
 	return impl.Name
 }
 
-// GetAge 11
-// GetAge 12
 func (impl *userImpl) GetAge(n int, n1 int) (int64, int) {
 	return impl.Age, n
 }
@@ -31,3 +32,11 @@ func (impl *userImpl) Print() {
 }
 
 func GetName() {}
+
+func platformRouter(privateRouter *gin.RouterGroup) {
+
+	routerGroup := privateRouter.Group("platform")
+	{
+		routerGroup.POST("test")
+	}
+}

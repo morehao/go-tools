@@ -10,6 +10,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -18,7 +19,7 @@ import (
 func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodName string) error {
 
 	// 查找接收者类型的方法声明
-	methodDecl, found, findErr := FindMethodInFile(file, receiverTypeName, methodName)
+	methodDecl, found, findErr := FindMethod(file, receiverTypeName, methodName)
 	if findErr != nil {
 		return findErr
 	}
@@ -83,7 +84,9 @@ func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodNam
 	return nil
 }
 
-// AddContentToFunc 将指定的内容添加到指定文件中的指定函数的末尾
+// AddContentToFunc 在指定函数的函数体内添加内容，并根据 moveSteps 的值移动该内容。
+// moveSteps 参数为正数表示上移，为负数表示下移，为 0 表示不移动。
+
 func AddContentToFunc(content, functionName, functionFilepath string) error {
 	// 解析整个文件
 	fileSet := token.NewFileSet()
@@ -198,8 +201,8 @@ func AddFunction(content, functionFilepath, pkgName string) error {
 
 // AddMethodToInterfaceInFileV2 adds a method from a receiver type to an interface
 func AddMethodToInterfaceInFileV2(filePath, receiverName, methodName, interfaceName string) error {
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+	fileSet := token.NewFileSet()
+	node, err := parser.ParseFile(fileSet, filePath, nil, parser.ParseComments)
 	if err != nil {
 		return fmt.Errorf("failed to parse file: %w", err)
 	}
@@ -259,7 +262,7 @@ func AddMethodToInterfaceInFileV2(filePath, receiverName, methodName, interfaceN
 	}
 	defer f.Close()
 
-	if err := printer.Fprint(f, fset, node); err != nil {
+	if err := printer.Fprint(f, fileSet, node); err != nil {
 		return fmt.Errorf("failed to print AST: %w", err)
 	}
 
@@ -291,6 +294,16 @@ func removeCommentsFromFieldList(fl *ast.FieldList) *ast.FieldList {
 
 // AddMethodToInterface 将指定接收者类型的方法添加到指定文件中的接口中。
 func AddMethodToInterface(filePath, receiverType, methodName, interfaceName string) error {
+	// 检查接口是否已经包含该方法。
+	contains, err := interfaceContainsMethod(filePath, interfaceName, methodName)
+	if err != nil {
+		return err
+	}
+	if contains {
+		// 接口已包含该方法，直接返回。
+		return nil
+	}
+
 	// 获取方法声明字符串。
 	methodDecl, err := getMethodDeclaration(filePath, receiverType, methodName)
 	if err != nil {
@@ -304,82 +317,6 @@ func AddMethodToInterface(filePath, receiverType, methodName, interfaceName stri
 	}
 
 	return nil
-}
-
-func getMethodDeclaration(filePath, receiverType, methodName string) (string, error) {
-	// 解析文件以获取 AST。
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, filePath, nil, 0)
-	if err != nil {
-		return "", err
-	}
-
-	// 遍历 AST 查找指定的方法。
-	var methodDecl string
-	ast.Inspect(node, func(n ast.Node) bool {
-		// 查找函数声明。
-		funcDecl, ok := n.(*ast.FuncDecl)
-		if !ok {
-			return true // 继续遍历 AST。
-		}
-
-		// 检查是否为指定的接收者和方法。
-		if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
-			recvType, ok := funcDecl.Recv.List[0].Type.(*ast.StarExpr)
-			if !ok {
-				return true
-			}
-			ident, ok := recvType.X.(*ast.Ident)
-			if !ok || ident.Name != receiverType {
-				return true
-			}
-			if funcDecl.Name.Name == methodName {
-				// 找到方法，构建声明字符串。
-				methodDecl = methodName + fieldListToString(funcDecl.Type.Params, false) + " " + fieldListToString(funcDecl.Type.Results, true)
-				return false // 停止遍历 AST。
-			}
-		}
-		return true
-	})
-
-	if methodDecl == "" {
-		return "", fmt.Errorf("未找到接收者类型 '%s' 和方法名 '%s' 的方法声明", receiverType, methodName)
-	}
-
-	return methodDecl, nil
-}
-
-// fieldListToString 将 *ast.FieldList 转换为字符串表示，用于参数和返回值。
-// isResults 参数指示这个字段列表是否是函数的返回值列表。
-func fieldListToString(fl *ast.FieldList, isResults bool) string {
-	if fl == nil || len(fl.List) == 0 {
-		if isResults {
-			return ""
-		}
-		return "()"
-	}
-
-	var fields []string
-	for _, field := range fl.List {
-		typeStr := exprToString(field.Type)
-		if len(field.Names) > 0 {
-			for _, name := range field.Names {
-				fields = append(fields, name.Name+" "+typeStr)
-			}
-		} else {
-			fields = append(fields, typeStr)
-		}
-	}
-
-	// 如果是返回值列表且有多个字段，或者是参数列表，用括号括起来。
-	if isResults && len(fields) > 1 {
-		return "(" + strings.Join(fields, ", ") + ")"
-	} else if isResults && len(fields) == 1 {
-		// 单个返回值不需要括号
-		return strings.Join(fields, ", ")
-	}
-	// 参数列表始终需要括号
-	return "(" + strings.Join(fields, ", ") + ")"
 }
 
 // addContentToInterfaceInFile 将给定内容添加到文件中指定的接口中。
@@ -468,4 +405,48 @@ func exprToString(expr ast.Expr) string {
 	default:
 		return ""
 	}
+}
+
+// AddTextToFunctionBody 在指定文件的指定函数体内添加文本。
+func AddTextToFunctionBody(filePath, functionName, textToAdd string) error {
+	// 解析文件以获取 AST。
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+	if err != nil {
+		return err
+	}
+
+	// 遍历 AST 查找指定的函数。
+	ast.Inspect(node, func(n ast.Node) bool {
+		// 查找函数声明。
+		funcDecl, ok := n.(*ast.FuncDecl)
+		if !ok {
+			return true // 继续遍历 AST。
+		}
+
+		// 检查是否为指定的函数。
+		if funcDecl.Name.Name == functionName {
+			// 找到函数，添加文本到函数体内。
+			if funcDecl.Body != nil {
+				// 创建一个新的表达式语句来包含要添加的文本。
+				exprStmt := &ast.ExprStmt{
+					X: &ast.BasicLit{
+						Kind:  token.STRING,
+						Value: "`" + textToAdd + "`",
+					},
+				}
+				// 将新的表达式语句添加到函数体的最后。
+				funcDecl.Body.List = append(funcDecl.Body.List, exprStmt)
+			}
+			return false // 停止遍历 AST。
+		}
+		return true
+	})
+
+	// 将修改后的 AST 写回文件。
+	var buf bytes.Buffer
+	if err := format.Node(&buf, fset, node); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filePath, buf.Bytes(), 0644)
 }

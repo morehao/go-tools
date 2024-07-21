@@ -14,9 +14,9 @@ func TestAddMethodToInterfaceInFile(t *testing.T) {
 
 func TestAddContentToFunc(t *testing.T) {
 	filePath := "./test.go"
-	content := "fmt.Println(1)"
+	content := `routerGroup.POST("test")`
 
-	err := AddContentToFunc(content, "GetName", filePath)
+	err := AddContentToFunc(content, "platformRouter", filePath)
 	assert.Nil(t, err)
 }
 

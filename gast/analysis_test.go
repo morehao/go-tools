@@ -27,7 +27,7 @@ func TestTrimFileTitle(t *testing.T) {
 func TestFindMethodInFile(t *testing.T) {
 	filePath := "./test.go"
 
-	method, ok, findErr := FindMethodInFile(filePath, "userImpl", "GetName")
+	method, ok, findErr := FindMethod(filePath, "userImpl", "GetName")
 	assert.Nil(t, findErr)
 	assert.True(t, ok)
 
@@ -46,7 +46,7 @@ func TestFindMethodInFile(t *testing.T) {
 func TestFindFunctionInFile(t *testing.T) {
 	filePath := "./test.go"
 
-	function, ok, findErr := FindFunctionInFile(filePath, "GetName")
+	function, ok, findErr := FindFunction(filePath, "GetName")
 	assert.Nil(t, findErr)
 	assert.True(t, ok)
 
