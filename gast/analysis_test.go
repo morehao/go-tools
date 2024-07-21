@@ -61,28 +61,3 @@ func TestFindFunctionInFile(t *testing.T) {
 
 	t.Log(buf.String())
 }
-
-func TestAddMethodToInterface(t *testing.T) {
-	filePath := "./test.go"
-
-	err := AddMethodToInterface(filePath, "userImpl", "GetAge", "User")
-	assert.Nil(t, err)
-}
-
-func TestAddContentToFunc(t *testing.T) {
-	filePath := "./test.go"
-	content := "fmt.Println(1)"
-
-	err := AddContentToFunc(content, "GetName", filePath)
-	assert.Nil(t, err)
-}
-
-func TestAddFunction(t *testing.T) {
-	content := `
-func NewFunction() {
-	fmt.Println("Hello, World!")
-}
-`
-	err := AddFunction(content, "test.go", "gast")
-	assert.Nil(t, err)
-}

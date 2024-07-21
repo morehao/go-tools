@@ -1,6 +1,7 @@
 package gast
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -10,147 +11,8 @@ import (
 	"go/printer"
 	"go/token"
 	"os"
+	"strings"
 )
-
-func ParseFile(file string) (interface{}, error) {
-	fileSet := token.NewFileSet()
-	node, err := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
-	serviceVars := make(map[string]string) // 用于存储service实例化变量
-
-	// 提取文件中所有service变量的实例化
-	ast.Inspect(node, func(n ast.Node) bool {
-		if decl, ok := n.(*ast.GenDecl); ok && decl.Tok == token.VAR {
-			for _, spec := range decl.Specs {
-				if valueSpec, ok := spec.(*ast.ValueSpec); ok {
-					for _, name := range valueSpec.Names {
-						if valueSpec.Values != nil {
-							if callExpr, ok := valueSpec.Values[0].(*ast.SelectorExpr); ok {
-								serviceVars[name.Name] = callExpr.Sel.Name
-							}
-						}
-					}
-				}
-			}
-		}
-		return true
-	})
-	return nil, err
-}
-
-func HasPackageKeywords(file string) (bool, error) {
-	fileSet := token.NewFileSet()
-	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
-	if parseErr != nil {
-		return false, parseErr
-	}
-	return node.Name != nil, nil
-}
-
-func HasImportKeywords(file string) (bool, error) {
-	fileSet := token.NewFileSet()
-	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
-	if parseErr != nil {
-		return false, parseErr
-	}
-	for _, decl := range node.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if ok && genDecl.Tok == token.IMPORT {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// TrimFileTitle 去除文件中的package和import声明，返回剩余数据
-func TrimFileTitle(file string) (string, error) {
-	// 解析文件以获取AST
-	fileSet := token.NewFileSet()
-	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
-	if parseErr != nil {
-		return "", parseErr
-	}
-
-	// 创建一个新的AST打印配置
-	var buf bytes.Buffer
-	printConfig := printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
-
-	// 遍历文件的顶层声明
-	for i, decl := range node.Decls {
-		// 跳过package和import声明
-		genDecl, isGenDecl := decl.(*ast.GenDecl)
-		if isGenDecl && (genDecl.Tok == token.IMPORT || genDecl.Tok == token.PACKAGE) {
-			continue
-		}
-		// 打印其他节点
-		err := printConfig.Fprint(&buf, fileSet, decl)
-		if err != nil {
-			return "", err
-		}
-		// 在声明之间添加换行符
-		if i < len(node.Decls)-1 {
-			buf.WriteString("\n\n") // 添加两个换行符以分隔顶层声明
-		}
-	}
-
-	// 返回修改后的文件内容
-	return buf.String(), nil
-}
-
-// FindFunctionInFile 在指定的文件中查找函数，注意，这里只查找非方法函数
-func FindFunctionInFile(file string, functionName string) (*ast.FuncDecl, bool, error) {
-	// 解析文件以获取AST
-	fileSet := token.NewFileSet()
-	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
-	if parseErr != nil {
-		return nil, false, parseErr
-	}
-	for _, decl := range node.Decls {
-		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
-			if funcDecl.Recv == nil {
-				if funcDecl.Name.Name == functionName {
-					return funcDecl, true, nil
-				}
-			}
-		}
-	}
-	return nil, false, nil
-}
-
-// FindMethodInFile 在指定的文件中查找方法, 注意，这里只查找指定接收者类型的方法
-func FindMethodInFile(file string, receiverTypeName, methodName string) (*ast.FuncDecl, bool, error) {
-	// 解析文件以获取AST
-	fileSet := token.NewFileSet()
-	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
-	if parseErr != nil {
-		return nil, false, parseErr
-	}
-	for _, decl := range node.Decls {
-		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
-			if funcDecl.Recv != nil {
-				for _, recv := range funcDecl.Recv.List {
-					if recvType, ok := recv.Type.(*ast.StarExpr); ok {
-						if ident, ok := recvType.X.(*ast.Ident); ok && ident.Name == receiverTypeName {
-							if funcDecl.Name.Name == methodName {
-								return funcDecl, true, nil
-							}
-						}
-					} else if ident, ok := recv.Type.(*ast.Ident); ok {
-						if ident.Name == receiverTypeName {
-							if funcDecl.Name.Name == methodName {
-								return funcDecl, true, nil
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil, false, nil
-}
 
 // AddMethodToInterfaceInFile 在指定的文件中查找指定的接口，并在其中添加指定的方法
 func AddMethodToInterfaceInFile(file, interfaceName, receiverTypeName, methodName string) error {
@@ -425,4 +287,185 @@ func removeCommentsFromFieldList(fl *ast.FieldList) *ast.FieldList {
 		}
 	}
 	return &ast.FieldList{List: newList}
+}
+
+// AddMethodToInterface 将指定接收者类型的方法添加到指定文件中的接口中。
+func AddMethodToInterface(filePath, receiverType, methodName, interfaceName string) error {
+	// 获取方法声明字符串。
+	methodDecl, err := getMethodDeclaration(filePath, receiverType, methodName)
+	if err != nil {
+		return err
+	}
+
+	// 将方法声明添加到接口中。
+	err = addContentToInterfaceInFile(filePath, methodDecl, interfaceName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getMethodDeclaration(filePath, receiverType, methodName string) (string, error) {
+	// 解析文件以获取 AST。
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, filePath, nil, 0)
+	if err != nil {
+		return "", err
+	}
+
+	// 遍历 AST 查找指定的方法。
+	var methodDecl string
+	ast.Inspect(node, func(n ast.Node) bool {
+		// 查找函数声明。
+		funcDecl, ok := n.(*ast.FuncDecl)
+		if !ok {
+			return true // 继续遍历 AST。
+		}
+
+		// 检查是否为指定的接收者和方法。
+		if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
+			recvType, ok := funcDecl.Recv.List[0].Type.(*ast.StarExpr)
+			if !ok {
+				return true
+			}
+			ident, ok := recvType.X.(*ast.Ident)
+			if !ok || ident.Name != receiverType {
+				return true
+			}
+			if funcDecl.Name.Name == methodName {
+				// 找到方法，构建声明字符串。
+				methodDecl = methodName + fieldListToString(funcDecl.Type.Params, false) + " " + fieldListToString(funcDecl.Type.Results, true)
+				return false // 停止遍历 AST。
+			}
+		}
+		return true
+	})
+
+	if methodDecl == "" {
+		return "", fmt.Errorf("未找到接收者类型 '%s' 和方法名 '%s' 的方法声明", receiverType, methodName)
+	}
+
+	return methodDecl, nil
+}
+
+// fieldListToString 将 *ast.FieldList 转换为字符串表示，用于参数和返回值。
+// isResults 参数指示这个字段列表是否是函数的返回值列表。
+func fieldListToString(fl *ast.FieldList, isResults bool) string {
+	if fl == nil || len(fl.List) == 0 {
+		if isResults {
+			return ""
+		}
+		return "()"
+	}
+
+	var fields []string
+	for _, field := range fl.List {
+		typeStr := exprToString(field.Type)
+		if len(field.Names) > 0 {
+			for _, name := range field.Names {
+				fields = append(fields, name.Name+" "+typeStr)
+			}
+		} else {
+			fields = append(fields, typeStr)
+		}
+	}
+
+	// 如果是返回值列表且有多个字段，或者是参数列表，用括号括起来。
+	if isResults && len(fields) > 1 {
+		return "(" + strings.Join(fields, ", ") + ")"
+	} else if isResults && len(fields) == 1 {
+		// 单个返回值不需要括号
+		return strings.Join(fields, ", ")
+	}
+	// 参数列表始终需要括号
+	return "(" + strings.Join(fields, ", ") + ")"
+}
+
+// addContentToInterfaceInFile 将给定内容添加到文件中指定的接口中。
+func addContentToInterfaceInFile(filePath, content, interfaceName string) error {
+	// 读取文件内容。
+	lines, err := readLines(filePath)
+	if err != nil {
+		return err
+	}
+
+	// 在接口定义中插入内容。
+	inserted, err := insertIntoInterface(lines, content, interfaceName)
+	if err != nil {
+		return err
+	}
+	if !inserted {
+		return errors.New("接口未找到或内容已存在")
+	}
+
+	// 将修改后的内容写回文件。
+	return writeLines(filePath, lines)
+}
+
+// readLines 读取文件的所有行。
+func readLines(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
+}
+
+// insertIntoInterface 在接口定义中插入内容。
+func insertIntoInterface(lines []string, content, interfaceName string) (bool, error) {
+	foundInterface := false
+	inserted := false
+	for i, line := range lines {
+		if strings.Contains(line, fmt.Sprintf("type %s interface {", interfaceName)) {
+			foundInterface = true
+		} else if foundInterface && strings.Contains(line, "}") {
+			lines[i] = "\t" + content + "\n" + line
+			inserted = true
+			break
+		}
+	}
+	return inserted, nil
+}
+
+// writeLines 将所有行写回文件。
+func writeLines(filePath string, lines []string) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, err := writer.WriteString(line + "\n")
+		if err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
+}
+
+// exprToString 将 AST 表达式转换为字符串，只返回类型名称。
+func exprToString(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.Ident: // 标识符
+		return t.Name
+	case *ast.SelectorExpr: // 选择表达式，如包名.类型名
+		return exprToString(t.X) + "." + t.Sel.Name
+	case *ast.StarExpr: // 指针类型
+		return "*" + exprToString(t.X)
+	case *ast.ArrayType: // 数组类型
+		return "[]" + exprToString(t.Elt)
+	// 这里可以添加更多的类型处理，如 Map, Chan, Func 等。
+	default:
+		return ""
+	}
 }
