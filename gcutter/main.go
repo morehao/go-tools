@@ -8,6 +8,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"golang.org/x/mod/modfile"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,6 +18,10 @@ import (
 func main() {
 	// 解析命令行参数
 	destination := flag.String("d", "", "指定新项目的目录")
+	flag.Usage = func() {
+		fmt.Println("Usage: gcutter -d <new_project_directory>")
+	}
+
 	flag.Parse()
 
 	// 检查是否提供了目标目录
@@ -70,6 +75,10 @@ func cutter(newProjectPath string) {
 		fmt.Println("复制模板项目时出错:", err)
 		return
 	}
+	if err := removeGitDir(newProjectPath); err != nil {
+		fmt.Println("删除.git目录失败:", err)
+		return
+	}
 	fmt.Println("新项目创建成功:", newProjectPath)
 }
 
@@ -105,7 +114,7 @@ func readGitignore(filename string) ([]string, error) {
 
 // copyAndReplace 复制模板项目到新项目目录，并替换import路径
 func copyAndReplace(srcDir, dstDir, oldName, newName string, excludes []string) error {
-	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -131,6 +140,13 @@ func copyAndReplace(srcDir, dstDir, oldName, newName string, excludes []string) 
 		// 复制其他文件
 		return copyFile(path, targetPath)
 	})
+	if err != nil {
+		return err
+	}
+	if err := modifyGoMod(dstDir, newName); err != nil {
+		return err
+	}
+	return err
 }
 
 // copyAndReplaceGoFile 复制并替换 Go 文件中的 import 路径
@@ -190,4 +206,51 @@ func copyFile(src, dst string) error {
 	defer destination.Close()
 	_, err = io.Copy(destination, source)
 	return err
+}
+
+// 修改go.mod中的包名
+func modifyGoMod(dstDir, moduleName string) error {
+	// 读取go.mod文件
+	modFilepath := filepath.Join(dstDir, "go.mod")
+	content, err := os.ReadFile(modFilepath)
+	if err != nil {
+		return fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	// 解析go.mod文件
+	modFile, err := modfile.Parse(modFilepath, content, nil)
+	if err != nil {
+		return fmt.Errorf("failed to parse go.mod: %w", err)
+	}
+
+	// 修改模块名称
+	if err := modFile.AddModuleStmt(moduleName); err != nil {
+		return fmt.Errorf("failed to add module statement: %w", err)
+	}
+
+	// 将修改后的内容格式化回字节切片
+	newContent, err := modFile.Format()
+	if err != nil {
+		return fmt.Errorf("failed to format new go.mod content: %w", err)
+	}
+
+	// 写入新的go.mod文件
+	err = os.WriteFile(modFilepath, newContent, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write new go.mod: %w", err)
+	}
+	fmt.Println(fmt.Sprintf("Successfully modified go.mod to %s", moduleName))
+	return nil
+}
+
+// 删除.git目录
+// removeGitDir 删除指定目录下的.git文件夹
+func removeGitDir(dstDir string) error {
+	gitDir := filepath.Join(dstDir, ".git")
+	err := os.RemoveAll(gitDir)
+	if err != nil {
+		return fmt.Errorf("failed to remove .git directory: %w", err)
+	}
+	fmt.Println("Successfully removed .git directory")
+	return nil
 }
