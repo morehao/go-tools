@@ -1,5 +1,7 @@
 package codeGen
 
+import "text/template"
+
 type CommonConfig struct {
 	PackageName    string                    // 包名
 	TplDir         string                    // 模板目录
@@ -7,6 +9,7 @@ type CommonConfig struct {
 	LayerDirMap    map[LayerName]string      // 各层级目录，如果为空则使用默认规则
 	LayerNameMap   map[LayerName]LayerName   // 各层级名称，如果为空则使用默认规则
 	LayerPrefixMap map[LayerName]LayerPrefix // 各层级前缀，如果为空则使用默认规则
+	TplFuncMap     template.FuncMap          // 模板函数
 }
 
 type ModuleCfg struct {
@@ -37,6 +40,7 @@ const (
 	LayerNameResponse   LayerName = "response"
 	LayerNameModel      LayerName = "model"
 	LayerNameErrorCode  LayerName = "errorCode"
+	LayerNameObject     LayerName = "object"
 
 	defaultLayerNameRequest  LayerName = "dto"
 	defaultLayerNameResponse LayerName = "dto"
@@ -45,6 +49,7 @@ const (
 	defaultLayerPrefixService    LayerPrefix = "svc"
 	defaultLayerPrefixDto        LayerPrefix = "dto"
 	defaultLayerPrefixModel      LayerPrefix = "dao"
+	defaultLayerPrefixObject     LayerPrefix = "obj"
 )
 
 var defaultLayerPrefixMap = map[LayerName]LayerPrefix{
@@ -54,6 +59,7 @@ var defaultLayerPrefixMap = map[LayerName]LayerPrefix{
 	LayerNameDto:        defaultLayerPrefixDto,
 	LayerNameRequest:    defaultLayerPrefixDto,
 	LayerNameResponse:   defaultLayerPrefixDto,
+	LayerNameObject:     defaultLayerPrefixObject,
 }
 
 var defaultLayerSpecialNameMap = map[LayerName]LayerName{

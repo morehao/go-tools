@@ -19,6 +19,24 @@ func SnakeToPascal(s string) string {
 	return strings.Join(parts, "")
 }
 
+// SnakeToLowerCamel 蛇形转小驼峰
+func SnakeToLowerCamel(s string) string {
+	if s == "" {
+		return ""
+	}
+	parts := strings.Split(s, "_")
+
+	for i := range parts {
+		if i == 0 {
+			parts[i] = strings.ToLower(parts[i][:1]) + parts[i][1:]
+		} else {
+			parts[i] = strings.ToTitle(parts[i][:1]) + parts[i][1:]
+		}
+	}
+
+	return strings.Join(parts, "")
+}
+
 // FirstLetterToUpper 首字母大写
 func FirstLetterToUpper(s string) string {
 	if len(s) == 0 {

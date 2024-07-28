@@ -85,7 +85,7 @@ var mysqlDefaultColumnTypeMap = map[string]string{
 	"mediumint":  "int32",
 	"int":        "int32",
 	"integer":    "int32",
-	"bigint":     "int64",
+	"bigint":     "uint64",
 	"float":      "float32",
 	"double":     "float64",
 	"decimal":    "string", // 或者使用 "big.Rat" 或 "float64"，取决于精度需求

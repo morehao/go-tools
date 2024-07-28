@@ -122,8 +122,8 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 			targetFileExist = true
 		}
 		tplFilepath := fmt.Sprintf("%s/%s", cfg.TplDir, tplFilename)
-
-		fileTemplate, parseErr := template.ParseFiles(tplFilepath)
+		tplInst := template.New(tplFilename).Funcs(cfg.TplFuncMap)
+		fileTemplate, parseErr := tplInst.ParseFiles(tplFilepath)
 		if parseErr != nil {
 			return nil, parseErr
 		}
