@@ -52,6 +52,14 @@ func FirstLetterToLower(s string) string {
 	return strings.ToLower(s[:1]) + s[1:]
 }
 
+// ReplaceIdToID 将id、Id、iD替换为Id
+func ReplaceIdToID(str string) string {
+	s := strings.Replace(str, "id", "ID", -1)
+	s = strings.Replace(s, "Id", "ID", -1)
+	s = strings.Replace(s, "iD", "ID", -1)
+	return s
+}
+
 func Trim(str string) string {
 	if len(str) == 0 {
 		return ""
