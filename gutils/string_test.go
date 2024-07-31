@@ -12,3 +12,7 @@ func TestSnakeToPascal(t *testing.T) {
 func TestFirstLetterToLower(t *testing.T) {
 	fmt.Println(FirstLetterToLower("Workflow"))
 }
+
+func TestReplaceIdToID(t *testing.T) {
+	fmt.Println(ReplaceIdToID(""))
+}
