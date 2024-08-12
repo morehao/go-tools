@@ -36,7 +36,7 @@ func GetName() {}
 func platformRouter(privateRouter *gin.RouterGroup) {
 	routerGroup := privateRouter.Group("platform")
 	{
-		routerGroup.POST("test")
-		routerGroup.POST("test1")
+		routerGroup.POST("test1") // 1
+		routerGroup.POST("test2") // 2
 	}
 }

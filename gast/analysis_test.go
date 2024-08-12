@@ -61,3 +61,19 @@ func TestFindFunctionInFile(t *testing.T) {
 
 	t.Log(buf.String())
 }
+
+func TestGetFunctionContent(t *testing.T) {
+	filePath := "./test.go"
+
+	content, err := GetFunctionContent(filePath, "platformRouter")
+	assert.Nil(t, err)
+	t.Log(content)
+}
+
+func TestGetFunctionLines(t *testing.T) {
+	filePath := "./test.go"
+
+	start, end, err := GetFunctionLines(filePath, "platformRouter")
+	assert.Nil(t, err)
+	t.Log(start, end)
+}
