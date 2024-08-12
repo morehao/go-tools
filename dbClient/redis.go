@@ -2,10 +2,12 @@ package dbClient
 
 import (
 	"context"
+	"fmt"
 	"github.com/morehao/go-tools/glog"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -19,7 +21,7 @@ type RedisConfig struct {
 	WriteTimeout time.Duration `yaml:"write_timeout"` // 写入超时
 }
 
-func InitRedis(cfg RedisConfig) *redis.Client {
+func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	opt := &redis.Options{
 		Addr:             cfg.Addr,
 		Password:         cfg.Password,
@@ -52,7 +54,14 @@ func InitRedis(cfg RedisConfig) *redis.Client {
 		Logger:   glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(3))),
 	}
 	rdb.AddHook(logger)
-	return rdb
+	// 发送PING命令，检查连接是否正常
+	pong, err := rdb.Ping(context.Background()).Result()
+	if err != nil {
+		return nil, err
+	} else {
+		fmt.Println("Redis connection successful:", pong)
+	}
+	return rdb, nil
 }
 
 type redisLogger struct {
@@ -115,11 +124,41 @@ func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 // ProcessPipelineHook 执行管道命令时调用的hook
 func (l redisLogger) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
 	return func(ctx context.Context, cmds []redis.Cmder) error {
-		return next(ctx, cmds)
+		begin := time.Now() // 记录开始时间
+		err := next(ctx, cmds)
+		end := time.Now() // 记录结束时间
+		cost := glog.GetRequestCost(begin, end)
+
+		// 准备日志字段
+		fields := l.commonFields(ctx)
+		fields = append(fields,
+			glog.KeyCmdContent, l.cmdsToString(cmds),
+			glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
+			glog.KeyRequestEndTime, glog.FormatRequestTime(end),
+			glog.KeyCost, cost,
+		)
+
+		// 根据执行结果记录日志
+		if err != nil {
+			fields = append(fields, glog.KeyRalCode, -1)
+			l.Logger.Errorw(ctx, "redis pipeline execute error", fields...)
+		} else {
+			fields = append(fields, glog.KeyRalCode, 0)
+			l.Logger.Infow(ctx, "redis pipeline execute success", fields...)
+		}
+		return err
 	}
 }
 
-func (l *redisLogger) commonFields(ctx context.Context) []interface{} {
+// cmdsToString 将管道命令转换为字符串表示，用于日志记录
+func (l redisLogger) cmdsToString(cmds []redis.Cmder) string {
+	var cmdStrs []string
+	for _, cmd := range cmds {
+		cmdStrs = append(cmdStrs, cmd.String())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(cmdStrs, ", "))
+}
+func (l redisLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
 		glog.KeyProto, glog.ValueProtoRedis,
 		glog.KeyService, l.Service,

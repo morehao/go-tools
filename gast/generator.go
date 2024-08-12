@@ -405,73 +405,51 @@ func exprToString(expr ast.Expr) string {
 }
 
 // AddContentToFuncWithLineNumber 将内容插入到指定文件内指定函数的函数体中的指定位置，并覆盖原函数体。
+// filePath: 要操作的文件的路径。
+// functionName: 要操作的函数名称。根据函数名称来定位函数体的位置。
+// content: 要插入的内容。会插入到指定行号的地方。
+// lineNumber: 插入内容的行号。正数表示从函数体起始位置开始计算的行号，负数表示从函数体结束位置开始计算的行号。 例如，1 表示在函数体内的第一行位置插入内容，-1 表示在函数体结束前的一行插入内容。
 func AddContentToFuncWithLineNumber(filePath, functionName, content string, lineNumber int) error {
-	// 解析整个文件
-	fileSet := token.NewFileSet()
-	node, parseErr := parser.ParseFile(fileSet, filePath, nil, parser.ParseComments)
-	if parseErr != nil {
-		return fmt.Errorf("failed to parse file: %w", parseErr)
-	}
-
-	// 查找目标函数
-	var funcDecl *ast.FuncDecl
-	ast.Inspect(node, func(n ast.Node) bool {
-		if f, ok := n.(*ast.FuncDecl); ok && f.Name.Name == functionName {
-			funcDecl = f
-			return false
-		}
-		return true
-	})
-	if funcDecl == nil {
-		return errors.New("function does not exist")
-	}
-
-	// 获取函数体的文本表示
-	var funcBodyBuf bytes.Buffer
-	if err := format.Node(&funcBodyBuf, fileSet, funcDecl.Body); err != nil {
-		return fmt.Errorf("failed to write function body content: %w", err)
-	}
-	funcBodyLines := strings.Split(funcBodyBuf.String(), "\n")
-
-	// 如果 lineNumber 为 0，则直接返回原函数体
-	if lineNumber == 0 {
-		return nil
-	}
-
-	// 计算新内容的插入位置
-	insertIndex := lineNumber
-	if lineNumber < 0 {
-		// 从下到上计算行号
-		insertIndex = len(funcBodyLines) + lineNumber
-	}
-	if insertIndex < 0 {
-		insertIndex = 0 // 确保插入位置不超出函数体的起始范围
-	} else if insertIndex > len(funcBodyLines) {
-		insertIndex = len(funcBodyLines) // 确保插入位置不超出函数体的结束范围
-	}
-
-	// 将内容插入到计算出的位置
-	funcBodyLines = append(funcBodyLines[:insertIndex], append([]string{content}, funcBodyLines[insertIndex:]...)...)
-	newFuncBodyContent := strings.Join(funcBodyLines, "\n")
-
-	// 解析新的函数体内容为 AST
-	newFuncBodyAST, err := parser.ParseFile(fileSet, "", "package p\nfunc _()"+newFuncBodyContent, parser.ParseComments)
+	startLine, endLine, err := GetFunctionLines(filePath, functionName)
 	if err != nil {
-		fmt.Errorf("failed to parse new function body: %w", err)
+		return err
 	}
-	newFuncBody := newFuncBodyAST.Decls[0].(*ast.FuncDecl).Body
 
-	// 替换原函数体
-	funcDecl.Body = newFuncBody
+	var insertLine int
+	if lineNumber > 0 {
+		insertLine = startLine + lineNumber - 1
+	} else {
+		insertLine = endLine + lineNumber + 1
+	}
 
-	// 使用 bytes.Buffer 处理修改后的整个文件内容
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
 	var buf bytes.Buffer
-	if err := format.Node(&buf, fileSet, node); err != nil {
-		return fmt.Errorf("failed to write updated file content: %w", err)
+	scanner := bufio.NewScanner(file)
+	currentLine := 0
+	for scanner.Scan() {
+		currentLine++
+		if currentLine == insertLine {
+			buf.WriteString(content + "\n")
+		}
+		buf.WriteString(scanner.Text() + "\n")
+	}
+	if scannerErr := scanner.Err(); scannerErr != nil {
+		return fmt.Errorf("failed to read file: %w", scannerErr)
+	}
+
+	// 格式化文件内容
+	formattedContent, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format file content: %w", err)
 	}
 
 	// 写回文件
-	if err := os.WriteFile(filePath, buf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(filePath, formattedContent, 0644); err != nil {
 		return fmt.Errorf("failed to write back to file: %w", err)
 	}
 

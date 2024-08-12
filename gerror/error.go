@@ -49,8 +49,9 @@ func (e Error) GetMsg() string {
 }
 
 // ResetMsg 重置错误信息
-func (e Error) ResetMsg(msg string) {
+func (e Error) ResetMsg(msg string) Error {
 	e.Msg = msg
+	return e
 }
 
 // AppendMsg 在既有错误信息的基础上追加新的错误信息

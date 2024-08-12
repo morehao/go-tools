@@ -1,12 +1,15 @@
 package gast
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"os"
 	"strings"
 )
 
@@ -261,4 +264,79 @@ func fieldListToString(fl *ast.FieldList, isResults bool) string {
 	}
 	// 参数列表始终需要括号
 	return "(" + strings.Join(fields, ", ") + ")"
+}
+
+// GetFunctionContent 从给定文件中返回指定函数的内容。
+func GetFunctionContent(filePath, funcName string) (string, error) {
+	fileSet := token.NewFileSet()
+	node, err := parser.ParseFile(fileSet, filePath, nil, parser.ParseComments)
+	if err != nil {
+		return "", err
+	}
+
+	// 查找函数的起始和结束位置
+	var startLine, endLine int
+	ast.Inspect(node, func(n ast.Node) bool {
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok {
+			return true
+		}
+		if fn.Name.Name == funcName {
+			startLine = fileSet.Position(fn.Pos()).Line
+			endLine = fileSet.Position(fn.End()).Line
+		}
+		return true
+	})
+
+	if startLine == 0 {
+		return "", os.ErrNotExist
+	}
+
+	// 按行读取文件并提取函数内容
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	currentLine := 0
+	var funcContent strings.Builder
+	for scanner.Scan() {
+		currentLine++
+		if currentLine >= startLine && currentLine <= endLine {
+			funcContent.WriteString(scanner.Text() + "\n")
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return funcContent.String(), nil
+}
+
+// GetFunctionLines 获取指定文件中指定函数的起始和结束行数
+func GetFunctionLines(filePath, functionName string) (int, int, error) {
+	fileSet := token.NewFileSet()
+	node, parseErr := parser.ParseFile(fileSet, filePath, nil, parser.ParseComments)
+	if parseErr != nil {
+		return 0, 0, fmt.Errorf("failed to parse file: %w", parseErr)
+	}
+
+	var funcDecl *ast.FuncDecl
+	ast.Inspect(node, func(n ast.Node) bool {
+		if f, ok := n.(*ast.FuncDecl); ok && f.Name.Name == functionName {
+			funcDecl = f
+			return false
+		}
+		return true
+	})
+	if funcDecl == nil {
+		return 0, 0, errors.New("function does not exist")
+	}
+
+	startLine := fileSet.Position(funcDecl.Body.Lbrace).Line
+	endLine := fileSet.Position(funcDecl.Body.Rbrace).Line
+	return startLine, endLine, nil
 }
