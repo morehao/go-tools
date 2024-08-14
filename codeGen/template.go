@@ -111,7 +111,7 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		switch defaultLayerName {
 		case LayerNameRequest, LayerNameResponse:
 			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
-		case LayerNameRouter:
+		case LayerNameRouter, LayerNameErrorCode:
 			targetFilename = fmt.Sprintf("%s%s", cfg.PackageName, goFileExtension)
 		default:
 			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)
@@ -187,7 +187,7 @@ func createFile(targetDir, targetFilename string, tpl *template.Template, tplPar
 			if trimErr != nil {
 				return trimErr
 			}
-			appendContent = trimTitleContent
+			appendContent = "\n" + trimTitleContent
 		} else {
 			content, readErr := os.ReadFile(tmpFilepath)
 			if readErr != nil {
