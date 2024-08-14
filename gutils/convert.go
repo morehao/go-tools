@@ -2,7 +2,9 @@ package gutils
 
 import (
 	"container/list"
+	"fmt"
 	jsoniter "github.com/json-iterator/go"
+	"reflect"
 	"strconv"
 )
 
@@ -40,10 +42,21 @@ func VToUint64(v any) uint64 {
 	return 0
 }
 
-func LinkedListToArray(l *list.List) []interface{} {
-	var array []interface{}
-	for e := l.Front(); e != nil; e = e.Next() {
-		array = append(array, e.Value)
+func LinkedListToArray(l *list.List, dest any) error {
+	destValue := reflect.ValueOf(dest)
+	if destValue.Kind() != reflect.Ptr || destValue.Elem().Kind() != reflect.Slice {
+		return fmt.Errorf("destination must be a pointer to a slice")
 	}
-	return array
+
+	sliceValue := destValue.Elem()
+	elementType := sliceValue.Type().Elem()
+
+	for e := l.Front(); e != nil; e = e.Next() {
+		newElement := reflect.New(elementType).Elem()
+		newElement.Set(reflect.ValueOf(e.Value).Convert(elementType))
+		sliceValue = reflect.Append(sliceValue, newElement)
+	}
+
+	destValue.Elem().Set(sliceValue)
+	return nil
 }

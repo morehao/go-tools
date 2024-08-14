@@ -11,8 +11,8 @@ import (
 type ResponseRender interface {
 	SetCode(int)
 	SetMsg(string)
-	SetData(interface{})
-	SetDataWithFormat(interface{})
+	SetData(any)
+	SetDataWithFormat(any)
 }
 
 func NewResponseRender() ResponseRender {
@@ -20,9 +20,9 @@ func NewResponseRender() ResponseRender {
 }
 
 type responseRender struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data"`
 }
 
 func (r *responseRender) SetCode(code int) {
@@ -31,18 +31,23 @@ func (r *responseRender) SetCode(code int) {
 func (r *responseRender) SetMsg(msg string) {
 	r.Msg = msg
 }
-func (r *responseRender) SetData(data interface{}) {
+func (r *responseRender) SetData(data any) {
 	r.Data = data
 }
 
-func (r *responseRender) SetDataWithFormat(data interface{}) {
+func (r *responseRender) SetDataWithFormat(data any) {
 	ResponseFormat(data)
 	r.Data = data
 }
 
 const tagNamePrecision = "precision"
 
-func ResponseFormat(data interface{}) {
+func ResponseFormat(data any) {
+	defer func() {
+		if err := recover(); err != nil {
+			return
+		}
+	}()
 	if data == nil {
 		return
 	}

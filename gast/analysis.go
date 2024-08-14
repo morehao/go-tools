@@ -2,12 +2,10 @@ package gast
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"os"
 	"strings"
@@ -66,39 +64,53 @@ func HasImportKeywords(file string) (bool, error) {
 	return false, nil
 }
 
-// TrimFileTitle 去除文件中的package和import声明，返回剩余数据
+// TrimFileTitle 去除文件中的 package 和 import 声明，返回剩余内容
 func TrimFileTitle(file string) (string, error) {
-	// 解析文件以获取AST
+	// 解析文件以获取 AST
 	fileSet := token.NewFileSet()
 	node, parseErr := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
 	if parseErr != nil {
 		return "", parseErr
 	}
 
-	// 创建一个新的AST打印配置
-	var buf bytes.Buffer
-	printConfig := printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
+	// 获取文件内容
+	fileHandle, readErr := os.Open(file)
+	if readErr != nil {
+		return "", readErr
+	}
+	defer fileHandle.Close()
 
-	// 遍历文件的顶层声明
-	for i, decl := range node.Decls {
-		// 跳过package和import声明
+	// 找到 package 和 import 语句的截止行号
+	titleEndLine := fileSet.Position(node.Package).Line // 获取 package 声明的行号
+	for _, decl := range node.Decls {
 		genDecl, isGenDecl := decl.(*ast.GenDecl)
-		if isGenDecl && (genDecl.Tok == token.IMPORT || genDecl.Tok == token.PACKAGE) {
-			continue
-		}
-		// 打印其他节点
-		err := printConfig.Fprint(&buf, fileSet, decl)
-		if err != nil {
-			return "", err
-		}
-		// 在声明之间添加换行符
-		if i < len(node.Decls)-1 {
-			buf.WriteString("\n\n") // 添加两个换行符以分隔顶层声明
+		if isGenDecl && genDecl.Tok == token.IMPORT {
+			pos := fileSet.Position(genDecl.End())
+			if pos.Line > titleEndLine {
+				titleEndLine = pos.Line
+			}
 		}
 	}
 
+	// 使用 bufio.Scanner 读取文件内容并跳过标题部分
+	scanner := bufio.NewScanner(fileHandle)
+	var trimmedContent strings.Builder
+	currentLine := 1
+
+	// 跳过标题部分，包括空行和缩进
+	for scanner.Scan() {
+		if currentLine > titleEndLine && strings.TrimSpace(scanner.Text()) != "" {
+			trimmedContent.WriteString(scanner.Text() + "\n")
+		}
+		currentLine++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
 	// 返回修改后的文件内容
-	return buf.String(), nil
+	return trimmedContent.String(), nil
 }
 
 // FindFunction 在指定的文件中查找函数，注意，这里只查找非方法函数

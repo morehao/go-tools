@@ -46,7 +46,7 @@ func TestFindMethodInFile(t *testing.T) {
 func TestFindFunctionInFile(t *testing.T) {
 	filePath := "./test.go"
 
-	function, ok, findErr := FindFunction(filePath, "GetName")
+	function, ok, findErr := FindFunction(filePath, "platformRouter")
 	assert.Nil(t, findErr)
 	assert.True(t, ok)
 

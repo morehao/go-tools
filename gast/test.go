@@ -31,7 +31,7 @@ func (impl *userImpl) Print() {
 	fmt.Println("Name: ", impl.Name, " Age: ", impl.Age)
 }
 
-func GetName() {}
+func GetName(id uint64) {}
 
 func platformRouter(privateRouter *gin.RouterGroup) {
 	routerGroup := privateRouter.Group("platform")
