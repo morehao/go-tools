@@ -9,32 +9,37 @@ import (
 )
 
 func TestCreateToken(t *testing.T) {
-	type CustomerData struct {
-		CompanyId uint64
+	type CustomData struct {
+		Role string `json:"role"`
 	}
 	signKey := "secret"
 	// uuid := uuid.NewString()
 	uuid := "123456"
-	claims := &Claims{
-		CustomData: CustomerData{CompanyId: 1},
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
-			Issuer:    "test",
-			Subject:   "test",
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ID:        uuid,
-		},
-	}
+	now := time.Now()
+	expiresAt := time.Now().Add(24 * time.Hour)
+	issuedAt := time.Now()
+
+	claims := NewClaims(
+		WithCustomData(CustomData{Role: "admin"}),
+		WithIssuer("example.com"),
+		WithSubject("user123"),
+		WithAudience("audience1", "audience2"),
+		WithNotBefore(now),
+		WithExpiresAt(expiresAt),
+		WithIssuedAt(issuedAt),
+		WithID(uuid),
+	)
 	token, err := CreateToken(signKey, claims)
 	assert.Nil(t, err)
 	t.Log(token)
 }
 
 func TestParseToken(t *testing.T) {
-	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0Iiwic3ViIjoidGVzdCIsImV4cCI6MTcyMzgwOTA2OCwiaWF0IjoxNzIzNzIyNjY4LCJqdGkiOiIxMjM0NTYiLCJjdXN0b21EYXRhIjp7IkNvbXBhbnlJZCI6MX19.isZMExv6HbQYmQuYMKZ1sgVcCmLzBFswXbMJKY1ibP8"
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJleGFtcGxlLmNvbSIsInN1YiI6InVzZXIxMjMiLCJhdWQiOlsiYXVkaWVuY2UxIiwiYXVkaWVuY2UyIl0sImV4cCI6MTcyMzgwOTY4NCwibmJmIjoxNzIzNzIzMjg0LCJpYXQiOjE3MjM3MjMyODQsImp0aSI6IjEyMzQ1NiIsImN1c3RvbURhdGEiOnsicm9sZSI6ImFkbWluIn19.9a3KdeiA3Z9fK1pi2NrE-1nM3BVC4DdBY57GfGaCuts"
 	signKey := "secret"
 	type CustomerData struct {
-		CompanyId uint64
+		CompanyId uint64 `json:"companyId"`
+		Role      string `json:"role"`
 	}
 	type CustomerClaims struct {
 		CustomerData CustomerData `json:"customData"`
@@ -44,32 +49,13 @@ func TestParseToken(t *testing.T) {
 	err := ParseToken(signKey, token, &claims)
 	assert.Nil(t, err)
 	t.Log(gutils.ToJsonString(claims))
-	t.Log(claims.CustomerData.CompanyId)
+	t.Log(claims.CustomerData.Role)
 }
 
 func TestRenewToken(t *testing.T) {
-	// 自定义 claims 结构体
-	type MyCustomClaims struct {
-		Role string `json:"role"`
-	}
-
-	now := time.Now()
-	expiresAt := now.Add(24 * time.Hour)
-
-	claims := NewClaims(
-		MyCustomClaims{Role: "admin"},
-		WithIssuer("example.com"),
-		WithSubject("user123"),
-		WithAudience("audience1", "audience2"),
-		WithNotBefore(now),
-		WithExpiresAt(expiresAt),
-		WithIssuedAt(now),
-		WithID("unique-id-12345"),
-	)
 	signKey := "secret"
-	token, err := CreateToken(signKey, claims)
-	assert.Nil(t, err)
 	newExpirationTime := 2 * time.Hour
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJleGFtcGxlLmNvbSIsInN1YiI6InVzZXIxMjMiLCJhdWQiOlsiYXVkaWVuY2UxIiwiYXVkaWVuY2UyIl0sImV4cCI6MTcyMzgwOTY4NCwibmJmIjoxNzIzNzIzMjg0LCJpYXQiOjE3MjM3MjMyODQsImp0aSI6IjEyMzQ1NiIsImN1c3RvbURhdGEiOnsicm9sZSI6ImFkbWluIn19.9a3KdeiA3Z9fK1pi2NrE-1nM3BVC4DdBY57GfGaCuts"
 	newToken, err := RenewToken(signKey, token, newExpirationTime)
 	assert.Nil(t, err)
 	t.Log(newToken)

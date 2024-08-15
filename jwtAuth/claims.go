@@ -63,16 +63,16 @@ func WithID(id string) ClaimsOption {
 	}
 }
 
-// WithCustom 配置自定义 Claims
-func WithCustom(custom interface{}) ClaimsOption {
+// WithCustomData 配置自定义 Claims
+func WithCustomData(custom interface{}) ClaimsOption {
 	return func(c *Claims) {
 		c.CustomData = custom
 	}
 }
 
 // NewClaims 创建并配置 Claims 实例
-func NewClaims(custom interface{}, opts ...ClaimsOption) *Claims {
-	claims := &Claims{CustomData: custom}
+func NewClaims(opts ...ClaimsOption) *Claims {
+	claims := &Claims{}
 	for _, opt := range opts {
 		opt(claims)
 	}

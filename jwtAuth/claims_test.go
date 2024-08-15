@@ -8,7 +8,7 @@ import (
 
 func TestNewClaims(t *testing.T) {
 	// 自定义 claims 结构体
-	type MyCustomClaims struct {
+	type CustomData struct {
 		Role string `json:"role"`
 	}
 
@@ -17,7 +17,7 @@ func TestNewClaims(t *testing.T) {
 	issuedAt := time.Now()
 
 	claims := NewClaims(
-		MyCustomClaims{Role: "admin"},
+		WithCustomData(CustomData{Role: "admin"}),
 		WithIssuer("example.com"),
 		WithSubject("user123"),
 		WithAudience("audience1", "audience2"),
