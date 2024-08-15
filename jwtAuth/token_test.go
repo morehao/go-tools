@@ -9,15 +9,14 @@ import (
 )
 
 func TestCreateToken(t *testing.T) {
-	signKey := "secret"
-	type CustomerClaims struct {
+	type CustomerData struct {
 		CompanyId uint64
-		jwt.RegisteredClaims
 	}
+	signKey := "secret"
 	// uuid := uuid.NewString()
 	uuid := "123456"
-	claims := CustomerClaims{
-		CompanyId: 1,
+	claims := &Claims{
+		CustomData: CustomerData{CompanyId: 1},
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 			Issuer:    "test",
@@ -32,16 +31,20 @@ func TestCreateToken(t *testing.T) {
 }
 
 func TestParseToken(t *testing.T) {
-	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJDb21wYW55SWQiOjEsImlzcyI6InRlc3QiLCJzdWIiOiJ0ZXN0IiwiZXhwIjoxNzIzNzk1NDQ4LCJpYXQiOjE3MjM3MDkwNDh9.C_7qYBPr1HWeSRmQ3vPcbvZP3sNh1HRceFyeZ17vGkU"
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0Iiwic3ViIjoidGVzdCIsImV4cCI6MTcyMzgwOTA2OCwiaWF0IjoxNzIzNzIyNjY4LCJqdGkiOiIxMjM0NTYiLCJjdXN0b21EYXRhIjp7IkNvbXBhbnlJZCI6MX19.isZMExv6HbQYmQuYMKZ1sgVcCmLzBFswXbMJKY1ibP8"
 	signKey := "secret"
-	type CustomerClaims struct {
+	type CustomerData struct {
 		CompanyId uint64
+	}
+	type CustomerClaims struct {
+		CustomerData CustomerData `json:"customData"`
 		jwt.RegisteredClaims
 	}
 	var claims CustomerClaims
 	err := ParseToken(signKey, token, &claims)
 	assert.Nil(t, err)
 	t.Log(gutils.ToJsonString(claims))
+	t.Log(claims.CustomerData.CompanyId)
 }
 
 func TestRenewToken(t *testing.T) {

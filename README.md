@@ -12,6 +12,7 @@
 - `gerror` 错误处理组件
 - `glog` 日志组件
 - `gutils` 一些常用的工具函数
+- `jwtAuth` jwt鉴权组件
 
 # 安装
 ```bash
