@@ -28,6 +28,9 @@ func NewLimiter(opts ...Option) (Limiter, error) {
 		limiter := &timeRateLimiter{
 			limiterMap:      make(map[string]*rate.Limiter),
 			lastAccessedMap: make(map[string]time.Time),
+			burst:           cfg.Burst,
+			period:          cfg.Period,
+			cleanupInterval: cfg.CleanupInterval,
 		}
 		go limiter.cleanupLoop()
 		return limiter, nil
@@ -39,6 +42,7 @@ func NewLimiter(opts ...Option) (Limiter, error) {
 			limiter: redis_rate.NewLimiter(cfg.RedisClient),
 			rate:    cfg.Rate,
 			burst:   cfg.Burst,
+			period:  cfg.Period,
 		}, nil
 	default:
 		return nil, errors.New("unsupported limiter mode")

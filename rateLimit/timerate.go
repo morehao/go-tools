@@ -12,7 +12,7 @@ type timeRateLimiter struct {
 	limiterMap      map[string]*rate.Limiter
 	lastAccessedMap map[string]time.Time // 记录每个key的最后访问时间
 	period          time.Duration        // 限制周期
-	burst           int                  // 限制周期内允许的请求数
+	burst           int                  // 限制周期突发内允许的请求数
 	cleanupInterval time.Duration        // 清理过期限流器的间隔
 }
 
@@ -39,8 +39,6 @@ func (l *timeRateLimiter) Wait(ctx context.Context, key string) error {
 		l.limiterMap[key] = limiter
 	}
 	l.lastAccessedMap[key] = time.Now()
-
-	// 等待直到limiter允许另一个事件发生
 	return limiter.Wait(ctx)
 }
 

@@ -8,8 +8,8 @@ import (
 
 type redisLimiter struct {
 	limiter *redis_rate.Limiter
-	rate    int           // 每秒允许的最大请求数
-	burst   int           // 限制周期内允许的请求数
+	rate    int           // 限制周期内允许的最大请求数
+	burst   int           // 限制周期突发内允许的请求数
 	period  time.Duration // 限制周期
 }
 
@@ -30,7 +30,7 @@ func (l *redisLimiter) Wait(ctx context.Context, key string) error {
 		res, err := l.limiter.Allow(ctx, key, redis_rate.Limit{
 			Rate:   l.rate,
 			Period: l.period,
-			Burst:  l.rate,
+			Burst:  l.burst,
 		})
 		if err != nil {
 			return err
@@ -40,11 +40,14 @@ func (l *redisLimiter) Wait(ctx context.Context, key string) error {
 		}
 
 		// 如果不允许，等待 RetryAfter 指定的时间再重试
+		timer := time.NewTimer(res.RetryAfter)
 		select {
-		case <-time.After(res.RetryAfter):
-			// 继续循环检查
+		case <-timer.C:
+			// Timer expired, retry
+			timer.Stop()
 		case <-ctx.Done():
-			// 如果上下文被取消，返回上下文的错误
+			// Context was cancelled, return error
+			timer.Stop()
 			return ctx.Err()
 		}
 	}

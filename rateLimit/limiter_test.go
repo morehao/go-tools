@@ -14,18 +14,27 @@ func TestTimeRateLimiter(t *testing.T) {
 	ctx := context.Background()
 	limiter, err := NewLimiter(
 		WithMode(ModeTimeRate),
-		WithPeriod(time.Second),
-		WithRate(3),
-		WithBurst(3),
+		WithPeriod(500*time.Millisecond),
+		WithBurst(2),
 		WithCleanupInterval(time.Minute),
 	)
 	assert.NoError(t, err)
 
+	// Test Allow method
 	for i := 0; i < 10; i++ {
 		allowed, err := limiter.Allow(ctx, "test_key")
 		assert.Nil(t, err)
-		fmt.Println("i:", i, "allowed:", allowed)
-		// time.Sleep(time.Second)
+		fmt.Println("Allow method - i:", i, "allowed:", allowed)
+		time.Sleep(300 * time.Millisecond) // 每次请求之间间隔300毫秒
+	}
+
+	// Test Wait method
+	for i := 0; i < 10; i++ {
+		start := time.Now()
+		err := limiter.Wait(ctx, "test_key")
+		assert.Nil(t, err)
+		duration := time.Since(start)
+		fmt.Println("Wait method - i:", i, "waited for:", duration)
 	}
 }
 
@@ -44,18 +53,28 @@ func TestRedisLimiter(t *testing.T) {
 	limiter, err := NewLimiter(
 		WithMode(ModeRedis),
 		WithPeriod(time.Second),
-		WithRate(3),
-		WithBurst(3),
+		WithRate(2),
+		WithBurst(1),
 		WithRedisClient(client),
 	)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
 
+	// Test Allow method
 	for i := 0; i < 10; i++ {
 		allowed, err := limiter.Allow(ctx, "test_key")
 		assert.Nil(t, err)
-		fmt.Println("i:", i, "allowed:", allowed)
-		// time.Sleep(time.Second)
+		fmt.Println("Allow method - i:", i, "allowed:", allowed)
+		time.Sleep(300 * time.Millisecond) // 每次请求之间间隔300毫秒
+	}
+
+	// Test Wait method
+	for i := 0; i < 10; i++ {
+		start := time.Now()
+		err := limiter.Wait(ctx, "test_key")
+		assert.Nil(t, err)
+		duration := time.Since(start)
+		fmt.Println("Wait method - i:", i, "waited for:", duration)
 	}
 }
