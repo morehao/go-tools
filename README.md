@@ -13,6 +13,7 @@
 - `glog` 日志组件
 - `gutils` 一些常用的工具函数
 - `jwtAuth` jwt鉴权组件
+- `rateLimit` 限流组件
 
 # 安装
 ```bash
