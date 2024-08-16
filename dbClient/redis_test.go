@@ -4,19 +4,22 @@ import (
 	"context"
 	"github.com/morehao/go-tools/glog"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"testing"
 )
 
 func TestInitRedis(t *testing.T) {
 	defer glog.Close()
-	err := glog.InitZapLogger(&glog.LoggerConfig{
+	logCfg := &glog.LoggerConfig{
 		Service:   "test",
 		Level:     glog.DebugLevel,
 		Dir:       "./log",
 		Stdout:    true,
 		ExtraKeys: []string{"requestId"},
-	})
-	assert.Nil(t, err)
+	}
+	opt := glog.WithZapOptions(zap.AddCallerSkip(3))
+	initLogErr := glog.NewLogger(logCfg, opt)
+	assert.Nil(t, initLogErr)
 
 	cfg := RedisConfig{
 		Service:  "test",

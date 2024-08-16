@@ -22,7 +22,7 @@ go.work
 go.work.sum
 
 .idea/
+.DS_Store
 codeGen/tmp/*
-glog/log/*
-dbClient/log/*
-conc/log/*
+**/log/**
+

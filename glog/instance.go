@@ -78,7 +78,7 @@ func Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	logInstance.Fatalw(ctx, msg, keysAndValues...)
 }
 
-func GetLogger(opts ...Option) Logger {
+func GetLogger(opts ...Option) (Logger, error) {
 	return logInstance.Logger.getLogger(opts...)
 }
 

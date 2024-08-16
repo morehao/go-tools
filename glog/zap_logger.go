@@ -21,7 +21,7 @@ type zapLogger struct {
 	cfg    *LoggerConfig
 }
 
-func newZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
+func getZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	var zapCores []zapcore.Core
 	logLevel, ok := logLevelMap[cfg.Level]
 	if !ok {
@@ -164,16 +164,23 @@ func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...int
 	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) getLogger(opts ...Option) Logger {
+func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 	cfg := &optConfig{}
 	for _, opt := range opts {
 		opt.apply(cfg)
+	}
+	if l.logger == nil {
+		logger, err := getZapLogger(l.cfg)
+		if err != nil {
+			return nil, err
+		}
+		l.logger = logger
 	}
 	logger := l.logger.WithOptions(cfg.zapOpts...)
 	return &zapLogger{
 		logger: logger,
 		cfg:    l.cfg,
-	}
+	}, nil
 }
 
 func (l *zapLogger) Close() {

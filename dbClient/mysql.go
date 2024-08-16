@@ -23,12 +23,15 @@ type MysqlConfig struct {
 
 func InitMysql(cfg MysqlConfig) (*gorm.DB, error) {
 	dns := cfg.buildDns()
-	logger := newOrmLogger(&ormConfig{
+	logger, newLogErr := newOrmLogger(&ormConfig{
 		Service:   cfg.Service,
 		Addr:      cfg.Addr,
 		Database:  cfg.Database,
 		MaxSqlLen: cfg.MaxSqlLen,
 	})
+	if newLogErr != nil {
+		return nil, newLogErr
+	}
 	db, err := gorm.Open(mysql.Open(dns), &gorm.Config{
 		Logger: logger,
 	})
