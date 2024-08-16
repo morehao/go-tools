@@ -28,19 +28,22 @@ type ormConfig struct {
 	MaxSqlLen int
 }
 
-func newOrmLogger(cfg *ormConfig) *ormLogger {
+func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
 	s := cfg.Service
 	if cfg.Service == "" {
 		s = cfg.Database
 	}
-
+	l, err := glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(2)))
+	if err != nil {
+		return nil, err
+	}
 	return &ormLogger{
 		Service:   s,
 		Addr:      cfg.Addr,
 		Database:  cfg.Database,
 		MaxSqlLen: cfg.MaxSqlLen,
-		Logger:    glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(2))),
-	}
+		Logger:    l,
+	}, nil
 }
 
 // LogMode log mode

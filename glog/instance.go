@@ -6,10 +6,9 @@ import (
 
 type instance struct {
 	Logger
-	logType LoggerType
 }
 
-var logInstance instance
+var logInstance *instance
 
 func Debug(ctx context.Context, args ...interface{}) {
 	logInstance.Debug(ctx, args...)
@@ -78,7 +77,16 @@ func Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	logInstance.Fatalw(ctx, msg, keysAndValues...)
 }
 
-func GetLogger(opts ...Option) Logger {
+func GetLogger(opts ...Option) (Logger, error) {
+	if logInstance == nil {
+		cfg := getDefaultLoggerConfig()
+		logger, err := newZapLogger(cfg, opts...)
+		if err != nil {
+			return nil, err
+		}
+		logInstance = &instance{Logger: logger}
+		return logger, nil
+	}
 	return logInstance.Logger.getLogger(opts...)
 }
 

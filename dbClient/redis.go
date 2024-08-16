@@ -47,11 +47,15 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	if service == "" {
 		service = "redis"
 	}
+	l, newLogErr := glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(3)))
+	if newLogErr != nil {
+		return nil, newLogErr
+	}
 	logger := redisLogger{
 		Service:  service,
 		Addr:     cfg.Addr,
 		Database: cfg.DB,
-		Logger:   glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(3))),
+		Logger:   l,
 	}
 	rdb.AddHook(logger)
 	// 发送PING命令，检查连接是否正常
