@@ -8,8 +8,8 @@ import (
 type Mode int8
 
 const (
-	ModeRateLimit Mode = 1
-	ModeRedis     Mode = 2
+	ModeTimeRate Mode = 1
+	ModeRedis    Mode = 2
 )
 
 type Config struct {

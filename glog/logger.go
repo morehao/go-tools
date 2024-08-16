@@ -27,15 +27,6 @@ type Logger interface {
 	Close()
 }
 
-type LoggerConfig struct {
-	LoggerType LoggerType `yaml:"logger_type"`
-	Service    string     `yaml:"service"`
-	Level      Level      `yaml:"level"`
-	Dir        string     `yaml:"dir"`
-	Stdout     bool       `yaml:"stdout"`
-	ExtraKeys  []string   `yaml:"extra_keys"`
-}
-
 func NewLogger(cfg *LoggerConfig, opts ...Option) error {
 	var logger Logger
 	switch cfg.LoggerType {
@@ -52,9 +43,8 @@ func NewLogger(cfg *LoggerConfig, opts ...Option) error {
 		}
 		logger = l
 	}
-	logInstance = instance{
-		Logger:  logger,
-		logType: cfg.LoggerType,
+	logInstance = &instance{
+		Logger: logger,
 	}
 	return nil
 }

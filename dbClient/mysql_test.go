@@ -13,7 +13,7 @@ func TestInitMysql(t *testing.T) {
 	defer glog.Close()
 	logCfg := &glog.LoggerConfig{
 		Service:   "test",
-		Level:     glog.DebugLevel,
+		Level:     glog.InfoLevel,
 		Dir:       "./log",
 		Stdout:    true,
 		ExtraKeys: []string{"requestId"},
@@ -38,7 +38,8 @@ func TestInitMysql(t *testing.T) {
 	t.Log(gutils.ToJsonString(res))
 }
 
-func TestInitMysqlWithoutLog(t *testing.T) {
+func TestInitMysqlWithoutInitLog(t *testing.T) {
+	defer glog.Close()
 	cfg := MysqlConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:3306",

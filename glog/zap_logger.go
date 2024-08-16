@@ -169,13 +169,6 @@ func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
-	if l.logger == nil {
-		logger, err := getZapLogger(l.cfg)
-		if err != nil {
-			return nil, err
-		}
-		l.logger = logger
-	}
 	logger := l.logger.WithOptions(cfg.zapOpts...)
 	return &zapLogger{
 		logger: logger,

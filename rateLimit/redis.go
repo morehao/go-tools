@@ -9,6 +9,7 @@ import (
 type redisLimiter struct {
 	limiter *redis_rate.Limiter
 	rate    int           // 每秒允许的最大请求数
+	burst   int           // 限制周期内允许的请求数
 	period  time.Duration // 限制周期
 }
 
@@ -16,7 +17,7 @@ func (l *redisLimiter) Allow(ctx context.Context, key string) (bool, error) {
 	res, err := l.limiter.Allow(ctx, key, redis_rate.Limit{
 		Rate:   l.rate,
 		Period: l.period,
-		Burst:  l.rate,
+		Burst:  l.burst,
 	})
 	if err != nil {
 		return false, err

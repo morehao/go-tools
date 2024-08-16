@@ -24,7 +24,7 @@ func NewLimiter(opts ...Option) (Limiter, error) {
 		opt(cfg)
 	}
 	switch cfg.Mode {
-	case ModeRateLimit:
+	case ModeTimeRate:
 		limiter := &timeRateLimiter{
 			limiterMap:      make(map[string]*rate.Limiter),
 			lastAccessedMap: make(map[string]time.Time),
@@ -37,6 +37,8 @@ func NewLimiter(opts ...Option) (Limiter, error) {
 		}
 		return &redisLimiter{
 			limiter: redis_rate.NewLimiter(cfg.RedisClient),
+			rate:    cfg.Rate,
+			burst:   cfg.Burst,
 		}, nil
 	default:
 		return nil, errors.New("unsupported limiter mode")
