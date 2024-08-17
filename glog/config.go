@@ -25,9 +25,12 @@ func getDefaultLoggerConfig() *LoggerConfig {
 
 type ZapFieldHookFunc func(fields []zapcore.Field)
 
+type MessageHookFunc func(message string) string
+
 type optConfig struct {
 	zapOpts          []zap.Option
 	zapFieldHookFunc ZapFieldHookFunc
+	messageHookFunc  MessageHookFunc
 }
 
 type Option interface {
@@ -48,5 +51,11 @@ func WithZapOptions(opts ...zap.Option) Option {
 func WithZapFieldHookFunc(fn ZapFieldHookFunc) Option {
 	return option(func(cfg *optConfig) {
 		cfg.zapFieldHookFunc = fn
+	})
+}
+
+func WithMessageHookFunc(fn MessageHookFunc) Option {
+	return option(func(cfg *optConfig) {
+		cfg.messageHookFunc = fn
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -31,7 +32,19 @@ func TestLogger(t *testing.T) {
 		}
 	}
 	phoneDesensitizationOpt := WithZapFieldHookFunc(phoneDesensitizationHook)
-	if err := NewLogger(cfg, callerSkipOpt, phoneDesensitizationOpt); err != nil {
+
+	var pwdDesensitizationHook = func(message string) string {
+		// 只在消息中包含 "password" 关键字时进行脱敏处理
+		if strings.Contains(message, "password") {
+			// 匹配以 "password=" 开头的密码，并替换为脱敏的形式
+			re := regexp.MustCompile(`password=[^&\s]+`)
+			return re.ReplaceAllString(message, "password=***")
+		}
+		// 如果消息中不包含 "password" 关键字，则不进行处理
+		return message
+	}
+	pwdDesensitizationOpt := WithMessageHookFunc(pwdDesensitizationHook)
+	if err := NewLogger(cfg, callerSkipOpt, phoneDesensitizationOpt, pwdDesensitizationOpt); err != nil {
 		assert.Nil(t, err)
 	}
 	defer Close()
@@ -44,6 +57,7 @@ func TestLogger(t *testing.T) {
 	Errorf(ctx, "hello %s", "world")
 	Errorw(ctx, "hello world", "key", "value")
 	Infow(ctx, "phone info", "phone", "12312341234")
+	Info(ctx, "password=123456")
 
 }
 

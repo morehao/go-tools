@@ -251,21 +251,26 @@ func (l *zapLogger) extraFields(ctx context.Context) []any {
 }
 
 type gZapEncoder struct {
-	fieldHookFunc ZapFieldHookFunc
+	fieldHookFunc   ZapFieldHookFunc
+	messageHookFunc MessageHookFunc
 	zapcore.Encoder
 }
 
 func (enc *gZapEncoder) Clone() zapcore.Encoder {
 	encoderClone := enc.Encoder.Clone()
 	return &gZapEncoder{
-		Encoder:       encoderClone,
-		fieldHookFunc: enc.fieldHookFunc,
+		Encoder:         encoderClone,
+		fieldHookFunc:   enc.fieldHookFunc,
+		messageHookFunc: enc.messageHookFunc,
 	}
 }
 
 func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	if enc.fieldHookFunc != nil {
 		enc.fieldHookFunc(fields)
+	}
+	if enc.messageHookFunc != nil {
+		ent.Message = enc.messageHookFunc(ent.Message)
 	}
 	return enc.Encoder.EncodeEntry(ent, fields)
 }
@@ -291,8 +296,9 @@ func getZapEncoder(optCfg *optConfig) zapcore.Encoder {
 
 	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
 	return &gZapEncoder{
-		Encoder:       zapcore.NewJSONEncoder(encoderCfg),
-		fieldHookFunc: optCfg.zapFieldHookFunc,
+		Encoder:         zapcore.NewJSONEncoder(encoderCfg),
+		fieldHookFunc:   optCfg.zapFieldHookFunc,
+		messageHookFunc: optCfg.messageHookFunc,
 	}
 }
 
