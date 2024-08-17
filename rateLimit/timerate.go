@@ -2,9 +2,10 @@ package rateLimit
 
 import (
 	"context"
-	"golang.org/x/time/rate"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type timeRateLimiter struct {
@@ -16,7 +17,22 @@ type timeRateLimiter struct {
 	cleanupInterval time.Duration        // 清理过期限流器的间隔
 }
 
-func (l *timeRateLimiter) Allow(ctx context.Context, key string) (bool, error) {
+// newTimeRateLimiter 创建一个新的 timeRateLimiter
+func newTimeRateLimiter(period time.Duration, burst int, cleanupInterval time.Duration) *timeRateLimiter {
+	limiter := &timeRateLimiter{
+		limiterMap:      make(map[string]*rate.Limiter),
+		lastAccessedMap: make(map[string]time.Time),
+		period:          period,
+		burst:           burst,
+		cleanupInterval: cleanupInterval,
+	}
+
+	go limiter.cleanupLoop()
+
+	return limiter
+}
+
+func (l *timeRateLimiter) Allow(ctx context.Context, key string) (bool, time.Duration, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -27,25 +43,29 @@ func (l *timeRateLimiter) Allow(ctx context.Context, key string) (bool, error) {
 	}
 	l.lastAccessedMap[key] = time.Now()
 
-	return limiter.Allow(), nil
+	reservation := limiter.Reserve()
+	if !reservation.OK() {
+		return false, reservation.Delay(), nil
+	}
+	return true, 0, nil
 }
 
 func (l *timeRateLimiter) Wait(ctx context.Context, key string) error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	limiter, exists := l.limiterMap[key]
 	if !exists {
 		limiter = rate.NewLimiter(rate.Every(l.period), l.burst)
 		l.limiterMap[key] = limiter
 	}
 	l.lastAccessedMap[key] = time.Now()
+	l.mu.Unlock()
+
 	return limiter.Wait(ctx)
 }
 
 // 清理过期的限流器实例
 func (l *timeRateLimiter) cleanupLoop() {
-	for {
-		time.Sleep(l.cleanupInterval)
+	for range time.Tick(l.cleanupInterval) {
 		l.cleanupExpiredLimiters()
 	}
 }
