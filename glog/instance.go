@@ -10,70 +10,70 @@ type instance struct {
 
 var logInstance *instance
 
-func Debug(ctx context.Context, args ...interface{}) {
+func Debug(ctx context.Context, args ...any) {
 	logInstance.Debug(ctx, args...)
 }
 
-func Debugf(ctx context.Context, format string, args ...interface{}) {
+func Debugf(ctx context.Context, format string, args ...any) {
 	logInstance.Debugf(ctx, format, args...)
 }
 
-func Debugw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func Debugw(ctx context.Context, msg string, keysAndValues ...any) {
 	logInstance.Debugw(ctx, msg, keysAndValues...)
 }
 
-func Info(ctx context.Context, args ...interface{}) {
+func Info(ctx context.Context, args ...any) {
 	logInstance.Info(ctx, args...)
 }
 
-func Infof(ctx context.Context, format string, args ...interface{}) {
+func Infof(ctx context.Context, format string, args ...any) {
 	logInstance.Infof(ctx, format, args...)
 }
 
-func Infow(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func Infow(ctx context.Context, msg string, keysAndValues ...any) {
 	logInstance.Infow(ctx, msg, keysAndValues...)
 }
 
-func Warn(ctx context.Context, args ...interface{}) {
+func Warn(ctx context.Context, args ...any) {
 	logInstance.Warn(ctx, args...)
 }
 
-func Warnf(ctx context.Context, format string, args ...interface{}) {
+func Warnf(ctx context.Context, format string, args ...any) {
 	logInstance.Warnf(ctx, format, args...)
 }
 
-func Warnw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func Warnw(ctx context.Context, msg string, keysAndValues ...any) {
 	logInstance.Warnw(ctx, msg, keysAndValues...)
 }
 
-func Error(ctx context.Context, args ...interface{}) {
+func Error(ctx context.Context, args ...any) {
 	logInstance.Error(ctx, args...)
 }
-func Errorf(ctx context.Context, format string, args ...interface{}) {
+func Errorf(ctx context.Context, format string, args ...any) {
 	logInstance.Errorf(ctx, format, args...)
 }
 
-func Errorw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func Errorw(ctx context.Context, msg string, keysAndValues ...any) {
 	logInstance.Errorw(ctx, msg, keysAndValues...)
 }
 
-func Panic(ctx context.Context, args ...interface{}) {
+func Panic(ctx context.Context, args ...any) {
 	logInstance.Panic(ctx, args...)
 }
 
-func Panicf(ctx context.Context, format string, args ...interface{}) {
+func Panicf(ctx context.Context, format string, args ...any) {
 	logInstance.Panicf(ctx, format, args...)
 }
 
-func Fatal(ctx context.Context, args ...interface{}) {
+func Fatal(ctx context.Context, args ...any) {
 	logInstance.Fatal(ctx, args...)
 }
 
-func Fatalf(ctx context.Context, format string, args ...interface{}) {
+func Fatalf(ctx context.Context, format string, args ...any) {
 	logInstance.Fatalf(ctx, format, args...)
 }
 
-func Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
 	logInstance.Fatalw(ctx, msg, keysAndValues...)
 }
 

@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"regexp"
 	"testing"
 )
 
-func TestZapLogger(t *testing.T) {
+func TestLogger(t *testing.T) {
 	cfg := &LoggerConfig{
 		Service:   "myApp",
 		Level:     DebugLevel,
@@ -15,8 +17,21 @@ func TestZapLogger(t *testing.T) {
 		Stdout:    true,
 		ExtraKeys: []string{"key1", "key2"},
 	}
-	opt := WithZapOptions(zap.AddCallerSkip(3))
-	if err := NewLogger(cfg, opt); err != nil {
+	callerSkipOpt := WithZapOptions(zap.AddCallerSkip(3))
+	// 手机号脱敏钩子函数
+	var phoneDesensitizationHook = func(fields []zapcore.Field) {
+		phoneRegex := regexp.MustCompile(`(\d{3})\d{4}(\d{4})`)
+		for i := range fields {
+			if fields[i].Type == zapcore.StringType {
+				strValue := fields[i].String
+				if phoneRegex.MatchString(strValue) {
+					fields[i].String = phoneRegex.ReplaceAllString(strValue, `$1****$2`)
+				}
+			}
+		}
+	}
+	phoneDesensitizationOpt := WithZapFieldHookFunc(phoneDesensitizationHook)
+	if err := NewLogger(cfg, callerSkipOpt, phoneDesensitizationOpt); err != nil {
 		assert.Nil(t, err)
 	}
 	defer Close()
@@ -28,9 +43,11 @@ func TestZapLogger(t *testing.T) {
 	Error(ctx, "hello world")
 	Errorf(ctx, "hello %s", "world")
 	Errorw(ctx, "hello world", "key", "value")
+	Infow(ctx, "phone info", "phone", "12312341234")
+
 }
 
-func TestZapExtraKeys(t *testing.T) {
+func TestExtraKeys(t *testing.T) {
 	cfg := &LoggerConfig{
 		Service:   "myApp",
 		Level:     DebugLevel,
@@ -51,5 +68,6 @@ func TestZapExtraKeys(t *testing.T) {
 	Infow(ctx, "hello world", "key", "value")
 	Error(ctx, "hello world")
 	Errorf(ctx, "hello %s", "world")
-	Errorw(ctx, "hello world", "key", "value")
+	ctx = context.WithValue(ctx, KeySkipLog, "")
+	Errorw(ctx, "hello world", "key", "value11")
 }

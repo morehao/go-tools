@@ -3,14 +3,13 @@ package glog
 import (
 	"context"
 	"fmt"
-	"github.com/morehao/go-tools/gcontext"
+	"go.uber.org/zap/buffer"
 	"io"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/morehao/go-tools/gutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -21,7 +20,7 @@ type zapLogger struct {
 	cfg    *LoggerConfig
 }
 
-func getZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
+func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	var zapCores []zapcore.Core
 	logLevel, ok := logLevelMap[cfg.Level]
 	if !ok {
@@ -44,7 +43,7 @@ func getZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 			return nil, getWriterErr
 		}
 		c := zapcore.NewCore(
-			getZapEncoder(),
+			getZapEncoder(optCfg),
 			writer,
 			stdLevel)
 		zapCores = append(zapCores, c)
@@ -56,13 +55,13 @@ func getZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	}
 	zapCores = append(zapCores,
 		zapcore.NewCore(
-			getZapEncoder(),
+			getZapEncoder(optCfg),
 			defaultWriter,
 			infoLevel))
 
 	zapCores = append(zapCores,
 		zapcore.NewCore(
-			getZapEncoder(),
+			getZapEncoder(optCfg),
 			defaultWriter,
 			errorLevel))
 
@@ -72,7 +71,7 @@ func getZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	}
 	zapCores = append(zapCores,
 		zapcore.NewCore(
-			getZapEncoder(),
+			getZapEncoder(optCfg),
 			wfWriter,
 			errorLevel))
 
@@ -92,75 +91,75 @@ func getZapLogger(cfg *LoggerConfig) (*zap.Logger, error) {
 	return logger, nil
 }
 
-func (l *zapLogger) Debug(ctx context.Context, args ...interface{}) {
+func (l *zapLogger) Debug(ctx context.Context, args ...any) {
 	l.ctxLog(DebugLevel, ctx, args...)
 }
 
-func (l *zapLogger) Debugf(ctx context.Context, format string, args ...interface{}) {
+func (l *zapLogger) Debugf(ctx context.Context, format string, args ...any) {
 	l.ctxLogf(DebugLevel, ctx, format, args...)
 }
 
-func (l *zapLogger) Debugw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Debugw(ctx context.Context, msg string, keysAndValues ...any) {
 	l.ctxLogw(DebugLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) Info(ctx context.Context, args ...interface{}) {
+func (l *zapLogger) Info(ctx context.Context, args ...any) {
 	l.ctxLog(InfoLevel, ctx, args...)
 }
 
-func (l *zapLogger) Infof(ctx context.Context, format string, args ...interface{}) {
+func (l *zapLogger) Infof(ctx context.Context, format string, args ...any) {
 	l.ctxLogf(InfoLevel, ctx, format, args...)
 }
 
-func (l *zapLogger) Infow(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Infow(ctx context.Context, msg string, keysAndValues ...any) {
 	l.ctxLogw(InfoLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) Warn(ctx context.Context, args ...interface{}) {
+func (l *zapLogger) Warn(ctx context.Context, args ...any) {
 	l.ctxLog(WarnLevel, ctx, args...)
 }
 
-func (l *zapLogger) Warnf(ctx context.Context, format string, args ...interface{}) {
+func (l *zapLogger) Warnf(ctx context.Context, format string, args ...any) {
 	l.ctxLogf(WarnLevel, ctx, format, args...)
 }
 
-func (l *zapLogger) Warnw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Warnw(ctx context.Context, msg string, keysAndValues ...any) {
 	l.ctxLogw(WarnLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) Error(ctx context.Context, args ...interface{}) {
+func (l *zapLogger) Error(ctx context.Context, args ...any) {
 	l.ctxLog(ErrorLevel, ctx, args...)
 }
 
-func (l *zapLogger) Errorf(ctx context.Context, format string, args ...interface{}) {
+func (l *zapLogger) Errorf(ctx context.Context, format string, args ...any) {
 	l.ctxLogf(ErrorLevel, ctx, format, args...)
 }
 
-func (l *zapLogger) Errorw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Errorw(ctx context.Context, msg string, keysAndValues ...any) {
 	l.ctxLogw(ErrorLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) Panic(ctx context.Context, args ...interface{}) {
+func (l *zapLogger) Panic(ctx context.Context, args ...any) {
 	l.ctxLog(PanicLevel, ctx, args...)
 }
 
-func (l *zapLogger) Panicf(ctx context.Context, format string, args ...interface{}) {
+func (l *zapLogger) Panicf(ctx context.Context, format string, args ...any) {
 	l.ctxLogf(PanicLevel, ctx, format, args...)
 }
 
-func (l *zapLogger) Panicw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Panicw(ctx context.Context, msg string, keysAndValues ...any) {
 	l.ctxLogw(PanicLevel, ctx, msg, keysAndValues...)
 }
 
-func (l *zapLogger) Fatal(ctx context.Context, args ...interface{}) {
+func (l *zapLogger) Fatal(ctx context.Context, args ...any) {
 	l.ctxLog(FatalLevel, ctx, args...)
 }
 
-func (l *zapLogger) Fatalf(ctx context.Context, format string, args ...interface{}) {
+func (l *zapLogger) Fatalf(ctx context.Context, format string, args ...any) {
 	l.ctxLogf(PanicLevel, ctx, format, args...)
 }
 
-func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
 	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
 }
 
@@ -180,8 +179,8 @@ func (l *zapLogger) Close() {
 	_ = l.logger.Sync()
 }
 
-func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}) {
-	if gcontext.NilCtx(ctx) {
+func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...any) {
+	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
 	switch level {
@@ -200,8 +199,8 @@ func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...interface{}
 	}
 }
 
-func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...interface{}) {
-	if gcontext.NilCtx(ctx) {
+func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...any) {
+	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
 	switch level {
@@ -220,8 +219,8 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, arg
 	}
 }
 
-func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...interface{}) {
-	if gcontext.NilCtx(ctx) {
+func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...any) {
+	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
 	switch level {
@@ -241,8 +240,8 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAn
 }
 
 // 提取 context 中的字段
-func (l *zapLogger) extraFields(ctx context.Context) []interface{} {
-	var fields []interface{}
+func (l *zapLogger) extraFields(ctx context.Context) []any {
+	var fields []any
 	for _, key := range l.cfg.ExtraKeys {
 		if v := ctx.Value(key); v != nil {
 			fields = append(fields, zap.Any(key, v))
@@ -251,7 +250,27 @@ func (l *zapLogger) extraFields(ctx context.Context) []interface{} {
 	return fields
 }
 
-func getZapEncoder() zapcore.Encoder {
+type gZapEncoder struct {
+	fieldHookFunc ZapFieldHookFunc
+	zapcore.Encoder
+}
+
+func (enc *gZapEncoder) Clone() zapcore.Encoder {
+	encoderClone := enc.Encoder.Clone()
+	return &gZapEncoder{
+		Encoder:       encoderClone,
+		fieldHookFunc: enc.fieldHookFunc,
+	}
+}
+
+func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
+	if enc.fieldHookFunc != nil {
+		enc.fieldHookFunc(fields)
+	}
+	return enc.Encoder.EncodeEntry(ent, fields)
+}
+
+func getZapEncoder(optCfg *optConfig) zapcore.Encoder {
 	// 设置时间编码格式
 	encodeTime := zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.999999")
 
@@ -271,7 +290,10 @@ func getZapEncoder() zapcore.Encoder {
 	}
 
 	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
-	return zapcore.NewJSONEncoder(encoderCfg)
+	return &gZapEncoder{
+		Encoder:       zapcore.NewJSONEncoder(encoderCfg),
+		fieldHookFunc: optCfg.zapFieldHookFunc,
+	}
 }
 
 // getZapColorEncoder
@@ -304,7 +326,7 @@ func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSync
 		w = os.Stdout
 	} else {
 		director := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
-		if ok := gutils.FileExists(director); !ok {
+		if ok := fileExists(director); !ok {
 			_ = os.MkdirAll(director, os.ModePerm)
 		}
 		var logFilename string

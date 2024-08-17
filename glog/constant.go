@@ -32,6 +32,7 @@ const (
 
 	MsgFlagNotice = "notice"
 
+	KeySkipLog          = "skip"
 	KeyService          = "service"
 	KeyHost             = "host"
 	KeyClientIp         = "clientIp"
