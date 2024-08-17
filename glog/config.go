@@ -1,6 +1,9 @@
 package glog
 
-import "go.uber.org/zap"
+import (
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
 
 type LoggerConfig struct {
 	LoggerType LoggerType `yaml:"logger_type"`
@@ -20,8 +23,14 @@ func getDefaultLoggerConfig() *LoggerConfig {
 	}
 }
 
+type ZapFieldHookFunc func(fields []zapcore.Field)
+
+type MessageHookFunc func(message string) string
+
 type optConfig struct {
-	zapOpts []zap.Option
+	zapOpts          []zap.Option
+	zapFieldHookFunc ZapFieldHookFunc
+	messageHookFunc  MessageHookFunc
 }
 
 type Option interface {
@@ -36,5 +45,17 @@ func (fn option) apply(cfg *optConfig) {
 func WithZapOptions(opts ...zap.Option) Option {
 	return option(func(cfg *optConfig) {
 		cfg.zapOpts = append(cfg.zapOpts, opts...)
+	})
+}
+
+func WithZapFieldHookFunc(fn ZapFieldHookFunc) Option {
+	return option(func(cfg *optConfig) {
+		cfg.zapFieldHookFunc = fn
+	})
+}
+
+func WithMessageHookFunc(fn MessageHookFunc) Option {
+	return option(func(cfg *optConfig) {
+		cfg.messageHookFunc = fn
 	})
 }

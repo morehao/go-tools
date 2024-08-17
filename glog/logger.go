@@ -5,24 +5,24 @@ import (
 )
 
 type Logger interface {
-	Debug(ctx context.Context, args ...interface{})
-	Debugf(ctx context.Context, format string, args ...interface{})
-	Debugw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Info(ctx context.Context, args ...interface{})
-	Infof(ctx context.Context, format string, args ...interface{})
-	Infow(ctx context.Context, msg string, keysAndValues ...interface{})
-	Warn(ctx context.Context, args ...interface{})
-	Warnf(ctx context.Context, format string, args ...interface{})
-	Warnw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Error(ctx context.Context, args ...interface{})
-	Errorf(ctx context.Context, format string, args ...interface{})
-	Errorw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Panic(ctx context.Context, args ...interface{})
-	Panicf(ctx context.Context, format string, args ...interface{})
-	Panicw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Fatal(ctx context.Context, args ...interface{})
-	Fatalf(ctx context.Context, format string, args ...interface{})
-	Fatalw(ctx context.Context, msg string, keysAndValues ...interface{})
+	Debug(ctx context.Context, args ...any)
+	Debugf(ctx context.Context, format string, args ...any)
+	Debugw(ctx context.Context, msg string, keysAndValues ...any)
+	Info(ctx context.Context, args ...any)
+	Infof(ctx context.Context, format string, args ...any)
+	Infow(ctx context.Context, msg string, keysAndValues ...any)
+	Warn(ctx context.Context, args ...any)
+	Warnf(ctx context.Context, format string, args ...any)
+	Warnw(ctx context.Context, msg string, keysAndValues ...any)
+	Error(ctx context.Context, args ...any)
+	Errorf(ctx context.Context, format string, args ...any)
+	Errorw(ctx context.Context, msg string, keysAndValues ...any)
+	Panic(ctx context.Context, args ...any)
+	Panicf(ctx context.Context, format string, args ...any)
+	Panicw(ctx context.Context, msg string, keysAndValues ...any)
+	Fatal(ctx context.Context, args ...any)
+	Fatalf(ctx context.Context, format string, args ...any)
+	Fatalw(ctx context.Context, msg string, keysAndValues ...any)
 	getLogger(opts ...Option) (Logger, error)
 	Close()
 }
@@ -51,16 +51,15 @@ func NewLogger(cfg *LoggerConfig, opts ...Option) error {
 
 // newZapLogger 初始化zapLogger
 func newZapLogger(cfg *LoggerConfig, opts ...Option) (Logger, error) {
-	logger, err := getZapLogger(cfg)
-	if err != nil {
-		return nil, err
-	}
 	optCfg := &optConfig{}
 	for _, opt := range opts {
 		opt.apply(optCfg)
 	}
-	// AddCallerSkip(3) 跳过三层调用，使得日志输出正确的业务文件名和函数
-	// logger = logger.WithOptions(zap.AddCallerSkip(3))
+	logger, err := getZapLogger(cfg, optCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &zapLogger{
 		logger: logger.WithOptions(optCfg.zapOpts...),
 		cfg:    cfg,
