@@ -5,15 +5,7 @@ import (
 	"time"
 )
 
-type Mode int8
-
-const (
-	ModeTimeRate Mode = 1
-	ModeRedis    Mode = 2
-)
-
 type Config struct {
-	Mode            Mode          // 限流模式
 	RedisClient     *redis.Client // redis 客户端
 	Period          time.Duration // 限流周期
 	CleanupInterval time.Duration // 清理过期限流器的间隔，只在ModeRateLimit模型下使用
@@ -22,12 +14,6 @@ type Config struct {
 }
 
 type Option func(*Config)
-
-func WithMode(mode Mode) Option {
-	return func(cfg *Config) {
-		cfg.Mode = mode
-	}
-}
 
 func WithRedisClient(client *redis.Client) Option {
 	return func(cfg *Config) {
