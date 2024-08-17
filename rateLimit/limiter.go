@@ -8,8 +8,7 @@ import (
 )
 
 type Limiter interface {
-	Allow(ctx context.Context, key string) (bool, time.Duration, error) // 是否允许请求
-	Wait(ctx context.Context, key string) error                         // 等待请求
+	Allow(ctx context.Context, key string) (bool, error) // 是否允许请求
 }
 
 func NewLimiter(opts ...Option) (Limiter, error) {

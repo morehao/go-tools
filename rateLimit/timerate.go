@@ -32,7 +32,7 @@ func newTimeRateLimiter(period time.Duration, burst int, cleanupInterval time.Du
 	return limiter
 }
 
-func (l *timeRateLimiter) Allow(ctx context.Context, key string) (bool, time.Duration, error) {
+func (l *timeRateLimiter) Allow(ctx context.Context, key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -43,24 +43,7 @@ func (l *timeRateLimiter) Allow(ctx context.Context, key string) (bool, time.Dur
 	}
 	l.lastAccessedMap[key] = time.Now()
 
-	reservation := limiter.Reserve()
-	if !reservation.OK() {
-		return false, reservation.Delay(), nil
-	}
-	return true, 0, nil
-}
-
-func (l *timeRateLimiter) Wait(ctx context.Context, key string) error {
-	l.mu.Lock()
-	limiter, exists := l.limiterMap[key]
-	if !exists {
-		limiter = rate.NewLimiter(rate.Every(l.period), l.burst)
-		l.limiterMap[key] = limiter
-	}
-	l.lastAccessedMap[key] = time.Now()
-	l.mu.Unlock()
-
-	return limiter.Wait(ctx)
+	return limiter.Allow()
 }
 
 // 清理过期的限流器实例
