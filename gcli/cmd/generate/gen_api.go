@@ -10,28 +10,28 @@ import (
 	"text/template"
 )
 
-func genApi(workDir string) {
-	cfg := Cfg.CodeGen.Api
-	tplDir := filepath.Join(workDir, cfg.TplDir)
-	rootDir := filepath.Join(workDir, cfg.InternalAppRootDir)
+func genApi() error {
+	apiGenCfg := cfg.CodeGen.Api
+	tplDir := filepath.Join(workDir, apiGenCfg.TplDir)
+	rootDir := filepath.Join(workDir, apiGenCfg.InternalAppRootDir)
 	layerDirMap := map[codeGen.LayerName]string{
 		codeGen.LayerNameErrorCode: filepath.Join(filepath.Dir(rootDir), "/pkg"),
 	}
 	analysisCfg := &codeGen.ApiCfg{
 		CommonConfig: codeGen.CommonConfig{
 			TplDir:      tplDir,
-			PackageName: cfg.PackageName,
+			PackageName: apiGenCfg.PackageName,
 			RootDir:     rootDir,
 			LayerDirMap: layerDirMap,
 		},
-		TargetFilename: cfg.TargetFilename,
+		TargetFilename: apiGenCfg.TargetFilename,
 	}
 	gen := codeGen.NewGenerator()
 	analysisRes, analysisErr := gen.AnalysisApiTpl(analysisCfg)
 	if analysisErr != nil {
-		panic(fmt.Errorf("analysis api tpl error: %v", analysisErr))
+		return fmt.Errorf("analysis api tpl error: %v", analysisErr)
 	}
-	receiverTypePascalName := gutils.SnakeToPascal(cfg.SubModuleName)
+	receiverTypePascalName := gutils.SnakeToPascal(apiGenCfg.SubModuleName)
 	receiverTypeName := gutils.FirstLetterToLower(receiverTypePascalName)
 	var genParamsList []codeGen.GenParamsItem
 	var isNewRouter, isNewController bool
@@ -41,10 +41,10 @@ func genApi(workDir string) {
 		case codeGen.LayerNameRouter:
 			if v.TargetFileExist {
 				goFilepath := filepath.Join(v.TargetDir, v.TargetFilename)
-				funcName := fmt.Sprintf("%sRouter", gutils.FirstLetterToLower(cfg.SubModuleName))
+				funcName := fmt.Sprintf("%sRouter", gutils.FirstLetterToLower(apiGenCfg.SubModuleName))
 				_, hasFunc, findFuncErr := gast.FindFunction(goFilepath, funcName)
 				if findFuncErr != nil {
-					panic(fmt.Errorf("find function error: %v", findFuncErr))
+					return fmt.Errorf("find function error: %v", findFuncErr)
 				}
 				isNewRouter = !hasFunc
 			} else {
@@ -62,21 +62,21 @@ func genApi(workDir string) {
 			TargetFileName: v.TargetFilename,
 			Template:       v.Template,
 			ExtraParams: ApiExtraParams{
-				ServiceName:            Cfg.CodeGen.ServiceName,
+				ServiceName:            cfg.CodeGen.ServiceName,
 				PackageName:            analysisRes.PackageName,
 				PackagePascalName:      analysisRes.PackagePascalName,
-				ProjectRootDir:         cfg.ProjectRootDir,
+				ProjectRootDir:         apiGenCfg.ProjectRootDir,
 				TargetFileExist:        v.TargetFileExist,
 				IsNewRouter:            isNewRouter,
-				Description:            cfg.Description,
+				Description:            apiGenCfg.Description,
 				ReceiverTypeName:       receiverTypeName,
 				ReceiverTypePascalName: receiverTypePascalName,
-				HttpMethod:             cfg.HttpMethod,
-				FunctionName:           gutils.FirstLetterToUpper(cfg.FunctionName),
-				ApiDocTag:              cfg.ApiDocTag,
-				ApiPrefix:              strings.TrimSuffix(cfg.ApiPrefix, "/"),
-				ApiSuffix:              strings.TrimLeft(cfg.ApiSuffix, "/"),
-				ApiGroup:               cfg.ApiGroup,
+				HttpMethod:             apiGenCfg.HttpMethod,
+				FunctionName:           gutils.FirstLetterToUpper(apiGenCfg.FunctionName),
+				ApiDocTag:              apiGenCfg.ApiDocTag,
+				ApiPrefix:              strings.TrimSuffix(apiGenCfg.ApiPrefix, "/"),
+				ApiSuffix:              strings.TrimLeft(apiGenCfg.ApiSuffix, "/"),
+				ApiGroup:               apiGenCfg.ApiGroup,
 				Template:               v.Template,
 			},
 		})
@@ -86,18 +86,18 @@ func genApi(workDir string) {
 		ParamsList: genParamsList,
 	}
 	if err := gen.Gen(genParams); err != nil {
-		panic(err)
+		return err
 	}
 
 	if !isNewController {
 		// 将方法添加到interface接口中
 		controllerInterfaceName := fmt.Sprintf("%sCtr", receiverTypePascalName)
-		if err := gast.AddMethodToInterface(controllerFilepath, receiverTypeName+"Ctr", cfg.FunctionName, controllerInterfaceName); err != nil {
-			panic(fmt.Errorf("add controller method to interface error: %w", err))
+		if err := gast.AddMethodToInterface(controllerFilepath, receiverTypeName+"Ctr", apiGenCfg.FunctionName, controllerInterfaceName); err != nil {
+			return fmt.Errorf("add controller method to interface error: %w", err)
 		}
 		serviceInterfaceName := fmt.Sprintf("%sSvc", receiverTypePascalName)
-		if err := gast.AddMethodToInterface(serviceFilepath, receiverTypeName+"Svc", cfg.FunctionName, serviceInterfaceName); err != nil {
-			panic(fmt.Errorf("add service method to interface error: %w", err))
+		if err := gast.AddMethodToInterface(serviceFilepath, receiverTypeName+"Svc", apiGenCfg.FunctionName, serviceInterfaceName); err != nil {
+			return fmt.Errorf("add service method to interface error: %w", err)
 		}
 	}
 
@@ -106,15 +106,16 @@ func genApi(workDir string) {
 		routerCallContent := fmt.Sprintf("%sRouter(routerGroup)", receiverTypeName)
 		routerEnterFilepath := filepath.Join(rootDir, "/router/enter.go")
 		if err := gast.AddContentToFunc(routerEnterFilepath, "RegisterRouter", routerCallContent); err != nil {
-			panic(fmt.Errorf("new router appendContentToFunc error: %v", err))
+			return fmt.Errorf("new router appendContentToFunc error: %v", err)
 		}
 	} else {
-		routerCallContent := fmt.Sprintf(`routerGroup.%s("/%s", %sCtr.%s) // %s`, cfg.HttpMethod, cfg.ApiSuffix, receiverTypeName, cfg.FunctionName, cfg.Description)
-		routerEnterFilepath := filepath.Join(rootDir, fmt.Sprintf("/router/%s.go", gutils.TrimFileExtension(cfg.TargetFilename)))
+		routerCallContent := fmt.Sprintf(`routerGroup.%s("/%s", %sCtr.%s) // %s`, apiGenCfg.HttpMethod, apiGenCfg.ApiSuffix, receiverTypeName, apiGenCfg.FunctionName, apiGenCfg.Description)
+		routerEnterFilepath := filepath.Join(rootDir, fmt.Sprintf("/router/%s.go", gutils.TrimFileExtension(apiGenCfg.TargetFilename)))
 		if err := gast.AddContentToFuncWithLineNumber(routerEnterFilepath, fmt.Sprintf("%sRouter", receiverTypeName), routerCallContent, -2); err != nil {
-			panic(fmt.Errorf("appendContentToFunc error: %v", err))
+			return fmt.Errorf("appendContentToFunc error: %v", err)
 		}
 	}
+	return nil
 }
 
 type ApiExtraParams struct {

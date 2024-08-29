@@ -9,32 +9,32 @@ import (
 	"text/template"
 )
 
-func genModel(workDir string) error {
-	cfg := Cfg.CodeGen.Model
+func genModel() error {
+	modelGenCfg := cfg.CodeGen.Model
 
 	// 使用工具函数复制嵌入的模板文件到临时目录
-	tempDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "templates")
+	tempDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "model")
 	if err != nil {
 		return err
 	}
 	// 清理临时目录
 	defer os.RemoveAll(tempDir)
 
-	rootDir := filepath.Join(workDir, cfg.InternalAppRootDir)
+	rootDir := filepath.Join(workDir, modelGenCfg.InternalAppRootDir)
 	layerDirMap := map[codeGen.LayerName]string{
 		codeGen.LayerNameErrorCode: filepath.Join(rootDir, "/pkg"),
 	}
 	analysisCfg := &codeGen.ModuleCfg{
 		CommonConfig: codeGen.CommonConfig{
 			TplDir:      tempDir,
-			PackageName: cfg.PackageName,
+			PackageName: modelGenCfg.PackageName,
 			RootDir:     rootDir,
 			LayerDirMap: layerDirMap,
 			TplFuncMap: template.FuncMap{
 				TplFuncIsSysField: IsSysField,
 			},
 		},
-		TableName: cfg.TableName,
+		TableName: modelGenCfg.TableName,
 	}
 	gen := codeGen.NewGenerator()
 	analysisRes, analysisErr := gen.AnalysisModuleTpl(MysqlClient, analysisCfg)
@@ -62,12 +62,12 @@ func genModel(workDir string) error {
 			TargetFileName: v.TargetFilename,
 			Template:       v.Template,
 			ExtraParams: ModelExtraParams{
-				ServiceName:       Cfg.CodeGen.ServiceName,
+				ServiceName:       cfg.CodeGen.ServiceName,
 				PackageName:       analysisRes.PackageName,
 				PackagePascalName: analysisRes.PackagePascalName,
-				ProjectRootDir:    cfg.ProjectRootDir,
+				ProjectRootDir:    modelGenCfg.ProjectRootDir,
 				TableName:         analysisRes.TableName,
-				Description:       cfg.Description,
+				Description:       modelGenCfg.Description,
 				StructName:        analysisRes.StructName,
 				Template:          v.Template,
 				ModelFields:       modelFields,

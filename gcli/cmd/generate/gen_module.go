@@ -10,24 +10,24 @@ import (
 	"text/template"
 )
 
-func genModule(workDir string) error {
-	cfg := Cfg.CodeGen.Module
-	tplDir := filepath.Join(workDir, cfg.TplDir)
-	rootDir := filepath.Join(workDir, cfg.InternalAppRootDir)
+func genModule() error {
+	moduleGenCfg := cfg.CodeGen.Module
+	tplDir := filepath.Join(workDir, moduleGenCfg.TplDir)
+	rootDir := filepath.Join(workDir, moduleGenCfg.InternalAppRootDir)
 	layerDirMap := map[codeGen.LayerName]string{
 		codeGen.LayerNameErrorCode: filepath.Join(filepath.Dir(rootDir), "/pkg"),
 	}
 	analysisCfg := &codeGen.ModuleCfg{
 		CommonConfig: codeGen.CommonConfig{
 			TplDir:      tplDir,
-			PackageName: cfg.PackageName,
+			PackageName: moduleGenCfg.PackageName,
 			RootDir:     rootDir,
 			LayerDirMap: layerDirMap,
 			TplFuncMap: template.FuncMap{
 				TplFuncIsSysField: IsSysField,
 			},
 		},
-		TableName: cfg.TableName,
+		TableName: moduleGenCfg.TableName,
 	}
 	gen := codeGen.NewGenerator()
 	analysisRes, analysisErr := gen.AnalysisModuleTpl(MysqlClient, analysisCfg)
@@ -55,18 +55,18 @@ func genModule(workDir string) error {
 			TargetFileName: v.TargetFilename,
 			Template:       v.Template,
 			ExtraParams: ModuleExtraParams{
-				ServiceName:            Cfg.CodeGen.ServiceName,
+				ServiceName:            cfg.CodeGen.ServiceName,
 				PackageName:            analysisRes.PackageName,
 				PackagePascalName:      analysisRes.PackagePascalName,
-				ProjectRootDir:         cfg.ProjectRootDir,
+				ProjectRootDir:         moduleGenCfg.ProjectRootDir,
 				TableName:              analysisRes.TableName,
-				Description:            cfg.Description,
+				Description:            moduleGenCfg.Description,
 				StructName:             analysisRes.StructName,
 				ReceiverTypeName:       gutils.FirstLetterToLower(analysisRes.StructName),
 				ReceiverTypePascalName: analysisRes.StructName,
-				ApiDocTag:              cfg.ApiDocTag,
-				ApiGroup:               cfg.ApiGroup,
-				ApiPrefix:              strings.TrimSuffix(cfg.ApiPrefix, "/"),
+				ApiDocTag:              moduleGenCfg.ApiDocTag,
+				ApiGroup:               moduleGenCfg.ApiGroup,
+				ApiPrefix:              strings.TrimSuffix(moduleGenCfg.ApiPrefix, "/"),
 				Template:               v.Template,
 				ModelFields:            modelFields,
 			},

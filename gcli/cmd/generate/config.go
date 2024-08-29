@@ -20,6 +20,7 @@ type CodeGen struct {
 }
 
 type ModuleConfig struct {
+	TplDir             string `yaml:"tpl_dir"`               // 模板目录
 	InternalAppRootDir string `yaml:"internal_app_root_dir"` // 项目内当前项目的根目录，如internal/genCode
 	ProjectRootDir     string `yaml:"project_root_dir"`      // 项目根目录，如go-gin-web
 	Description        string `yaml:"description"`           // 描述
@@ -31,6 +32,7 @@ type ModuleConfig struct {
 }
 
 type ModelConfig struct {
+	TplDir             string `yaml:"tpl_dir"`               // 模板目录
 	InternalAppRootDir string `yaml:"internal_app_root_dir"` // 项目内当前项目的根目录，如internal/genCode
 	ProjectRootDir     string `yaml:"project_root_dir"`      // import目录前缀
 	Description        string `yaml:"description"`           // 描述
@@ -39,6 +41,7 @@ type ModelConfig struct {
 }
 
 type ApiConfig struct {
+	TplDir             string `yaml:"tpl_dir"`               // 模板目录
 	InternalAppRootDir string `yaml:"internal_app_root_dir"` // 项目内当前项目的根目录，如internal/genCode
 	ProjectRootDir     string `yaml:"project_root_dir"`      // import目录前缀
 	Description        string `yaml:"description"`           // 描述
