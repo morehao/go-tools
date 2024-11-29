@@ -3,17 +3,18 @@ package generate
 import (
 	"embed"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/morehao/go-tools/conf"
 	"github.com/morehao/go-tools/dbClient"
 	"github.com/morehao/go-tools/glog"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"os"
-	"path/filepath"
 )
 
-//go:embed template/*
+//go:embed template
 var templatesFS embed.FS
 
 var workDir string

@@ -2,12 +2,13 @@ package generate
 
 import (
 	"fmt"
-	"github.com/morehao/go-tools/codeGen"
-	"github.com/morehao/go-tools/gast"
-	"github.com/morehao/go-tools/gutils"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/morehao/go-tools/codeGen"
+	"github.com/morehao/go-tools/gast"
+	"github.com/morehao/go-tools/gutils"
 )
 
 func genModule() error {
