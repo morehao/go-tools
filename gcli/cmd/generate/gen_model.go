@@ -14,7 +14,7 @@ func genModel() error {
 	modelGenCfg := cfg.CodeGen.Model
 
 	// 使用工具函数复制嵌入的模板文件到临时目录
-	tempDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "model")
+	tempDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "template/model")
 	if err != nil {
 		return err
 	}

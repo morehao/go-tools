@@ -18,6 +18,8 @@ import (
 var templatesFS embed.FS
 
 var workDir string
+var cfg *Config
+var MysqlClient *gorm.DB
 
 // Cmd represents the generate command
 var Cmd = &cobra.Command{
@@ -25,8 +27,30 @@ var Cmd = &cobra.Command{
 	Short: "Generate code based on templates",
 	Long:  `Generate code for different layers like module, model, and API based on predefined templates.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// 初始化配置和 MySQL 客户端
+		if cfg == nil {
+			workDir, _ := os.Getwd()
+			configFilepath := filepath.Join(workDir, "config", "config_generate.yaml")
+			conf.LoadConfig(configFilepath, &cfg)
+		}
+
+		// 初始化日志
+		if err := glog.NewLogger(&cfg.Log, glog.WithZapOptions(zap.AddCallerSkip(3))); err != nil {
+			panic("glog initZapLogger error")
+		}
+
+		// 延迟初始化 Mysql 客户端
+		if MysqlClient == nil {
+			mysqlClient, getMysqlClientErr := dbClient.InitMysql(cfg.Mysql)
+			if getMysqlClientErr != nil {
+				panic("get mysql client error")
+			}
+			MysqlClient = mysqlClient
+		}
+
 		mode, _ := cmd.Flags().GetString("mode")
 		workDir, _ := os.Getwd()
+
 		if workDir == "" {
 			fmt.Println("Please provide a working directory using --workdir flag")
 			return
@@ -58,25 +82,7 @@ var Cmd = &cobra.Command{
 	},
 }
 
-var cfg *Config
-var MysqlClient *gorm.DB
-
 func init() {
 	// 定义 generate 命令的参数
 	Cmd.Flags().StringP("mode", "m", "", "Mode of code generation (module, model, api)")
-
-	// 从配置文件读取配置
-	workDir, _ = os.Getwd()
-	configFilepath := filepath.Join(workDir, "config", "config_generate.yaml")
-	conf.LoadConfig(configFilepath, cfg)
-
-	// 初始化日志组件
-	if err := glog.NewLogger(&cfg.Log, glog.WithZapOptions(zap.AddCallerSkip(3))); err != nil {
-		panic("glog initZapLogger error")
-	}
-	mysqlClient, getMysqlClientErr := dbClient.InitMysql(cfg.Mysql)
-	if getMysqlClientErr != nil {
-		panic("get mysql client error")
-	}
-	MysqlClient = mysqlClient
 }
