@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -13,7 +14,15 @@ import (
 
 func genApi() error {
 	apiGenCfg := cfg.CodeGen.Api
-	tplDir := filepath.Join(workDir, apiGenCfg.TplDir)
+
+	// 使用工具函数复制嵌入的模板文件到临时目录
+	tplDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "template/api")
+	if err != nil {
+		return err
+	}
+	// 清理临时目录
+	defer os.RemoveAll(tplDir)
+
 	rootDir := filepath.Join(workDir, apiGenCfg.InternalAppRootDir)
 	layerDirMap := map[codeGen.LayerName]string{
 		codeGen.LayerNameErrorCode: filepath.Join(filepath.Dir(rootDir), "/pkg"),

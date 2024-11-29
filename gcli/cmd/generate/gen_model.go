@@ -14,12 +14,12 @@ func genModel() error {
 	modelGenCfg := cfg.CodeGen.Model
 
 	// 使用工具函数复制嵌入的模板文件到临时目录
-	tempDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "template/model")
+	tplDir, err := CopyEmbeddedTemplatesToTempDir(templatesFS, "template/model")
 	if err != nil {
 		return err
 	}
 	// 清理临时目录
-	defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tplDir)
 
 	rootDir := filepath.Join(workDir, modelGenCfg.InternalAppRootDir)
 	layerDirMap := map[codeGen.LayerName]string{
@@ -27,7 +27,7 @@ func genModel() error {
 	}
 	analysisCfg := &codeGen.ModuleCfg{
 		CommonConfig: codeGen.CommonConfig{
-			TplDir:      tempDir,
+			TplDir:      tplDir,
 			PackageName: modelGenCfg.PackageName,
 			RootDir:     rootDir,
 			LayerDirMap: layerDirMap,
