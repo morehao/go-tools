@@ -5,6 +5,8 @@ go 1.22
 require (
 	github.com/morehao/go-tools v1.2.3
 	github.com/spf13/cobra v1.8.1
+	go.uber.org/zap v1.27.0
+	gorm.io/gorm v1.25.10
 )
 
 require (
@@ -37,7 +39,6 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
@@ -46,5 +47,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.6 // indirect
-	gorm.io/gorm v1.25.10 // indirect
 )
