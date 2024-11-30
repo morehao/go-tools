@@ -114,7 +114,6 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
 		case LayerNameRouter, LayerNameErrorCode:
 			targetFilename = fmt.Sprintf("%s%s", gutils.CamelToSnakeCase(cfg.PackageName), goFileExtension)
-			fmt.Println(targetFilename)
 		default:
 			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)
 		}
