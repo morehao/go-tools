@@ -2,15 +2,16 @@ package codeGen
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"os"
-	"testing"
 )
 
 func TestGenModuleCode(t *testing.T) {
-	dsn := "root:123456@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True"
+	dsn := "root:ServBay.dev@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True"
 	db, openErr := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	assert.Nil(t, openErr)
 	// 获取当前的运行路径
@@ -29,14 +30,14 @@ func TestGenModuleCode(t *testing.T) {
 	}
 	cfg := &ModuleCfg{
 		CommonConfig: CommonConfig{
-			PackageName: "user",
+			PackageName: "companyAccount",
 			TplDir:      tplDir,
 			RootDir:     rootDir,
 			// LayerDirMap:  layerDirMap,
 			LayerNameMap:   layerNameMap,
 			LayerPrefixMap: LayerPrefixMap,
 		},
-		TableName: "user",
+		TableName: "company_account",
 	}
 	autoCodeTool := NewGenerator()
 	templateParam, getParamErr := autoCodeTool.AnalysisModuleTpl(db, cfg)

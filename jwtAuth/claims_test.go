@@ -1,9 +1,10 @@
 package jwtAuth
 
 import (
-	"github.com/morehao/go-tools/gutils"
 	"testing"
 	"time"
+
+	"github.com/morehao/go-tools/gutils"
 )
 
 func TestNewClaims(t *testing.T) {

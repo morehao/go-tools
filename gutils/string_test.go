@@ -9,6 +9,10 @@ func TestSnakeToPascal(t *testing.T) {
 	fmt.Println(SnakeToPascal("workflow"))
 }
 
+func TestCamelToSnakeCase(t *testing.T) {
+	fmt.Println(CamelToSnakeCase("companyAccount"))
+}
+
 func TestFirstLetterToLower(t *testing.T) {
 	fmt.Println(FirstLetterToLower("Workflow"))
 }

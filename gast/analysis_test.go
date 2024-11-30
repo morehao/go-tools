@@ -2,12 +2,13 @@ package gast
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"go/parser"
 	"go/printer"
 	"go/token"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseFile(t *testing.T) {

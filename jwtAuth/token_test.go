@@ -1,11 +1,12 @@
 package jwtAuth
 
 import (
+	"testing"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/morehao/go-tools/gutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestCreateToken(t *testing.T) {

@@ -3,9 +3,10 @@ package jwtAuth
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"reflect"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func CreateToken(signKey string, claims *Claims) (string, error) {

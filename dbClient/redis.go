@@ -3,12 +3,13 @@ package dbClient
 import (
 	"context"
 	"fmt"
-	"github.com/morehao/go-tools/glog"
-	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/morehao/go-tools/glog"
+	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 type RedisConfig struct {

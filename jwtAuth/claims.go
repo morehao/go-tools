@@ -1,8 +1,9 @@
 package jwtAuth
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Claims 包含注册的 claims 和自定义的 claims

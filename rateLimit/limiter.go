@@ -3,8 +3,9 @@ package rateLimit
 import (
 	"context"
 	"errors"
-	"github.com/go-redis/redis_rate/v10"
 	"time"
+
+	"github.com/go-redis/redis_rate/v10"
 )
 
 type Limiter interface {

@@ -2,11 +2,12 @@ package codeGen
 
 import (
 	"fmt"
-	"github.com/morehao/go-tools/gast"
-	"github.com/morehao/go-tools/gutils"
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/morehao/go-tools/gast"
+	"github.com/morehao/go-tools/gutils"
 )
 
 const (
@@ -112,7 +113,8 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		case LayerNameRequest, LayerNameResponse:
 			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
 		case LayerNameRouter, LayerNameErrorCode:
-			targetFilename = fmt.Sprintf("%s%s", cfg.PackageName, goFileExtension)
+			targetFilename = fmt.Sprintf("%s%s", gutils.CamelToSnakeCase(cfg.PackageName), goFileExtension)
+			fmt.Println(targetFilename)
 		default:
 			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)
 		}

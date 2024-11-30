@@ -3,6 +3,7 @@ package gutils
 import (
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // SnakeToPascal 蛇形转大驼峰
@@ -35,6 +36,26 @@ func SnakeToLowerCamel(s string) string {
 	}
 
 	return strings.Join(parts, "")
+}
+
+// CamelToSnakeCase 将驼峰命名转换为蛇形
+func CamelToSnakeCase(input string) string {
+	var result []rune
+	for i, r := range input {
+		// 如果是大写字母，且不是第一个字符，插入下划线
+		if unicode.IsUpper(r) {
+			// 判断是否为第一个字符
+			if i > 0 {
+				result = append(result, '_')
+			}
+			// 转换为小写字母
+			result = append(result, unicode.ToLower(r))
+		} else {
+			// 否则直接追加字符
+			result = append(result, r)
+		}
+	}
+	return string(result)
 }
 
 // FirstLetterToUpper 首字母大写

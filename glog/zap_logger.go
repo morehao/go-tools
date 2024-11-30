@@ -3,7 +3,6 @@ package glog
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap/buffer"
 	"io"
 	"os"
 	"path"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
 )
 
