@@ -1,17 +1,18 @@
 package svc{{.PackagePascalName}}
 
 import (
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/dto/dto{{.PackagePascalName}}"
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/model/dao{{.PackagePascalName}}"
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/object/objCommon"
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/object/obj{{.PackagePascalName}}"
+	"{{.ProjectRootDir}}/internal/app/dto/dto{{.PackagePascalName}}"
+	"{{.ProjectRootDir}}/internal/app/model/dao{{.PackagePascalName}}"
+	"{{.ProjectRootDir}}/internal/app/object/objCommon"
+	"{{.ProjectRootDir}}/internal/app/object/obj{{.PackagePascalName}}"
 	"{{.ProjectRootDir}}/internal/pkg/context"
 	"{{.ProjectRootDir}}/internal/pkg/errorCode"
+
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/morehao/go-tools/glog"
 	"github.com/morehao/go-tools/gutils"
-	"time"
 )
 
 type {{.ReceiverTypePascalName}}Svc interface {

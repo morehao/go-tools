@@ -1,8 +1,8 @@
 package dto{{.PackagePascalName}}
 
 import (
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/object/objCommon"
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/object/obj{{.PackagePascalName}}"
+	"{{.ProjectRootDir}}/internal/app/object/objCommon"
+	"{{.ProjectRootDir}}/internal/app/object/obj{{.PackagePascalName}}"
 )
 
 type {{.StructName}}CreateResp struct {

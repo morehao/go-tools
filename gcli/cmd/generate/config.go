@@ -12,11 +12,10 @@ type Config struct {
 }
 
 type CodeGen struct {
-	Mode        string       `yaml:"mode"`         // 生成模式，支持：module、model、api
-	ServiceName string       `yaml:"service_name"` // 服务名
-	Module      ModuleConfig `yaml:"module"`       // 模块生成配置
-	Model       ModelConfig  `yaml:"model"`        // 模型生成配置
-	Api         ApiConfig    `yaml:"api"`          // 控制器生成配置
+	Mode   string       `yaml:"mode"`   // 生成模式，支持：module、model、api
+	Module ModuleConfig `yaml:"module"` // 模块生成配置
+	Model  ModelConfig  `yaml:"model"`  // 模型生成配置
+	Api    ApiConfig    `yaml:"api"`    // 控制器生成配置
 }
 
 type ModuleConfig struct {

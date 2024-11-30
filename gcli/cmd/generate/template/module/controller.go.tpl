@@ -1,8 +1,8 @@
 package ctr{{.PackagePascalName}}
 
 import (
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/dto/dto{{.PackagePascalName}}"
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/service/svc{{.PackagePascalName}}"
+	"{{.ProjectRootDir}}/internal/app/dto/dto{{.PackagePascalName}}"
+	"{{.ProjectRootDir}}/internal/app/service/svc{{.PackagePascalName}}"
 
 	"github.com/gin-gonic/gin"
 	"github.com/morehao/go-tools/gcontext/ginRender"

@@ -2,9 +2,10 @@ package dao{{.PackagePascalName}}
 
 import (
 	"fmt"
-	"{{.ProjectRootDir}}/internal/pkg/errorCode"
-	"{{.ProjectRootDir}}/internal/{{.ServiceName}}/model"
 	"time"
+
+	"{{.ProjectRootDir}}/internal/app/model"
+	"{{.ProjectRootDir}}/internal/pkg/errorCode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/morehao/go-tools/gutils"

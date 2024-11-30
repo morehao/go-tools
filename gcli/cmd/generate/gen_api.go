@@ -72,7 +72,6 @@ func genApi() error {
 			TargetFileName: v.TargetFilename,
 			Template:       v.Template,
 			ExtraParams: ApiExtraParams{
-				ServiceName:            cfg.CodeGen.ServiceName,
 				PackageName:            analysisRes.PackageName,
 				PackagePascalName:      analysisRes.PackagePascalName,
 				ProjectRootDir:         apiGenCfg.ProjectRootDir,

@@ -65,7 +65,6 @@ func genModule() error {
 			TargetFileName: v.TargetFilename,
 			Template:       v.Template,
 			ExtraParams: ModuleExtraParams{
-				ServiceName:            cfg.CodeGen.ServiceName,
 				PackageName:            analysisRes.PackageName,
 				PackagePascalName:      analysisRes.PackagePascalName,
 				ProjectRootDir:         moduleGenCfg.ProjectRootDir,

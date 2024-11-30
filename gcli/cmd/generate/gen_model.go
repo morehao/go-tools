@@ -63,7 +63,6 @@ func genModel() error {
 			TargetFileName: v.TargetFilename,
 			Template:       v.Template,
 			ExtraParams: ModelExtraParams{
-				ServiceName:       cfg.CodeGen.ServiceName,
 				PackageName:       analysisRes.PackageName,
 				PackagePascalName: analysisRes.PackagePascalName,
 				ProjectRootDir:    modelGenCfg.ProjectRootDir,
