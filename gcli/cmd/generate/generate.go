@@ -30,7 +30,7 @@ var Cmd = &cobra.Command{
 		// 初始化配置和 MySQL 客户端
 		if cfg == nil {
 			workDir, _ := os.Getwd()
-			configFilepath := filepath.Join(workDir, "config", "config_generate.yaml")
+			configFilepath := filepath.Join(workDir, "config", "config.yaml")
 			conf.LoadConfig(configFilepath, &cfg)
 		}
 

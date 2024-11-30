@@ -2,11 +2,12 @@ package codeGen
 
 import (
 	"fmt"
-	"github.com/morehao/go-tools/gast"
-	"github.com/morehao/go-tools/gutils"
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/morehao/go-tools/gast"
+	"github.com/morehao/go-tools/gutils"
 )
 
 const (

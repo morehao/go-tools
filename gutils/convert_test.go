@@ -2,8 +2,9 @@ package gutils
 
 import (
 	"container/list"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLinkedListToArray(t *testing.T) {

@@ -2,9 +2,10 @@ package codeGen
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/morehao/go-tools/gutils"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type Generator interface {

@@ -20,7 +20,6 @@ type CodeGen struct {
 }
 
 type ModuleConfig struct {
-	TplDir             string `yaml:"tpl_dir"`               // 模板目录
 	InternalAppRootDir string `yaml:"internal_app_root_dir"` // 项目内当前项目的根目录，如internal/genCode
 	ProjectRootDir     string `yaml:"project_root_dir"`      // 项目根目录，如go-gin-web
 	Description        string `yaml:"description"`           // 描述
@@ -32,7 +31,6 @@ type ModuleConfig struct {
 }
 
 type ModelConfig struct {
-	TplDir             string `yaml:"tpl_dir"`               // 模板目录
 	InternalAppRootDir string `yaml:"internal_app_root_dir"` // 项目内当前项目的根目录，如internal/genCode
 	ProjectRootDir     string `yaml:"project_root_dir"`      // import目录前缀
 	Description        string `yaml:"description"`           // 描述
@@ -41,7 +39,6 @@ type ModelConfig struct {
 }
 
 type ApiConfig struct {
-	TplDir             string `yaml:"tpl_dir"`               // 模板目录
 	InternalAppRootDir string `yaml:"internal_app_root_dir"` // 项目内当前项目的根目录，如internal/genCode
 	ProjectRootDir     string `yaml:"project_root_dir"`      // import目录前缀
 	Description        string `yaml:"description"`           // 描述
@@ -55,12 +52,3 @@ type ApiConfig struct {
 	ApiPrefix          string `yaml:"api_prefix"`            // api前缀
 	ApiSuffix          string `yaml:"api_suffix"`            // api后缀
 }
-
-const (
-	ModeModule = "module"
-	ModeModel  = "model"
-	ModeApi    = "api"
-
-	HttpMethodGET  = "GET"
-	HttpMethodPOST = "POST"
-)

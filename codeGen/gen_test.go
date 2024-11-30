@@ -2,11 +2,12 @@ package codeGen
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"os"
-	"testing"
 )
 
 func TestGenModuleCode(t *testing.T) {

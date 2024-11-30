@@ -2,6 +2,7 @@ package gerror
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 

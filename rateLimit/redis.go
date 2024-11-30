@@ -3,11 +3,12 @@ package rateLimit
 import (
 	"context"
 	"errors"
-	"github.com/go-redis/redis_rate/v10"
-	"github.com/redis/go-redis/v9"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/go-redis/redis_rate/v10"
+	"github.com/redis/go-redis/v9"
 )
 
 const pingInterval = time.Millisecond * 100

@@ -1,8 +1,9 @@
 package gast
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddMethodToInterfaceInFile(t *testing.T) {

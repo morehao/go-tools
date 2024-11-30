@@ -2,11 +2,12 @@ package dbClient
 
 import (
 	"context"
+	"testing"
+
 	"github.com/morehao/go-tools/glog"
 	"github.com/morehao/go-tools/gutils"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
-	"testing"
 )
 
 func TestInitMysql(t *testing.T) {
