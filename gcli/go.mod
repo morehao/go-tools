@@ -1,6 +1,6 @@
-module gcli
+module github.com/morehao/go-tools/gcli
 
-go 1.22.5
+go 1.22
 
 require (
 	github.com/morehao/go-tools v1.2.3
