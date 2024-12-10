@@ -17,3 +17,7 @@ func TestLinkedListToArray(t *testing.T) {
 	assert.Nil(t, err)
 	t.Log(ToJsonString(arr))
 }
+
+func TestToString(t *testing.T) {
+	t.Log(ToString(123))
+}

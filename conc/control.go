@@ -15,6 +15,7 @@ type Control struct {
 	errors    []error    // 存储任务执行过程中的错误
 	closed    bool       // 标志控制器是否已关闭
 	mu        sync.Mutex // 用于保护 closed 状态和errors
+	once      sync.Once  // 确保 Close 只执行一次
 }
 
 // NewControl 创建一个新的并发控制器，workerNum 指定并发执行的工作数
@@ -30,7 +31,7 @@ func NewControl(workerNum int) *Control {
 }
 
 // Run 执行传入的方法，控制并发执行的数量
-func (ctrl *Control) Run(task func(context.Context) error) {
+func (ctrl *Control) Run(task func() error) {
 	ctrl.mu.Lock()
 	if ctrl.closed {
 		ctrl.mu.Unlock()
@@ -60,7 +61,7 @@ func (ctrl *Control) Run(task func(context.Context) error) {
 		}
 
 		// 执行任务并处理错误
-		if err := task(ctrl.ctx); err != nil {
+		if err := task(); err != nil {
 			ctrl.mu.Lock()
 			ctrl.errors = append(ctrl.errors, err)
 			ctrl.mu.Unlock()
@@ -68,27 +69,26 @@ func (ctrl *Control) Run(task func(context.Context) error) {
 	}()
 }
 
-// Wait 等待所有任务完成
-func (ctrl *Control) Wait() {
+// Wait 等待所有任务完成并返回错误列表
+func (ctrl *Control) Wait() []error {
 	ctrl.wg.Wait()
-}
 
-// Close 关闭控制器，取消所有任务并关闭错误 channel
-func (ctrl *Control) Close() {
-	ctrl.mu.Lock()
-	ctrl.closed = true
-	ctrl.mu.Unlock()
-
-	ctrl.cancel() // 取消所有剩余的任务
-	ctrl.Wait()   // 等待所有任务完成
-}
-
-// Errors 返回执行过程中发生的所有错误及其数量
-func (ctrl *Control) Errors() []error {
 	ctrl.mu.Lock()
 	defer ctrl.mu.Unlock()
+
 	// 返回错误切片的副本
 	errorsCopy := make([]error, len(ctrl.errors))
 	copy(errorsCopy, ctrl.errors)
 	return errorsCopy
+}
+
+// Close 关闭控制器，取消所有任务并关闭错误 channel
+func (ctrl *Control) Close() {
+	ctrl.once.Do(func() {
+		ctrl.mu.Lock()
+		defer ctrl.mu.Unlock()
+		ctrl.closed = true
+		ctrl.cancel() // 取消所有剩余的任务
+		ctrl.Wait()   // 等待所有任务完成
+	})
 }

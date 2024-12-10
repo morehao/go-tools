@@ -27,7 +27,7 @@ func TestControl_Run(t *testing.T) {
 	}
 	for _, ids := range groupIds {
 		tempIds := ids
-		ctrl.Run(func(ctx context.Context) error {
+		ctrl.Run(func() error {
 			time.Sleep(time.Second * 3)
 			fmt.Println("ids:", tempIds)
 			return nil
@@ -36,7 +36,7 @@ func TestControl_Run(t *testing.T) {
 	ctrl.Wait()
 
 	// 获取并打印所有错误
-	errors := ctrl.Errors()
+	errors := ctrl.Wait()
 	for _, err := range errors {
 		fmt.Println("Error:", err)
 	}
