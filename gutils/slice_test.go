@@ -8,3 +8,8 @@ func TestSliceDiff(t *testing.T) {
 	diff := SliceDiff(s1, s2)
 	t.Log(ToJsonString(diff))
 }
+
+func TestSliceContain(t *testing.T) {
+	s := []string{"a", "b"}
+	t.Log(SliceContain(s, "a"))
+}

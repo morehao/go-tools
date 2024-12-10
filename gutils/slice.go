@@ -32,3 +32,12 @@ func SliceDuplicate[T comparable](s []T) []T {
 	}
 	return result
 }
+
+func SliceContain[T comparable](slice []T, element T) bool {
+	for _, item := range slice {
+		if item == element {
+			return true
+		}
+	}
+	return false
+}
