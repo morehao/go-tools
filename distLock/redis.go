@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/go-redsync/redsync/v4"
-	"github.com/go-redsync/redsync/v4/redis"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	goredislib "github.com/redis/go-redis/v9"
 )
@@ -19,12 +18,8 @@ type RedisStorage struct {
 }
 
 // NewRedisStorage 创建一个新的 RedisStorage 实例
-func NewRedisStorage(clients []*goredislib.Client, config Config) *RedisStorage {
-	var pools []redis.Pool
-	for i := range clients {
-		pools = append(pools, goredis.NewPool(clients[i]))
-	}
-	rs := redsync.New(pools...)
+func NewRedisStorage(client goredislib.UniversalClient, config Config) *RedisStorage {
+	rs := redsync.New(goredis.NewPool(client))
 	mutex := rs.NewMutex(config.Key, redsync.WithExpiry(config.TTL))
 	return &RedisStorage{
 		config: config,

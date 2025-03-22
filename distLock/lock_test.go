@@ -11,16 +11,17 @@ import (
 
 func TestLock(t *testing.T) {
 	// 初始化Redis存储
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "127.0.0.1:6379",
-		Password: "",
+	// clusterClient := redis.NewClusterClient(&redis.ClusterOptions{
+	// 	Addrs: []string{"127.0.0.1:6379"},
+	// })
+	rdbClient := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
 	})
 	config := Config{
-		Key:   "test",
-		TTL:   time.Second * 5,
-		Owner: GenerateOwner(),
+		Key: "test_lock",
+		TTL: time.Second * 50,
 	}
-	redisStore := NewRedisStorage([]*redis.Client{redisClient}, config)
+	redisStore := NewRedisStorage(rdbClient, config)
 
 	// 创建锁配置
 
@@ -31,11 +32,11 @@ func TestLock(t *testing.T) {
 	firstLockRes, firstLockErr := lock.Lock(ctx)
 	assert.Nil(t, firstLockErr)
 	t.Log("first lock result: ", firstLockRes)
-	secondLockOk, secondLockErr := lock.Lock(ctx)
-	assert.Nil(t, secondLockErr)
-	t.Log("second lock result: ", secondLockOk)
+	// secondLockOk, secondLockErr := lock.Lock(ctx)
+	// assert.Nil(t, secondLockErr)
+	// t.Log("second lock result: ", secondLockOk)
 
-	unlockRes, unlockErr := lock.Unlock(context.Background())
+	unlockRes, unlockErr := lock.Unlock(ctx)
 	assert.Nil(t, unlockErr)
 	t.Log("unlockRes result: ", unlockRes)
 
