@@ -18,8 +18,9 @@ func TestLock(t *testing.T) {
 		Addr: "127.0.0.1:6379",
 	})
 	config := Config{
-		Key: "test_lock",
-		TTL: time.Second * 50,
+		Key:         "test_lock",
+		TTL:         time.Second * 5,
+		AutoRenewal: true,
 	}
 	redisStore := NewRedisStorage(rdbClient, config)
 
@@ -35,6 +36,7 @@ func TestLock(t *testing.T) {
 	// secondLockOk, secondLockErr := lock.Lock(ctx)
 	// assert.Nil(t, secondLockErr)
 	// t.Log("second lock result: ", secondLockOk)
+	time.Sleep(time.Second * 10)
 
 	unlockRes, unlockErr := lock.Unlock(ctx)
 	assert.Nil(t, unlockErr)
