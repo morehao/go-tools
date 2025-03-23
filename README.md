@@ -14,6 +14,7 @@
 - `gutils` 一些常用的工具函数
 - `jwtAuth` jwt鉴权组件
 - `rateLimit` 限流组件
+- `distLock` 分布式锁组件（不支持可重入）
 
 # 安装
 ```bash
