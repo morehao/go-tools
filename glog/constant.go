@@ -65,10 +65,12 @@ const (
 	KeyCmdContent       = "cmdContent"
 	KeyRalCode          = "ralCode"
 	KeyFile             = "file"
+	KeyDsl              = "dsl"
 
 	ValueProtoHttp  = "http"
 	ValueProtoMysql = "mysql"
 	ValueProtoRedis = "redis"
+	ValueProtoES    = "es"
 )
 
 type Level string
