@@ -66,6 +66,8 @@ const (
 	KeyRalCode          = "ralCode"
 	KeyFile             = "file"
 	KeyDsl              = "dsl"
+	KeyDslMethod        = "dslMethod"
+	KeyDslPath          = "dslPath"
 
 	ValueProtoHttp  = "http"
 	ValueProtoMysql = "mysql"

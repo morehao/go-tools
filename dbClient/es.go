@@ -18,21 +18,26 @@ type ESConfig struct {
 	Password string `yaml:"password"` // 密码
 }
 
-func InitES(cfg ESConfig) (*elasticsearch.TypedClient, error) {
+func InitES(cfg ESConfig) (*elasticsearch.Client, *elasticsearch.TypedClient, error) {
 	customLogger, getLoggerErr := newEsLogger(&cfg)
 	if getLoggerErr != nil {
-		return nil, getLoggerErr
+		return nil, nil, getLoggerErr
 	}
-	client, err := elasticsearch.NewTypedClient(elasticsearch.Config{
+	commonCfg := elasticsearch.Config{
 		Addresses: []string{cfg.Addr},
 		Username:  cfg.User,
 		Password:  cfg.Password,
 		Logger:    customLogger,
-	})
-	if err != nil {
-		return nil, err
 	}
-	return client, nil
+	simpleClient, newSimpleClientErr := elasticsearch.NewClient(commonCfg)
+	if newSimpleClientErr != nil {
+		return nil, nil, newSimpleClientErr
+	}
+	typedClient, newTypedClientErr := elasticsearch.NewTypedClient(commonCfg)
+	if newTypedClientErr != nil {
+		return nil, nil, newTypedClientErr
+	}
+	return simpleClient, typedClient, nil
 }
 
 func newEsLogger(cfg *ESConfig) (*esLog, error) {
@@ -41,12 +46,14 @@ func newEsLogger(cfg *ESConfig) (*esLog, error) {
 		return nil, err
 	}
 	return &esLog{
-		logger: l,
+		logger:  l,
+		service: cfg.Service,
 	}, nil
 }
 
 type esLog struct {
-	logger glog.Logger
+	logger  glog.Logger
+	service string
 }
 
 func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, start time.Time, dur time.Duration) error {
@@ -78,13 +85,15 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 
 	var fields []any
 	fields = append(fields,
+		glog.KeyService, l.service,
+		glog.KeyProto, glog.ValueProtoES,
 		glog.KeyRequestStartTime, glog.FormatRequestTime(start),
 		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 		glog.KeyCost, cost,
-		glog.KeyRalCode, realCode, // 添加状态码
-		glog.KeyAffectedRows, affectedRows, // 添加生效行数
-		"dslMethod", method, // 添加请求方法
-		"dslPath", path, // 添加请求路径
+		glog.KeyRalCode, realCode,
+		glog.KeyAffectedRows, affectedRows,
+		glog.KeyDslMethod, method,
+		glog.KeyDslPath, path,
 	)
 	msg := "es execute success"
 	if err != nil {
