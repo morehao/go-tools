@@ -9,11 +9,6 @@ type BoolQuery struct {
 	ShouldClauses  []Query
 	MustNotClauses []Query
 	FilterClauses  []Query
-	SortFields     []Query
-	FromVal        *int
-	SizeVal        *int
-	AggsMap        Query
-	Options        []func(Query) // 用于存储扩展选项
 }
 
 func NewBool() *BoolQuery {
@@ -40,40 +35,6 @@ func (b *BoolQuery) Filter(q ...Query) *BoolQuery {
 	return b
 }
 
-func (b *BoolQuery) Sort(field string, asc bool) *BoolQuery {
-	order := "asc"
-	if !asc {
-		order = "desc"
-	}
-	b.SortFields = append(b.SortFields, Query{field: Query{"order": order}})
-	return b
-}
-
-func (b *BoolQuery) From(from int) *BoolQuery {
-	b.FromVal = &from
-	return b
-}
-
-func (b *BoolQuery) Size(size int) *BoolQuery {
-	b.SizeVal = &size
-	return b
-}
-
-func (b *BoolQuery) Aggs(name string, q Query) *BoolQuery {
-	if b.AggsMap == nil {
-		b.AggsMap = Query{}
-	}
-	b.AggsMap[name] = q
-	return b
-}
-
-// With 用于添加自定义扩展，用户可以通过传入函数进行扩展
-func (b *BoolQuery) With(option func(Query)) *BoolQuery {
-	b.Options = append(b.Options, option)
-	return b
-}
-
-// 构建 bool 查询部分
 func (b *BoolQuery) BuildQuery() Query {
 	boolQuery := Query{}
 	if len(b.MustClauses) > 0 {
@@ -91,40 +52,78 @@ func (b *BoolQuery) BuildQuery() Query {
 	return Query{"bool": boolQuery}
 }
 
-// 构建完整的 DSL 请求体
-func (b *BoolQuery) BuildDSL() Query {
-	// 首先构建 query 部分
-	query := b.BuildQuery()
+type SearchBody struct {
+	Query   Query
+	Sort    []Query
+	From    *int
+	Size    *int
+	Aggs    Query
+	Options []func(Query)
+}
 
-	// 构建完整的查询体
+func NewSearchBody() *SearchBody {
+	return &SearchBody{}
+}
+
+func (b *SearchBody) WithQuery(q Query) *SearchBody {
+	b.Query = q
+	return b
+}
+
+func (b *SearchBody) SortBy(field string, asc bool) *SearchBody {
+	order := "asc"
+	if !asc {
+		order = "desc"
+	}
+	b.Sort = append(b.Sort, Query{field: Query{"order": order}})
+	return b
+}
+
+func (b *SearchBody) FromVal(from int) *SearchBody {
+	b.From = &from
+	return b
+}
+
+func (b *SearchBody) SizeVal(size int) *SearchBody {
+	b.Size = &size
+	return b
+}
+
+func (b *SearchBody) AggsMap(name string, agg Query) *SearchBody {
+	if b.Aggs == nil {
+		b.Aggs = Query{}
+	}
+	b.Aggs[name] = agg
+	return b
+}
+
+func (b *SearchBody) With(opt func(Query)) *SearchBody {
+	b.Options = append(b.Options, opt)
+	return b
+}
+
+func (b *SearchBody) Build() Query {
 	result := Query{
-		"query": query, // 包含 query 部分
+		"query": b.Query,
 	}
-
-	// 将排序、分页等移至查询体的根部
-	if len(b.SortFields) > 0 {
-		result["sort"] = b.SortFields
+	if len(b.Sort) > 0 {
+		result["sort"] = b.Sort
 	}
-	if b.FromVal != nil {
-		result["from"] = *b.FromVal
+	if b.From != nil {
+		result["from"] = *b.From
 	}
-	if b.SizeVal != nil {
-		result["size"] = *b.SizeVal
+	if b.Size != nil {
+		result["size"] = *b.Size
 	}
-	if len(b.AggsMap) > 0 {
-		result["aggs"] = b.AggsMap
+	if len(b.Aggs) > 0 {
+		result["aggs"] = b.Aggs
 	}
-
-	// 执行扩展选项
 	for _, opt := range b.Options {
 		opt(result)
 	}
-
-	// 返回完整的 DSL 查询
 	return result
 }
 
-// 序列化为字符串
 func (q Query) String() (string, error) {
 	return jsoniter.MarshalToString(q)
 }
@@ -168,7 +167,6 @@ func Terms(field string, values []any) Query {
 	return Query{"terms": Query{field: values}}
 }
 
-// 聚合构造器
 func AggTerms(field string, size int) Query {
 	return Query{
 		"terms": Query{
