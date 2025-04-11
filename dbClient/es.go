@@ -100,9 +100,10 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		defer func() {
 			res.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}()
+		defer res.Body.Close()
 		if readErr != nil {
 			l.logger.Errorw(ctx, "read es response body error", glog.KeyErrorMsg, readErr)
-			return readErr
+			return err
 		}
 
 		var resBody map[string]any
