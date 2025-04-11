@@ -6,31 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBuildQuery(t *testing.T) {
+func TestComplexNestedQuery(t *testing.T) {
+	// 构建主 bool 查询
 	boolQuery := NewBool().
-		Filter(Term("state", "IL")).
+		Filter(Term("state.keyword", "IL")). // 确保使用 keyword 字段
 		Must(
-			Range("age", map[string]any{"gt": 30}),
-			Range("balance", map[string]any{"gte": 20000, "lte": 50000}),
+			Range("age", Query{"gt": 30}),
+			Range("balance", Query{"gte": 20000, "lte": 50000}),
 		).
 		Should(
 			Wildcard("lastname", "*son*"),
 			NewBool().Must(
 				Term("employer", "Scentric"),
 				Match("email", "ratliff"),
-			).BuildQuery(),
+			).BuildQuery(), // 嵌套 Bool 子查询
 		)
 
-	dsl := NewSearchBody().
-		WithQuery(boolQuery.BuildQuery()).
+	// 构建 SearchBody
+	body := NewSearchBody(boolQuery.BuildQuery()).
 		SortBy("balance", false).
-		FromVal(0).
-		SizeVal(10).
-		AggsMap("average_balance", AggAvg("balance")).
-		Build()
+		SetFrom(0).
+		SetSize(10).
+		SetAgg("average_balance", AggAvg("balance")).
+		SetAgg("group_by_state", AggTerms("state.keyword", 5))
 
-	queryStr, err := dsl.String()
-	assert.Nil(t, err)
-
-	t.Log(queryStr)
+	// 转成 JSON 字符串
+	queryStr, err := body.ToBuffer()
+	assert.NoError(t, err)
+	t.Log(string(queryStr.Bytes()))
 }

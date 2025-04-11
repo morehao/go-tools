@@ -1,6 +1,10 @@
 package esquery
 
-import jsoniter "github.com/json-iterator/go"
+import (
+	"bytes"
+
+	jsoniter "github.com/json-iterator/go"
+)
 
 type Query map[string]any
 
@@ -53,21 +57,17 @@ func (b *BoolQuery) BuildQuery() Query {
 }
 
 type SearchBody struct {
-	Query   Query
-	Sort    []Query
-	From    *int
-	Size    *int
-	Aggs    Query
-	Options []func(Query)
+	Query Query
+	Sort  []Query
+	From  *int
+	Size  *int
+	Aggs  Query
 }
 
-func NewSearchBody() *SearchBody {
-	return &SearchBody{}
-}
-
-func (b *SearchBody) WithQuery(q Query) *SearchBody {
-	b.Query = q
-	return b
+func NewSearchBody(q Query) *SearchBody {
+	return &SearchBody{
+		Query: q,
+	}
 }
 
 func (b *SearchBody) SortBy(field string, asc bool) *SearchBody {
@@ -79,17 +79,17 @@ func (b *SearchBody) SortBy(field string, asc bool) *SearchBody {
 	return b
 }
 
-func (b *SearchBody) FromVal(from int) *SearchBody {
+func (b *SearchBody) SetFrom(from int) *SearchBody {
 	b.From = &from
 	return b
 }
 
-func (b *SearchBody) SizeVal(size int) *SearchBody {
+func (b *SearchBody) SetSize(size int) *SearchBody {
 	b.Size = &size
 	return b
 }
 
-func (b *SearchBody) AggsMap(name string, agg Query) *SearchBody {
+func (b *SearchBody) SetAgg(name string, agg Query) *SearchBody {
 	if b.Aggs == nil {
 		b.Aggs = Query{}
 	}
@@ -97,31 +97,27 @@ func (b *SearchBody) AggsMap(name string, agg Query) *SearchBody {
 	return b
 }
 
-func (b *SearchBody) With(opt func(Query)) *SearchBody {
-	b.Options = append(b.Options, opt)
-	return b
-}
-
-func (b *SearchBody) Build() Query {
-	result := Query{
+func (b *SearchBody) ToBuffer() (bytes.Buffer, error) {
+	body := Query{
 		"query": b.Query,
 	}
 	if len(b.Sort) > 0 {
-		result["sort"] = b.Sort
+		body["sort"] = b.Sort
 	}
 	if b.From != nil {
-		result["from"] = *b.From
+		body["from"] = *b.From
 	}
 	if b.Size != nil {
-		result["size"] = *b.Size
+		body["size"] = *b.Size
 	}
 	if len(b.Aggs) > 0 {
-		result["aggs"] = b.Aggs
+		body["aggs"] = b.Aggs
 	}
-	for _, opt := range b.Options {
-		opt(result)
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(body); err != nil {
+		return buf, err
 	}
-	return result
+	return buf, nil
 }
 
 func (q Query) String() (string, error) {
