@@ -2,6 +2,7 @@ package dbClient
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
@@ -31,17 +32,12 @@ func TestInitTypedES(t *testing.T) {
 	assert.Nil(t, initErr)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "requestId", "12312312312312")
-	query := &types.Query{
-		Match: map[string]types.MatchQuery{
-			"firstname": {
-				Query: "Amber",
-			},
-		},
-	}
 
 	res, searchErr := typedClient.Search().
 		Index("accounts").
-		Query(query).Do(ctx)
+		Query(&types.Query{
+			MatchAll: types.NewMatchAllQuery(),
+		}).Do(ctx)
 	assert.Nil(t, searchErr)
 	t.Log(gutils.ToJsonString(res))
 }
@@ -66,7 +62,11 @@ func TestInitSimpleES(t *testing.T) {
 	assert.Nil(t, initErr)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "requestId", "12312312312312")
-	res, searchErr := simpleClient.Get("accounts", "1")
+	res, searchErr := simpleClient.Search(
+		simpleClient.Search.WithContext(ctx),
+		simpleClient.Search.WithIndex("accounts"),
+		simpleClient.Search.WithBody(strings.NewReader(`{"query":{"match_all":{}}}`)),
+	)
 	assert.Nil(t, searchErr)
 	t.Log(gutils.ToJsonString(res))
 }

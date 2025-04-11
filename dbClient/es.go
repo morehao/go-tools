@@ -2,13 +2,13 @@ package dbClient
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/morehao/go-tools/glog"
-	"go.uber.org/zap"
 )
 
 type ESConfig struct {
@@ -41,7 +41,7 @@ func InitES(cfg ESConfig) (*elasticsearch.Client, *elasticsearch.TypedClient, er
 }
 
 func newEsLogger(cfg *ESConfig) (*esLog, error) {
-	l, err := glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(2)))
+	l, err := glog.GetLogger()
 	if err != nil {
 		return nil, err
 	}
@@ -61,23 +61,6 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 	cost := dur.Nanoseconds() / 1e4 / 100.0
 	end := start.Add(dur)
 
-	// 假设通过解析响应体获取生效行数 (以 Elasticsearch 为例)
-	var affectedRows int
-	if res.Body != nil {
-		var resBody map[string]interface{}
-		decoder := jsoniter.NewDecoder(res.Body)
-		if err := decoder.Decode(&resBody); err == nil {
-			// 假设查询结果中有 hits.total.value 字段
-			if hits, ok := resBody["hits"].(map[string]interface{}); ok {
-				if total, ok := hits["total"].(map[string]interface{}); ok {
-					if value, ok := total["value"].(float64); ok {
-						affectedRows = int(value)
-					}
-				}
-			}
-		}
-	}
-
 	// 获取查询的 HTTP method 和路径
 	method := req.Method
 	path := req.URL.Path
@@ -91,7 +74,6 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 		glog.KeyCost, cost,
 		glog.KeyRalCode, realCode,
-		glog.KeyAffectedRows, affectedRows,
 		glog.KeyDslMethod, method,
 		glog.KeyDslPath, path,
 	)
@@ -112,6 +94,32 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		}
 		fields = append(fields, glog.KeyDsl, buf.String())
 	}
+	var affectedRows int
+	if res.Body != nil && res.Body != http.NoBody {
+		bodyBytes, readErr := io.ReadAll(res.Body)
+		defer func() {
+			res.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}()
+		if readErr != nil {
+			l.logger.Errorw(ctx, "read es response body error", glog.KeyErrorMsg, readErr)
+			return readErr
+		}
+
+		var resBody map[string]any
+		if err := jsoniter.Unmarshal(bodyBytes, &resBody); err == nil {
+			if hits, ok := resBody["hits"].(map[string]any); ok {
+				if total, ok := hits["total"].(map[string]any); ok {
+					if value, ok := total["value"].(float64); ok {
+						affectedRows = int(value)
+					}
+				}
+			}
+		}
+		// 恢复 res.Body 给后续使用者
+		fields = append(fields,
+			glog.KeyAffectedRows, affectedRows,
+		)
+	}
 	if realCode != 200 {
 		l.logger.Errorw(ctx, msg, fields...)
 	} else {
@@ -121,9 +129,9 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 }
 
 func (l *esLog) RequestBodyEnabled() bool {
-	return false
+	return true
 }
 
 func (l *esLog) ResponseBodyEnabled() bool {
-	return false
+	return true
 }
