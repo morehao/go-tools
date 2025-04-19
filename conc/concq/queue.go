@@ -4,18 +4,21 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 )
 
-// Task 表示一个待处理的任务
+// Task 表示一个可执行的任务
 type Task func(ctx context.Context) error
 
 // Queue 是一个基于生产者-消费者模型的并发控制器
 type Queue struct {
-	taskCh  chan Task
-	wg      sync.WaitGroup
-	ctx     context.Context
-	cancel  context.CancelFunc
-	workerN int
+	taskCh   chan Task
+	wg       sync.WaitGroup
+	ctx      context.Context
+	cancel   context.CancelFunc
+	workerN  int
+	errCount int64
+	closed   int32
 }
 
 // New 创建一个新的 Queue 实例
@@ -31,9 +34,12 @@ func New(workerCount, queueSize int) *Queue {
 	return q
 }
 
-// Submit 提交一个任务到队列
+// Submit (生产者)提交一个任务到队列
 // 如果队列已关闭，会返回错误
 func (q *Queue) Submit(t Task) error {
+	if atomic.LoadInt32(&q.closed) == 1 {
+		return errors.New("queue has been shutdown")
+	}
 	select {
 	case q.taskCh <- t:
 		return nil
@@ -42,7 +48,7 @@ func (q *Queue) Submit(t Task) error {
 	}
 }
 
-// start 启动所有 worker
+// start 启动 worker 协程（消费者）
 func (q *Queue) start() {
 	for i := 0; i < q.workerN; i++ {
 		q.wg.Add(1)
@@ -61,14 +67,22 @@ func (q *Queue) worker() {
 			if !ok {
 				return
 			}
-			_ = task(q.ctx) // 忽略错误，可根据需求扩展
+			if err := task(q.ctx); err != nil {
+				atomic.AddInt64(&q.errCount, 1)
+			}
 		}
 	}
 }
 
-// Shutdown 优雅关闭队列，等待所有任务完成
-func (q *Queue) Shutdown() {
-	q.cancel()
+// Shutdown 主动终止队列，不再接受新任务，并等待所有 worker 停止
+func (q *Queue) Shutdown() int {
+	if !atomic.CompareAndSwapInt32(&q.closed, 0, 1) {
+		return int(q.errCount) // 已关闭
+	}
+
 	close(q.taskCh)
+	// 等待 worker 处理完所有任务后退出
 	q.wg.Wait()
+	q.cancel()
+	return int(q.errCount)
 }
