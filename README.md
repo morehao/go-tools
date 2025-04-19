@@ -5,7 +5,7 @@
 - [codeGen](#codegen) 代码生成工具
 - `conc` 简单的并发控制组件
 - `conf` 配置文件读取组件
-- `dbClient` 数据库组件
+- `dbclient` 数据库组件
 - [excel](#excel) 简单读写excel组件
 - `gast` 语法树工具
 - `gcontext` 上下文工具组件
@@ -14,7 +14,7 @@
 - `gutils` 一些常用的工具函数
 - `jwtAuth` jwt鉴权组件
 - `rateLimit` 限流组件
-- `distLock` 分布式锁组件（不支持可重入）
+- `distlock` 分布式锁组件（不支持可重入）
 
 # 安装
 ```bash
@@ -32,7 +32,7 @@ go get github.com/morehao/go-tools
 - 支持模板自定义和模板参数自定义
 - 支持基于模板生成代码
 ### 使用
-使用示例参照[codeGen单测](codeGen/gen_test.go)
+使用示例参照[codeGen单测](codegen/gen_test.go)
 
 ## excel
 
