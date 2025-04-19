@@ -44,6 +44,12 @@ func New(workerCount, queueSize int, options ...Option) Queue {
 		workerN:         workerCount,
 		submitTimeout:   0, // 默认不超时
 		shutdownTimeout: 0, // 默认不超时
+		errorHandler: func(err error) {
+			log.Printf("task error: %v", err)
+		},
+		panicHandler: func(r interface{}) {
+			log.Printf("panic occurred: %v", r)
+		},
 	}
 	for _, opt := range options {
 		opt(q)
@@ -77,9 +83,7 @@ func (q *queue) Submit(t Task) {
 			return
 		case <-timer.C:
 			// 提交超时
-			if q.errorHandler != nil {
-				q.errorHandler(errors.New("submit timeout"))
-			}
+			q.errorHandler(errors.New("submit timeout"))
 			return
 		}
 	}
@@ -108,11 +112,8 @@ func (q *queue) worker() {
 	defer func() {
 		if r := recover(); r != nil {
 			// 捕获 panic
-			if q.panicHandler != nil {
-				q.panicHandler(r)
-			} else {
-				q.logger.Errorf(q.ctx, "panic occurred: %v", r) // 默认记录 panic 日志
-			}
+			q.panicHandler(r)
+			q.logger.Errorf(q.ctx, "panic occurred: %v", r) // 默认记录 panic 日志
 		}
 	}()
 	for {
@@ -125,9 +126,7 @@ func (q *queue) worker() {
 			}
 			if err := task(q.ctx); err != nil {
 				atomic.AddInt32(&q.errCount, 1)
-				if q.errorHandler != nil {
-					q.errorHandler(err) // 调用 ErrorHandler
-				}
+				q.errorHandler(err)                               // 调用 ErrorHandler
 				q.logger.Errorf(q.ctx, "task done, err: %v", err) // 任务结束时记录日志
 			}
 		}
@@ -147,6 +146,8 @@ func (q *queue) Shutdown() int32 {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
+			// q.wg.Wait() 是阻塞操作，它会等待直到所有 worker 完成工作。如果直接在主函数中调用，会导致无法同时监听超时情况。
+			// 因此，创建一个新的 goroutine 来等待所有 worker 完成工作，然后监听超时情况。
 			q.wg.Wait()
 		}()
 		select {
