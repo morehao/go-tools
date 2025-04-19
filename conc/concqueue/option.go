@@ -55,3 +55,10 @@ func WithLogger(logger Logger) Option {
 		q.logger = logger
 	}
 }
+
+// WithContextKeys 设置需要在日志中包含的 Context Key
+func WithContextKeys(keys ...interface{}) Option {
+	return func(q *queue) {
+		q.contextKeys = keys
+	}
+}

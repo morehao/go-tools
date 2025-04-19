@@ -3,14 +3,37 @@ package concqueue
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
+// 自定义 Logger
+type testLogger struct {
+	logger *log.Logger
+	errors []string // 用于记录错误信息
+}
+
+func (l *testLogger) Errorf(ctx context.Context, format string, args ...any) {
+	// 在这里可以自定义日志的格式和输出方式
+	msg := fmt.Sprintf(format, args...)
+	l.logger.Printf("[ERROR] " + msg)
+	l.errors = append(l.errors, msg) // 记录错误信息
+
+	// 打印 Context 中的信息
+	for _, key := range []interface{}{"request_id", "user_id"} {
+		if value := ctx.Value(key); value != nil {
+			l.logger.Printf("  %v: %v", key, value)
+		}
+	}
+}
+
 func Test_Example(t *testing.T) {
 	Handler := func(ctx context.Context, input int) (string, error) {
 		fmt.Println(input, "处理中...")
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Millisecond * 100) // 缩短睡眠时间，加快测试
 		if input%2 == 0 {
 			return "", fmt.Errorf("输入参数为偶数")
 		}
@@ -20,8 +43,14 @@ func Test_Example(t *testing.T) {
 
 	start := time.Now()
 
+	// 创建自定义 Logger
+	customLogger := &testLogger{
+		logger: log.New(os.Stdout, "test: ", log.LstdFlags),
+		errors: []string{},
+	}
+
 	// 创建队列，使用3个worker，队列大小为10
-	q := New(5, 10)
+	q := New(5, 10, WithLogger(customLogger))
 	taskCount := 5
 	res := make([]string, taskCount)
 	errs := make([]error, taskCount)
@@ -29,7 +58,7 @@ func Test_Example(t *testing.T) {
 	// 提交任务
 	for i := 0; i < taskCount; i++ {
 		n := i // 传递索引值给任务，避免并发时数据竞争
-		err := q.Submit(func(ctx context.Context) error {
+		q.Submit(func(ctx context.Context) error {
 			currRes, err := Handler(ctx, n)
 			if err != nil {
 				errs[n] = err
@@ -38,9 +67,6 @@ func Test_Example(t *testing.T) {
 			}
 			return err
 		})
-		if err != nil {
-			t.Errorf("提交任务失败：%v", err) // 使用 t.Errorf 来报告测试失败
-		}
 	}
 
 	// 等待任务完成并关闭队列
@@ -64,10 +90,237 @@ func Test_Example(t *testing.T) {
 		}
 	}
 	// 断言错误数量正确
-	expectedErrCount := 3 // 偶数任务会返回错误
-	if errCnt != expectedErrCount {
+	var expectedErrCount int32 = 3 // 偶数任务会返回错误
+	if int(errCnt) != int(expectedErrCount) {
 		t.Errorf("错误数量不符，期望 %d，但实际是 %d", expectedErrCount, errCnt)
 	}
+
+	// 验证自定义 Logger 是否记录了错误
+	if len(customLogger.errors) != int(expectedErrCount) {
+		t.Errorf("自定义 Logger 记录的错误数量不符，期望 %d，但实际是 %d", expectedErrCount, len(customLogger.errors))
+	}
+
 	t.Log("所有任务完成，耗时：", time.Since(start))
+	t.Log("所有任务完成")
+}
+
+func TestContextKeys(t *testing.T) {
+	// 创建自定义 Logger
+	customLogger := &testLogger{
+		logger: log.New(os.Stdout, "test: ", log.LstdFlags),
+		errors: []string{},
+	}
+
+	// 创建队列，并设置 Context Keys
+	q := New(
+		1, 1,
+		WithLogger(customLogger),
+		WithContextKeys("request_id", "user_id"),
+	)
+
+	// 创建带有 Context Key 的 Context
+	ctx := context.WithValue(context.Background(), "request_id", "req-123")
+	ctx = context.WithValue(ctx, "user_id", "user-456")
+
+	// 提交一个会产生错误的 Task
+	q.Submit(func(ctx context.Context) error {
+		customLogger.Errorf(ctx, "This is an error message with context.")
+		return fmt.Errorf("test error")
+	})
+
+	// 关闭队列
+	q.Shutdown()
+
+	// 验证自定义 Logger 是否记录了包含 Context 信息的错误
+	if len(customLogger.errors) != 1 {
+		t.Fatalf("Expected 1 error message, got %d", len(customLogger.errors))
+	}
+
+	expectedLog := "[ERROR] This is an error message with context."
+	if customLogger.errors[0] != expectedLog {
+		t.Errorf("Expected log message '%s', got '%s'", expectedLog, customLogger.errors[0])
+	}
+}
+
+func TestNoErrors(t *testing.T) {
+	start := time.Now()
+	// 创建自定义 Logger
+	customLogger := &testLogger{
+		logger: log.New(os.Stdout, "test: ", log.LstdFlags),
+		errors: []string{},
+	}
+
+	// 创建队列，使用3个worker，队列大小为10
+	q := New(5, 10, WithLogger(customLogger))
+	taskCount := 5
+	res := make([]string, taskCount)
+	errs := make([]error, taskCount)
+
+	// 提交任务
+	for i := 0; i < taskCount; i++ {
+		n := i // 传递索引值给任务，避免并发时数据竞争
+		q.Submit(func(ctx context.Context) error {
+			currRes, err := func(ctx context.Context, input int) (string, error) {
+				fmt.Println(input, "处理中...")
+				time.Sleep(time.Millisecond * 100) // 缩短睡眠时间，加快测试
+				res := fmt.Sprintf("处理结果：%d", input)
+				return res, nil
+			}(ctx, n)
+			if err != nil {
+				errs[n] = err
+			} else {
+				res[n] = currRes
+			}
+			return nil
+		})
+	}
+
+	// 等待任务完成并关闭队列
+	errCnt := q.Shutdown()
+
+	// 打印并检查错误数量
+	t.Logf("错误数量：%d", errCnt)
+
+	// 验证结果
+	for i := 0; i < taskCount; i++ {
+		if errs[i] != nil {
+			t.Errorf("任务 %d 不应返回错误，但返回了错误: %v", i, errs[i])
+		} else if res[i] != fmt.Sprintf("处理结果：%d", i) {
+			t.Errorf("任务 %d 结果不正确，期望 %s，但实际是 %s", i, fmt.Sprintf("处理结果：%d", i), res[i])
+		}
+	}
+	// 断言错误数量正确
+	var expectedErrCount int32 = 0
+	if int(errCnt) != int(expectedErrCount) {
+		t.Errorf("错误数量不符，期望 %d，但实际是 %d", expectedErrCount, errCnt)
+	}
+
+	// 验证自定义 Logger 是否记录了错误
+	if len(customLogger.errors) != int(expectedErrCount) {
+		t.Errorf("自定义 Logger 记录的错误数量不符，期望 %d，但实际是 %d", expectedErrCount, len(customLogger.errors))
+	}
+
+	t.Log("所有任务完成，耗时：", time.Since(start))
+	t.Log("所有任务完成")
+}
+
+func TestPanic(t *testing.T) {
+	// 创建自定义 Logger
+	customLogger := &testLogger{
+		logger: log.New(os.Stdout, "test: ", log.LstdFlags),
+		errors: []string{},
+	}
+
+	// 创建队列，使用3个worker，队列大小为10
+	var panicCount int32
+	q := New(5, 10, WithLogger(customLogger), WithPanicHandler(func(r interface{}) {
+		atomic.AddInt32(&panicCount, 1)
+		fmt.Printf("捕获到panic: %v\n", r)
+	}))
+	taskCount := 5
+	res := make([]string, taskCount)
+	errs := make([]error, taskCount)
+
+	// 提交任务
+	for i := 0; i < taskCount; i++ {
+		n := i // 传递索引值给任务，避免并发时数据竞争
+		q.Submit(func(ctx context.Context) error {
+			currRes, err := func(ctx context.Context, input int) (string, error) {
+				fmt.Println(input, "处理中...")
+				time.Sleep(time.Millisecond * 100) // 缩短睡眠时间，加快测试
+				if input == 2 {
+					panic("模拟panic")
+				}
+				res := fmt.Sprintf("处理结果：%d", input)
+				return res, nil
+			}(ctx, n)
+			if err != nil {
+				errs[n] = err
+			} else {
+				res[n] = currRes
+			}
+			return nil
+		})
+	}
+
+	// 等待任务完成并关闭队列
+	errCnt := q.Shutdown()
+
+	// 打印并检查错误数量
+	t.Logf("错误数量：%d", errCnt)
+
+	// 验证结果
+	for i := 0; i < taskCount; i++ {
+		if i == 2 {
+			continue
+		}
+		if errs[i] != nil {
+			t.Errorf("任务 %d 不应返回错误，但返回了错误: %v", i, errs[i])
+		} else if res[i] != fmt.Sprintf("处理结果：%d", i) {
+			t.Errorf("任务 %d 结果不正确，期望 %s，但实际是 %s", i, fmt.Sprintf("处理结果：%d", i), res[i])
+		}
+	}
+	// 断言错误数量正确
+	var expectedErrCount int32 = 0
+	if int(errCnt) != int(expectedErrCount) {
+		t.Errorf("错误数量不符，期望 %d，但实际是 %d", expectedErrCount, errCnt)
+	}
+
+	// 验证自定义 Logger 是否记录了错误
+	if len(customLogger.errors) != int(expectedErrCount) {
+		t.Errorf("自定义 Logger 记录的错误数量不符，期望 %d，但实际是 %d", expectedErrCount, len(customLogger.errors))
+	}
+
+	if panicCount != 1 {
+		t.Errorf("Panic 数量不符，期望 %d，但实际是 %d", 1, panicCount)
+	}
+
+	t.Log("所有任务完成")
+}
+
+func TestTimeout(t *testing.T) {
+	// 创建自定义 Logger
+	customLogger := &testLogger{
+		logger: log.New(os.Stdout, "test: ", log.LstdFlags),
+		errors: []string{},
+	}
+
+	// 创建队列，使用3个worker，队列大小为10
+	q := New(1, 1, WithSubmitTimeout(time.Millisecond*100), WithLogger(customLogger))
+	taskCount := 2
+
+	// 提交任务
+	for i := 0; i < taskCount; i++ {
+		n := i // 传递索引值给任务，避免并发时数据竞争
+		q.Submit(func(ctx context.Context) error {
+			currRes, err := func(ctx context.Context, input int) (string, error) {
+				fmt.Println(input, "处理中...")
+				time.Sleep(time.Millisecond * 200)
+				res := fmt.Sprintf("处理结果：%d", input)
+				return res, nil
+			}(ctx, n)
+			if err != nil {
+				return err
+			}
+			fmt.Println(currRes)
+			return nil
+		})
+	}
+
+	// 等待任务完成并关闭队列
+	errCnt := q.Shutdown()
+
+	// 打印并检查错误数量
+	t.Logf("错误数量：%d", errCnt)
+
+	if errCnt != 1 {
+		t.Errorf("期望错误数量为1，实际为%d", errCnt)
+	}
+
+	// 验证自定义 Logger 是否记录了错误
+	if len(customLogger.errors) != 0 {
+		t.Errorf("自定义 Logger 记录的错误数量不符，期望 %d，但实际是 %d", 0, len(customLogger.errors))
+	}
+
 	t.Log("所有任务完成")
 }

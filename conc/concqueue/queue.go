@@ -3,6 +3,7 @@ package concqueue
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,6 +31,7 @@ type queue struct {
 	errorHandler    ErrorHandler
 	panicHandler    PanicHandler
 	logger          Logger
+	contextKeys     []any // 需要从 Context 中获取的 Key
 }
 
 // New 创建一个新的 queue 实例
@@ -40,12 +42,16 @@ func New(workerCount, queueSize int, options ...Option) Queue {
 		ctx:             ctx,
 		cancel:          cancel,
 		workerN:         workerCount,
-		logger:          &defaultLogger{}, // 使用默认 Logger
-		submitTimeout:   0,                // 默认不超时
-		shutdownTimeout: 0,                // 默认不超时
+		submitTimeout:   0, // 默认不超时
+		shutdownTimeout: 0, // 默认不超时
 	}
 	for _, opt := range options {
 		opt(q)
+	}
+	if q.logger == nil {
+		// 如果没有设置 Logger，则使用默认的 Logger
+		logger := newDefaultLogger(log.Writer(), "concqueue: ", log.LstdFlags, q.contextKeys)
+		q.logger = logger
 	}
 	q.start()
 	return q
@@ -105,7 +111,7 @@ func (q *queue) worker() {
 			if q.panicHandler != nil {
 				q.panicHandler(r)
 			} else {
-				q.logger.Printf("panic occurred: %v", r) // 默认记录 panic 日志
+				q.logger.Errorf(q.ctx, "panic occurred: %v", r) // 默认记录 panic 日志
 			}
 		}
 	}()
@@ -122,6 +128,7 @@ func (q *queue) worker() {
 				if q.errorHandler != nil {
 					q.errorHandler(err) // 调用 ErrorHandler
 				}
+				q.logger.Errorf(q.ctx, "task done, err: %v", err) // 任务结束时记录日志
 			}
 		}
 	}
@@ -147,7 +154,7 @@ func (q *queue) Shutdown() int32 {
 			// 所有 worker 都已完成
 		case <-time.After(q.shutdownTimeout):
 			// 超时
-			q.logger.Printf("shutdown timeout")
+			q.logger.Errorf(q.ctx, "shutdown timeout")
 		}
 	} else {
 		// 没有设置超时时间，则直接等待所有 worker 完成
