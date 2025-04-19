@@ -1,6 +1,6 @@
-# ConcQ
+# concqueue
 
-`concq` 是一个基于生产者-消费者模型的并发任务队列，旨在通过控制并发数和任务队列来简化高并发环境下的任务调度。它通过使用 goroutines 来处理任务，同时通过原子操作确保线程安全，支持任务提交、队列关闭及错误统计。
+`concqueue` 是一个基于生产者-消费者模型的并发任务队列，旨在通过控制并发数和任务队列来简化高并发环境下的任务调度。它通过使用 goroutines 来处理任务，同时通过原子操作确保线程安全，支持任务提交、队列关闭及错误统计。
 
 ---
 
@@ -38,7 +38,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"github.com/morehao/go-tools/conc/concq"
+	"github.com/morehao/go-tools/conc/concqueue"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 	}
 
 	// 创建一个新的队列实例，3个 worker，队列大小为 10
-	q := concq.New(3, 10)
+	q := concqueue.New(3, 10)
 
 	// 提交 5 个任务
 	taskCount := 5

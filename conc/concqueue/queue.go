@@ -1,4 +1,4 @@
-package concq
+package concqueue
 
 import (
 	"context"
