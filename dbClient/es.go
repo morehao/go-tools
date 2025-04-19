@@ -2,6 +2,7 @@ package dbClient
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -82,6 +83,7 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		realCode = -1
 		msg = err.Error()
 		fields = append(fields, glog.KeyErrorMsg, msg)
+		l.logger.Errorw(ctx, msg, fields...)
 	}
 
 	if req.Body != nil && req.Body != http.NoBody {
@@ -100,10 +102,9 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		defer func() {
 			res.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}()
-		defer res.Body.Close()
 		if readErr != nil {
-			l.logger.Errorw(ctx, "read es response body error", glog.KeyErrorMsg, readErr)
-			return err
+			l.logger.Errorw(ctx, fmt.Sprintf("read es response body fail, error: %s", readErr.Error()), fields...)
+			return nil
 		}
 
 		var resBody map[string]any
@@ -116,7 +117,6 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 				}
 			}
 		}
-		// 恢复 res.Body 给后续使用者
 		fields = append(fields,
 			glog.KeyAffectedRows, affectedRows,
 		)
