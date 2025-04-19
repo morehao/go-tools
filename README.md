@@ -2,7 +2,7 @@
 `go-tools`是一个golang工具组件库，包含了一些个人在项目开发过程中总结的一些常用的工具函数和组件。
 
 组件列表：
-- [codeGen](#codegen) 代码生成工具
+- [codegen](#codegen) 代码生成工具
 - `conc` 简单的并发控制组件
 - `conf` 配置文件读取组件
 - `dbclient` 数据库组件
@@ -12,8 +12,8 @@
 - `gerror` 错误处理组件
 - `glog` 日志组件
 - `gutils` 一些常用的工具函数
-- `jwtAuth` jwt鉴权组件
-- `rateLimit` 限流组件
+- `jwtauth` jwt鉴权组件
+- `ratelimit` 限流组件
 - `distlock` 分布式锁组件（不支持可重入）
 
 # 安装
@@ -23,10 +23,10 @@ go get github.com/morehao/go-tools
 
 # 组件使用说明
 
-## codeGen
+## codegen
 
 ### 简介
-`codeGen` 是一个简单的代码生成工具，通过读取数据库表结构，支持生成基础的CRUD代码，router、controller、service、dto、model、errorCode等代码。
+`codegen` 是一个简单的代码生成工具，通过读取数据库表结构，支持生成基础的CRUD代码，router、controller、service、dto、model、errorCode等代码。
 ### 特性
 - 支持MySQL数据库
 - 支持模板自定义和模板参数自定义

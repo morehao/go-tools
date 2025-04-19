@@ -7,11 +7,16 @@ import (
 	"sync/atomic"
 )
 
+type Queue interface {
+	Submit(t Task) error
+	Shutdown() int
+}
+
 // Task 表示一个可执行的任务
 type Task func(ctx context.Context) error
 
-// Queue 是一个基于生产者-消费者模型的并发控制器
-type Queue struct {
+// queue 是一个基于生产者-消费者模型的并发控制器
+type queue struct {
 	taskCh   chan Task
 	wg       sync.WaitGroup
 	ctx      context.Context
@@ -21,14 +26,17 @@ type Queue struct {
 	closed   int32
 }
 
-// New 创建一个新的 Queue 实例
-func New(workerCount, queueSize int) *Queue {
+// New 创建一个新的 queue 实例
+func New(workerCount, queueSize int, options ...Option) Queue {
 	ctx, cancel := context.WithCancel(context.Background())
-	q := &Queue{
+	q := &queue{
 		taskCh:  make(chan Task, queueSize),
 		ctx:     ctx,
 		cancel:  cancel,
 		workerN: workerCount,
+	}
+	for _, opt := range options {
+		opt(q)
 	}
 	q.start()
 	return q
@@ -36,7 +44,7 @@ func New(workerCount, queueSize int) *Queue {
 
 // Submit (生产者)提交一个任务到队列
 // 如果队列已关闭，会返回错误
-func (q *Queue) Submit(t Task) error {
+func (q *queue) Submit(t Task) error {
 	if atomic.LoadInt32(&q.closed) == 1 {
 		return errors.New("queue has been shutdown")
 	}
@@ -49,7 +57,7 @@ func (q *Queue) Submit(t Task) error {
 }
 
 // start 启动 worker 协程（消费者）
-func (q *Queue) start() {
+func (q *queue) start() {
 	for i := 0; i < q.workerN; i++ {
 		q.wg.Add(1)
 		go q.worker()
@@ -57,7 +65,7 @@ func (q *Queue) start() {
 }
 
 // worker 是消费任务的协程
-func (q *Queue) worker() {
+func (q *queue) worker() {
 	defer q.wg.Done()
 	for {
 		select {
@@ -75,7 +83,7 @@ func (q *Queue) worker() {
 }
 
 // Shutdown 主动终止队列，不再接受新任务，并等待所有 worker 停止
-func (q *Queue) Shutdown() int {
+func (q *queue) Shutdown() int {
 	if !atomic.CompareAndSwapInt32(&q.closed, 0, 1) {
 		return int(q.errCount) // 已关闭
 	}
