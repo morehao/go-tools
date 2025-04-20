@@ -2,6 +2,7 @@ package concqueue
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -22,6 +23,7 @@ type queue struct {
 	cancel      context.CancelFunc
 	workerCount int
 	errCount    int32
+	onErr       func(err error) // 处理任务失败时的回调函数
 	closed      int32
 }
 
@@ -33,6 +35,9 @@ func New(workerCount, queueSize int, options ...Option) Queue {
 		ctx:         ctx,
 		cancel:      cancel,
 		workerCount: workerCount,
+		onErr: func(err error) {
+			fmt.Println(err)
+		},
 	}
 	for _, opt := range options {
 		opt(q)
@@ -62,12 +67,12 @@ func (q *queue) Submit(t Task) {
 func (q *queue) start() {
 	for i := 0; i < q.workerCount; i++ {
 		q.wg.Add(1)
-		go q.worker()
+		go q.worker(i)
 	}
 }
 
 // worker 是消费任务的协程
-func (q *queue) worker() {
+func (q *queue) worker(workerID int) {
 	defer q.wg.Done()
 	for {
 		select {
@@ -77,10 +82,31 @@ func (q *queue) worker() {
 			if !ok {
 				return
 			}
-			if err := task(q.ctx); err != nil {
-				atomic.AddInt32(&q.errCount, 1)
+			q.runTask(workerID, task)
+		}
+	}
+}
+
+func (q *queue) runTask(workerID int, task Task) {
+	defer func() {
+		if r := recover(); r != nil {
+			// 记录panic信息，可选择记录日志
+			atomic.AddInt32(&q.errCount, 1) // 将panic也计入错误
+
+			if q.onErr != nil {
+				q.onErr(fmt.Errorf("worker %d panic: %v", workerID, r))
+			}
+
+			// 可选：重启worker保持池的worker数量
+			if atomic.LoadInt32(&q.closed) == 0 {
+				q.wg.Add(1)
+				go q.worker(workerID) // 重启一个新的worker替代当前崩溃的worker
 			}
 		}
+	}()
+	// 执行任务
+	if err := task(q.ctx); err != nil {
+		atomic.AddInt32(&q.errCount, 1) // 使用原子操作增加失败任务数
 	}
 }
 

@@ -13,3 +13,10 @@ func WithContext(ctx context.Context) Option {
 		q.ctx = ctx
 	}
 }
+
+// WithErrorHandler 设置 queue 的错误处理函数
+func WithErrorHandler(handler func(err error)) Option {
+	return func(q *queue) {
+		q.onErr = handler
+	}
+}

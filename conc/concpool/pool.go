@@ -2,6 +2,7 @@ package concpool
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -23,8 +24,9 @@ type pool struct {
 	wg          sync.WaitGroup // 等待任务完成
 	ctx         context.Context
 	cancel      context.CancelFunc
-	errCount    int32 // 使用原子操作记录失败的任务数
-	closed      int32 // 使用原子操作处理池是否已关闭的状态
+	errCount    int32           // 使用原子操作记录失败的任务数
+	onErr       func(err error) // 处理任务失败时的回调函数
+	closed      int32           // 使用原子操作处理池是否已关闭的状态
 }
 
 // New 创建一个新的 pool，并自动启动
@@ -36,6 +38,9 @@ func New(workerCount int, queueSize int, options ...Option) Pool {
 		workerCount: workerCount,
 		ctx:         ctx,
 		cancel:      cancel,
+		onErr: func(err error) {
+			fmt.Println(err)
+		},
 	}
 
 	// 应用 options 配置
@@ -73,12 +78,33 @@ func (p *pool) worker(workerID int) {
 				return
 			}
 			// 执行任务
-			if err := task(p.ctx); err != nil {
-				atomic.AddInt32(&p.errCount, 1) // 使用原子操作增加失败任务数
-			}
+			p.runTask(workerID, task)
 		case <-p.ctx.Done():
 			return
 		}
+	}
+}
+
+func (p *pool) runTask(workerID int, task Task) {
+	defer func() {
+		if r := recover(); r != nil {
+			// 记录panic信息，可选择记录日志
+			atomic.AddInt32(&p.errCount, 1) // 将panic也计入错误
+
+			if p.onErr != nil {
+				p.onErr(fmt.Errorf("worker %d panic: %v", workerID, r))
+			}
+
+			// 可选：重启worker保持池的worker数量
+			if atomic.LoadInt32(&p.closed) == 0 {
+				p.wg.Add(1)
+				go p.worker(workerID) // 重启一个新的worker替代当前崩溃的worker
+			}
+		}
+	}()
+	// 执行任务
+	if err := task(p.ctx); err != nil {
+		atomic.AddInt32(&p.errCount, 1) // 使用原子操作增加失败任务数
 	}
 }
 
@@ -101,16 +127,8 @@ func (p *pool) Shutdown() int32 {
 	}
 
 	close(p.taskQueue) // 关闭任务队列，停止接收新任务
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		p.wg.Wait() // 等待所有任务完成
-	}()
-
-	<-done // 等待所有任务完成
-
-	p.cancel() // 取消所有任务的 Context
+	p.wg.Wait()        // 等待所有任务完成
+	p.cancel()         // 取消所有任务的 Context
 
 	return atomic.LoadInt32(&p.errCount)
 }
