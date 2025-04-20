@@ -9,7 +9,7 @@ import (
 
 type Queue interface {
 	Submit(t Task)
-	Shutdown() int32
+	StopAndWait() int32
 }
 
 // Task 表示一个可执行的任务
@@ -110,15 +110,18 @@ func (q *queue) runTask(workerID int, task Task) {
 	}
 }
 
-// Shutdown 主动终止队列，不再接受新任务，并等待所有 worker 停止
-func (q *queue) Shutdown() int32 {
-	if !atomic.CompareAndSwapInt32(&q.closed, 0, 1) {
-		return atomic.LoadInt32(&q.errCount) // 已关闭
+func (q *queue) StopAndWait() int32 {
+	q.stop()
+	return q.wait()
+}
+
+func (q *queue) stop() {
+	if atomic.CompareAndSwapInt32(&q.closed, 0, 1) {
+		q.cancel()
 	}
+}
 
-	close(q.taskCh)
+func (q *queue) wait() int32 {
 	q.wg.Wait()
-	q.cancel()
-
 	return atomic.LoadInt32(&q.errCount)
 }
