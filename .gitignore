@@ -23,6 +23,6 @@ go.work.sum
 
 .idea/
 .DS_Store
-codeGen/tmp/*
+codegen/tmp/*
 **/log/**
 
