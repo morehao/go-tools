@@ -16,23 +16,23 @@ type Task func(ctx context.Context) error
 
 // queue 是一个基于生产者-消费者模型的并发控制器
 type queue struct {
-	taskCh   chan Task
-	wg       sync.WaitGroup
-	ctx      context.Context
-	cancel   context.CancelFunc
-	workerN  int
-	errCount int32
-	closed   int32
+	taskCh      chan Task
+	wg          sync.WaitGroup
+	ctx         context.Context
+	cancel      context.CancelFunc
+	workerCount int
+	errCount    int32
+	closed      int32
 }
 
 // New 创建一个新的 queue 实例
 func New(workerCount, queueSize int, options ...Option) Queue {
 	ctx, cancel := context.WithCancel(context.Background())
 	q := &queue{
-		taskCh:  make(chan Task, queueSize),
-		ctx:     ctx,
-		cancel:  cancel,
-		workerN: workerCount,
+		taskCh:      make(chan Task, queueSize),
+		ctx:         ctx,
+		cancel:      cancel,
+		workerCount: workerCount,
 	}
 	for _, opt := range options {
 		opt(q)
@@ -60,7 +60,7 @@ func (q *queue) Submit(t Task) {
 
 // start 启动 worker 协程（消费者）
 func (q *queue) start() {
-	for i := 0; i < q.workerN; i++ {
+	for i := 0; i < q.workerCount; i++ {
 		q.wg.Add(1)
 		go q.worker()
 	}

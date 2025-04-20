@@ -2,10 +2,8 @@ package concpool
 
 import (
 	"context"
-	"log"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 // Task 表示要执行的任务类型，加入了 context.Context
@@ -20,19 +18,13 @@ type Pool interface {
 // pool 是 Pool 接口的实现
 // 现在 pool 是包内私有的结构体
 type pool struct {
-	taskQueue       chan Task      // 任务队列
-	workerCount     int            // worker 数量
-	wg              sync.WaitGroup // 等待任务完成
-	ctx             context.Context
-	cancel          context.CancelFunc
-	errCount        int32         // 使用原子操作记录失败的任务数
-	closed          int32         // 使用原子操作处理池是否已关闭的状态
-	submitTimeout   time.Duration // 提交超时时间
-	shutdownTimeout time.Duration // 关闭超时时间
-	errorHandler    ErrorHandler
-	panicHandler    PanicHandler
-	logger          Logger // 日志组件
-	contextKeys     []any  // 需要从 Context 中获取的 Key
+	taskQueue   chan Task      // 任务队列
+	workerCount int            // worker 数量
+	wg          sync.WaitGroup // 等待任务完成
+	ctx         context.Context
+	cancel      context.CancelFunc
+	errCount    int32 // 使用原子操作记录失败的任务数
+	closed      int32 // 使用原子操作处理池是否已关闭的状态
 }
 
 // New 创建一个新的 pool，并自动启动
@@ -40,28 +32,15 @@ func New(workerCount int, queueSize int, options ...Option) Pool {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	p := &pool{
-		taskQueue:       make(chan Task, queueSize),
-		workerCount:     workerCount,
-		ctx:             ctx,
-		cancel:          cancel,
-		submitTimeout:   0, // 默认不超时
-		shutdownTimeout: 0, // 默认不超时
-		errorHandler: func(err error) {
-			log.Printf("task error: %v", err)
-		},
-		panicHandler: func(r interface{}) {
-			log.Printf("panic occurred: %v", r)
-		},
+		taskQueue:   make(chan Task, queueSize),
+		workerCount: workerCount,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 
 	// 应用 options 配置
 	for _, option := range options {
 		option(p)
-	}
-	if p.logger == nil {
-		// 如果没有设置 Logger，则使用默认的 Logger
-		logger := newDefaultLogger(log.Writer(), "concpool: ", log.LstdFlags, p.contextKeys)
-		p.logger = logger
 	}
 
 	// 自动启动 pool
@@ -96,7 +75,6 @@ func (p *pool) worker(workerID int) {
 			// 执行任务
 			if err := task(p.ctx); err != nil {
 				atomic.AddInt32(&p.errCount, 1) // 使用原子操作增加失败任务数
-				p.logger.Errorf(p.ctx, "worker %d: task failed: %v", workerID, err)
 			}
 		case <-p.ctx.Done():
 			return
@@ -109,25 +87,6 @@ func (p *pool) Submit(task Task) {
 	// 如果池已经关闭，直接返回
 	if atomic.LoadInt32(&p.closed) == 1 {
 		return
-	}
-
-	if p.submitTimeout > 0 {
-		timer := time.NewTimer(p.submitTimeout)
-		defer timer.Stop()
-
-		select {
-		case p.taskQueue <- task:
-			// 任务提交成功
-			return
-		case <-timer.C:
-			// 提交超时
-			atomic.AddInt32(&p.errCount, 1)
-			p.logger.Errorf(p.ctx, "submit timeout")
-			return
-		case <-p.ctx.Done():
-			// Pool 已经关闭
-			return
-		}
 	}
 
 	p.taskQueue <- task
@@ -149,16 +108,7 @@ func (p *pool) Shutdown() int32 {
 		p.wg.Wait() // 等待所有任务完成
 	}()
 
-	if p.shutdownTimeout > 0 {
-		select {
-		case <-done:
-		case <-time.After(p.shutdownTimeout):
-			// 超时
-			p.logger.Errorf(p.ctx, "shutdown timeout")
-		}
-	} else {
-		<-done // 等待所有任务完成
-	}
+	<-done // 等待所有任务完成
 
 	p.cancel() // 取消所有任务的 Context
 
