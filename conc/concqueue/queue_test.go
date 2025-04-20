@@ -154,7 +154,7 @@ func Test_Queue(t *testing.T) {
 				return err
 			})
 		}
-		time.Sleep(1 * time.Second)
+
 		// 等待任务完成并关闭队列
 		errCnt := q.StopAndWait()
 
@@ -172,4 +172,5 @@ func Test_Queue(t *testing.T) {
 			t.Errorf("错误数量不符，期望 0，但实际是 %d", errCnt)
 		}
 	})
+
 }

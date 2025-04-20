@@ -110,14 +110,17 @@ func (q *queue) runTask(workerID int, task Task) {
 	}
 }
 
+// StopAndWait 关闭队列并等待所有任务完成
 func (q *queue) StopAndWait() int32 {
-	q.stop()
-	return q.wait()
+	q.stop()             // 标记关闭并关闭通道
+	errCount := q.wait() // 等待所有worker完成
+	q.cancel()           // 所有任务完成后，取消context
+	return errCount
 }
 
 func (q *queue) stop() {
 	if atomic.CompareAndSwapInt32(&q.closed, 0, 1) {
-		q.cancel()
+		close(q.taskCh)
 	}
 }
 
