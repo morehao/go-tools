@@ -46,6 +46,18 @@ func New(workerCount, queueSize int, options ...Option) Queue {
 	return q
 }
 
+// start 启动 worker 协程（消费者）
+func (q *queue) start() {
+	// 使用原子操作检查是否已经关闭
+	if atomic.LoadInt32(&q.closed) == 1 {
+		return
+	}
+	for i := 0; i < q.workerCount; i++ {
+		q.wg.Add(1)
+		go q.worker(i)
+	}
+}
+
 // Submit (生产者)提交一个任务到队列
 func (q *queue) Submit(t Task) {
 	if atomic.LoadInt32(&q.closed) == 1 {
@@ -55,19 +67,11 @@ func (q *queue) Submit(t Task) {
 
 	// 没有设置超时时间，则直接提交任务
 	select {
-	case q.taskQueue <- t:
-		// 任务提交成功
 	case <-q.ctx.Done():
 		// 队列已关闭，丢弃任务
 		return
-	}
-}
-
-// start 启动 worker 协程（消费者）
-func (q *queue) start() {
-	for i := 0; i < q.workerCount; i++ {
-		q.wg.Add(1)
-		go q.worker(i)
+	case q.taskQueue <- t:
+		// 任务提交成功
 	}
 }
 

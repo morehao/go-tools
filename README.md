@@ -32,7 +32,7 @@ go get github.com/morehao/go-tools
 - 支持模板自定义和模板参数自定义
 - 支持基于模板生成代码
 ### 使用
-使用示例参照[codeGen单测](codegen/gen_test.go)
+使用示例参照[codegen单测](codegen/gen_test.go)
 
 ## excel
 
