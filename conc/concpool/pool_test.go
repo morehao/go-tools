@@ -2,69 +2,103 @@ package concpool
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func Test_Example(t *testing.T) {
-	Handler := func(ctx context.Context, input int) (string, error) {
-		fmt.Println(input, "处理中...")
-		time.Sleep(time.Second * 2)
-		if input%2 == 0 {
-			return "", fmt.Errorf("输入参数为偶数")
+func TestPool(t *testing.T) {
+	t.Run("normal tasks", func(t *testing.T) {
+		var counter int32
+		p := New(3, 10)
+
+		for i := 0; i < 5; i++ {
+			p.Submit(func(ctx context.Context) error {
+				atomic.AddInt32(&counter, 1)
+				return nil
+			})
 		}
-		res := fmt.Sprintf("处理结果：%d", input)
-		return res, nil
-	}
 
-	start := time.Now()
+		errCount := p.StopAndWait()
+		if errCount != 0 {
+			t.Errorf("expected 0 errors, got %d", errCount)
+		}
+		if counter != 5 {
+			t.Errorf("expected counter to be 5, got %d", counter)
+		}
+	})
 
-	// 创建队列，使用3个worker，队列大小为10
-	q := New(5, 10)
-	taskCount := 5
-	res := make([]string, taskCount)
-	errs := make([]error, taskCount)
+	t.Run("tasks with errors", func(t *testing.T) {
+		var success int32
+		p := New(2, 10)
 
-	// 提交任务
-	for i := 0; i < taskCount; i++ {
-		n := i // 传递索引值给任务，避免并发时数据竞争
-		q.Submit(func(ctx context.Context) error {
-			currRes, err := Handler(ctx, n)
-			if err != nil {
-				errs[n] = err
-			} else {
-				res[n] = currRes
-			}
-			return err
+		for i := 0; i < 3; i++ {
+			p.Submit(func(ctx context.Context) error {
+				atomic.AddInt32(&success, 1)
+				return nil
+			})
+		}
+		for i := 0; i < 2; i++ {
+			p.Submit(func(ctx context.Context) error {
+				return errors.New("task error")
+			})
+		}
+
+		errCount := p.StopAndWait()
+		if errCount != 2 {
+			t.Errorf("expected 2 errors, got %d", errCount)
+		}
+		if success != 3 {
+			t.Errorf("expected 3 successes, got %d", success)
+		}
+	})
+
+	t.Run("panic in task", func(t *testing.T) {
+		p := New(1, 5)
+		p.Submit(func(ctx context.Context) error {
+			panic("boom")
 		})
-	}
+		p.Submit(func(ctx context.Context) error {
+			return nil
+		})
 
-	// 等待任务完成并关闭队列
-	errCnt := q.Shutdown()
-
-	// 打印并检查错误数量
-	t.Logf("错误数量：%d", errCnt)
-
-	// 验证结果
-	for i := 0; i < taskCount; i++ {
-		if i%2 == 0 {
-			if errs[i] == nil {
-				t.Errorf("任务 %d 应该返回错误，但没有返回错误", i)
-			}
-		} else {
-			if errs[i] != nil {
-				t.Errorf("任务 %d 不应返回错误，但返回了错误: %v", i, errs[i])
-			} else if res[i] != fmt.Sprintf("处理结果：%d", i) {
-				t.Errorf("任务 %d 结果不正确，期望 %s，但实际是 %s", i, fmt.Sprintf("处理结果：%d", i), res[i])
-			}
+		errCount := p.StopAndWait()
+		if errCount != 1 {
+			t.Errorf("expected 1 error due to panic, got %d", errCount)
 		}
-	}
-	// 断言错误数量正确
-	var expectedErrCount int32 = 3 // 偶数任务会返回错误
-	if errCnt != expectedErrCount {
-		t.Errorf("错误数量不符，期望 %d，但实际是 %d", expectedErrCount, errCnt)
-	}
-	t.Log("所有任务完成，耗时：", time.Since(start))
-	t.Log("所有任务完成")
+	})
+
+	t.Run("submit after shutdown", func(t *testing.T) {
+		var counter int32
+		p := New(1, 2)
+		p.Submit(func(ctx context.Context) error {
+			atomic.AddInt32(&counter, 1)
+			return nil
+		})
+		_ = p.StopAndWait()
+
+		// 此时应忽略任务
+		p.Submit(func(ctx context.Context) error {
+			atomic.AddInt32(&counter, 1)
+			return nil
+		})
+		time.Sleep(100 * time.Millisecond)
+
+		if counter != 1 {
+			t.Errorf("expected 1 execution, got %d", counter)
+		}
+	})
+
+	t.Run("StopAndWait is idempotent", func(t *testing.T) {
+		p := New(1, 1)
+		p.Submit(func(ctx context.Context) error {
+			return nil
+		})
+		err1 := p.StopAndWait()
+		err2 := p.StopAndWait()
+		if err1 != err2 {
+			t.Errorf("expected same error count on repeated StopAndWait calls, got %d and %d", err1, err2)
+		}
+	})
 }

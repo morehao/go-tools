@@ -17,7 +17,7 @@ type Task func(ctx context.Context) error
 
 // queue 是一个基于生产者-消费者模型的并发控制器
 type queue struct {
-	taskCh      chan Task
+	taskQueue   chan Task
 	wg          sync.WaitGroup
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -31,7 +31,7 @@ type queue struct {
 func New(workerCount, queueSize int, options ...Option) Queue {
 	ctx, cancel := context.WithCancel(context.Background())
 	q := &queue{
-		taskCh:      make(chan Task, queueSize),
+		taskQueue:   make(chan Task, queueSize),
 		ctx:         ctx,
 		cancel:      cancel,
 		workerCount: workerCount,
@@ -55,7 +55,7 @@ func (q *queue) Submit(t Task) {
 
 	// 没有设置超时时间，则直接提交任务
 	select {
-	case q.taskCh <- t:
+	case q.taskQueue <- t:
 		// 任务提交成功
 	case <-q.ctx.Done():
 		// 队列已关闭，丢弃任务
@@ -78,7 +78,7 @@ func (q *queue) worker(workerID int) {
 		select {
 		case <-q.ctx.Done():
 			return
-		case task, ok := <-q.taskCh:
+		case task, ok := <-q.taskQueue:
 			if !ok {
 				return
 			}
@@ -120,7 +120,7 @@ func (q *queue) StopAndWait() int32 {
 
 func (q *queue) stop() {
 	if atomic.CompareAndSwapInt32(&q.closed, 0, 1) {
-		close(q.taskCh)
+		close(q.taskQueue)
 	}
 }
 

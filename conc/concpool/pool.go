@@ -13,7 +13,7 @@ type Task func(ctx context.Context) error
 // Pool 定义了对外公开的接口
 type Pool interface {
 	Submit(task Task) // 提交任务
-	Shutdown() int32  // 关闭池，返回失败的任务数
+	StopAndWait() int32
 }
 
 // pool 是 Pool 接口的实现
@@ -118,17 +118,21 @@ func (p *pool) Submit(task Task) {
 	p.taskQueue <- task
 }
 
-// Shutdown 关闭 pool，等待所有任务完成并返回失败的任务数
-// 将 Cancel 集成到 Shutdown 中，并避免重复关闭
-func (p *pool) Shutdown() int32 {
-	// 如果池已经关闭，直接返回失败任务数
-	if !atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
-		return atomic.LoadInt32(&p.errCount)
+// StopAndWait 关闭队列并等待所有任务完成
+func (p *pool) StopAndWait() int32 {
+	p.stop()             // 标记关闭并关闭通道
+	errCount := p.wait() // 等待所有worker完成
+	p.cancel()           // 所有任务完成后，取消context
+	return errCount
+}
+
+func (p *pool) stop() {
+	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
+		close(p.taskQueue)
 	}
+}
 
-	close(p.taskQueue) // 关闭任务队列，停止接收新任务
-	p.wg.Wait()        // 等待所有任务完成
-	p.cancel()         // 取消所有任务的 Context
-
+func (p *pool) wait() int32 {
+	p.wg.Wait()
 	return atomic.LoadInt32(&p.errCount)
 }
