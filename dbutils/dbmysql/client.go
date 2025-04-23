@@ -1,4 +1,4 @@
-package dbclient
+package dbmysql
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package dbclient
+package dbredis
 
 import (
 	"context"
