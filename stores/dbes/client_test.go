@@ -47,7 +47,7 @@ func TestInitSimpleES(t *testing.T) {
 	logCfg := &glog.LoggerConfig{
 		Service:   "ES",
 		Level:     glog.InfoLevel,
-		Dir:       "./log",
+		Dir:       "../../log",
 		Stdout:    true,
 		ExtraKeys: []string{"requestId"},
 	}

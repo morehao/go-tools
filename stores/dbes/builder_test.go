@@ -5,168 +5,140 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/go-tools/gutils"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
-type User struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Age    int    `json:"age"`
-	Status int    `json:"status"`
+type Account struct {
+	AccountNumber int64  `json:"account_number"`
+	Balance       int64  `json:"balance"`
+	Firstname     string `json:"firstname"`
+	Lastname      string `json:"lastname"`
+	Age           int    `json:"age"`
+	Gender        string `json:"gender"`
+	Email         string `json:"email"`
+	Employer      string `json:"employer"`
+	Address       string `json:"address"`
+	City          string `json:"city"`
+	State         string `json:"state"`
 }
 
-func TestDSLBuilder(t *testing.T) {
-	// 创建ES客户端
-	client, err := elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{"http://localhost:9200"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func TestAccountsIndex(t *testing.T) {
 	ctx := context.Background()
 
-	// 创建文档
-	user := &User{
-		ID:     "1",
-		Name:   "张三",
-		Age:    25,
-		Status: 1,
+	logCfg := &glog.LoggerConfig{
+		Service:   "ES",
+		Level:     glog.InfoLevel,
+		Dir:       "./log",
+		Stdout:    true,
+		ExtraKeys: []string{"requestId"},
 	}
-	resp, err := NewBuilder(client).
-		SetIndex("users").
-		SetID(user.ID).
-		SetDoc(user).
-		Create(ctx)
-
-	if err != nil {
-		t.Fatal(err)
+	opt := glog.WithZapOptions(zap.AddCallerSkip(2))
+	initLogErr := glog.NewLogger(logCfg, opt)
+	assert.Nil(t, initLogErr)
+	cfg := ESConfig{
+		Service: "es",
+		Addr:    "http://localhost:9200",
 	}
-	defer resp.Body.Close()
-	t.Logf("Create Response Status: %s", resp.Status())
+	client, _, initErr := InitES(cfg)
+	assert.Nil(t, initErr)
+	defer glog.Close()
 
-	// 更新文档
-	updateResp, err := NewBuilder(client).
-		SetIndex("users").
-		SetID("1").
-		SetDoc(M(
-			"doc", M(
-				"age", 26,
-				"status", 2,
-			),
-		)).
-		Update(ctx)
+	t.Run("CreateAccount", func(t *testing.T) {
+		// 查询当前最大的 ID
+		account := &Account{
+			AccountNumber: 1,
+			Balance:       10000,
+			Firstname:     "Alice",
+			Lastname:      "Smith",
+			Age:           30,
+			Gender:        "F",
+			Email:         "alice@example.com",
+			Employer:      "TechCorp",
+			Address:       "123 Main St",
+			City:          "New York",
+			State:         "NY",
+		}
+		resp, err := NewBuilder(client).
+			SetIndex("accounts").
+			SetID("1").
+			SetDoc(account).
+			Create(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		t.Logf("Create Response Status: %s", resp.Status())
+	})
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer updateResp.Body.Close()
-	t.Logf("Update Response Status: %s", updateResp.Status())
+	t.Run("UpdateBalance", func(t *testing.T) {
+		resp, err := NewBuilder(client).
+			SetIndex("accounts").
+			SetID("1").
+			SetDoc(M("doc", M("balance", 15000))).
+			Update(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		t.Logf("Update Balance Status: %s", resp.Status())
+	})
 
-	// 根据查询条件批量更新
-	updateByQueryResp, err := NewBuilder(client).
-		SetIndex("users").
-		SetQuery(Q.Term("status", 1)).
-		Set("script", M(
-			"source", "ctx._source.status = params.status",
-			"lang", "painless",
-			"params", M(
-				"status", 2,
-			),
-		)).
-		UpdateByQuery(ctx)
+	t.Run("SearchByCity", func(t *testing.T) {
+		resp, err := NewBuilder(client).
+			SetIndex("accounts").
+			SetQuery(Q.Match("city", "Brogan")).
+			SetSize(5).
+			Search(ctx)
+		assert.Nil(t, err)
+		defer resp.Body.Close()
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer updateByQueryResp.Body.Close()
-	t.Logf("Update By Query Response Status: %s", updateByQueryResp.Status())
+		var result map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("Search Result: %s", gutils.ToJsonString(result))
+	})
 
-	// 删除文档
-	deleteResp, err := NewBuilder(client).
-		SetIndex("users").
-		SetID("1").
-		Delete(ctx)
+	t.Run("BulkInsert", func(t *testing.T) {
+		bulk := NewBulkBuilder().
+			AddCreate("accounts", "2", &Account{
+				AccountNumber: 2,
+				Balance:       8000,
+				Firstname:     "Bob",
+				Lastname:      "Brown",
+				City:          "Chicago",
+				State:         "IL",
+			}).
+			AddCreate("accounts", "3", &Account{
+				AccountNumber: 3,
+				Balance:       20000,
+				Firstname:     "Charlie",
+				Lastname:      "White",
+				City:          "Los Angeles",
+				State:         "CA",
+			})
+		resp, err := NewBuilder(client).
+			SetIndex("accounts").
+			Bulk(ctx, bulk.Build())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		t.Logf("Bulk Insert Status: %s", resp.Status())
+	})
 
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer deleteResp.Body.Close()
-	t.Logf("Delete Response Status: %s", deleteResp.Status())
-
-	// 根据查询条件批量删除
-	deleteByQueryResp, err := NewBuilder(client).
-		SetIndex("users").
-		SetQuery(Q.Term("status", 2)).
-		DeleteByQuery(ctx)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer deleteByQueryResp.Body.Close()
-	t.Logf("Delete By Query Response Status: %s", deleteByQueryResp.Status())
-
-	// 批量操作
-	bulk := NewBulkBuilder().
-		// 批量创建
-		AddCreate("users", "2", &User{
-			Name:   "李四",
-			Age:    30,
-			Status: 1,
-		}).
-		AddCreate("users", "3", &User{
-			Name:   "王五",
-			Age:    35,
-			Status: 1,
-		}).
-		// 批量更新
-		AddUpdate("users", "2", M(
-			"age", 31,
-			"status", 2,
-		)).
-		// 批量删除
-		AddDelete("users", "3")
-
-	bulkResp, err := NewBuilder(client).
-		SetIndex("users").
-		Bulk(ctx, bulk.Build())
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer bulkResp.Body.Close()
-	t.Logf("Bulk Response Status: %s", bulkResp.Status())
-
-	// 搜索示例
-	searchResp, err := NewBuilder(client).
-		SetIndex("users").
-		SetQuery(Q.Bool(
-			[]map[string]interface{}{
-				Q.Match("name", "李四"),
-			},
-			nil,
-			nil,
-			[]map[string]interface{}{
-				Q.Range("age", M(
-					"gte", 30,
-					"lt", 40,
-				)),
-			},
-		)).
-		SetSort([]interface{}{
-			S.Field("age", "desc"),
-		}).
-		SetSize(10).
-		Search(ctx)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer searchResp.Body.Close()
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(searchResp.Body).Decode(&result); err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Search Result: %+v", result)
+	t.Run("DeleteAccount", func(t *testing.T) {
+		resp, err := NewBuilder(client).
+			SetIndex("accounts").
+			SetID("1").
+			Delete(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		t.Logf("Delete Account Status: %s", resp.Status())
+	})
 }

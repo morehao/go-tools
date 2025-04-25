@@ -65,7 +65,7 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 	// 获取查询的 HTTP method 和路径
 	method := req.Method
 	path := req.URL.Path
-	realCode := res.StatusCode
+	ralCode := res.StatusCode
 
 	var fields []any
 	fields = append(fields,
@@ -74,13 +74,13 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		glog.KeyRequestStartTime, glog.FormatRequestTime(start),
 		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 		glog.KeyCost, cost,
-		glog.KeyRalCode, realCode,
+		glog.KeyRalCode, ralCode,
 		glog.KeyDslMethod, method,
 		glog.KeyDslPath, path,
 	)
 	msg := "es execute success"
 	if err != nil {
-		realCode = -1
+		ralCode = -1
 		msg = err.Error()
 		fields = append(fields, glog.KeyErrorMsg, msg)
 		l.logger.Errorw(ctx, msg, fields...)
@@ -107,6 +107,9 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 			return nil
 		}
 
+		if ralCode != 200 {
+			msg = string(bodyBytes)
+		}
 		var resBody map[string]any
 		if err := jsoniter.Unmarshal(bodyBytes, &resBody); err == nil {
 			if hits, ok := resBody["hits"].(map[string]any); ok {
@@ -121,7 +124,7 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 			glog.KeyAffectedRows, affectedRows,
 		)
 	}
-	if realCode != 200 {
+	if ralCode != 200 {
 		l.logger.Errorw(ctx, msg, fields...)
 	} else {
 		l.logger.Infow(ctx, msg, fields...)
