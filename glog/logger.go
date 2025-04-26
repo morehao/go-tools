@@ -24,14 +24,7 @@ func AddHook(hook Hook) {
 // executeHooks 执行所有钩子函数
 func executeHooks(ctx context.Context, level Level, msg string, fields ...Field) {
 	for _, hook := range hooks {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					// 钩子函数中的panic不应该影响日志记录
-				}
-			}()
-			hook(ctx, level, msg, fields...)
-		}()
+		hook(ctx, level, msg, fields...)
 	}
 }
 

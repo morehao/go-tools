@@ -43,7 +43,7 @@ func TestFileLogger(t *testing.T) {
 	cfg := &LoggerConfig{
 		module: "fs",
 		Level:  InfoLevel,
-		Type:   WriterFile,
+		Writer: WriterFile,
 		Dir:    testDir,
 	}
 	logger, err := newZapLogger(cfg)
@@ -101,7 +101,7 @@ func TestFieldHook(t *testing.T) {
 			"test": {
 				module: "test",
 				Level:  DebugLevel,
-				Type:   WriterConsole,
+				Writer: WriterConsole,
 				Dir:    tempDir,
 			},
 		},
@@ -152,7 +152,7 @@ func TestFieldHook(t *testing.T) {
 	// 测试电话号码脱敏
 	ctx := context.Background()
 	t.Log("Logging message with phone number")
-	Infow(ctx, "test message", Field{Key: "phone", Value: "13812345678"})
+	Infow(ctx, "test message", "phone", "13812345678")
 
 	// 验证钩子是否被调用
 	if !hookCalled {
@@ -191,7 +191,7 @@ func TestContextLogger(t *testing.T) {
 			"test": {
 				module: "test",
 				Level:  DebugLevel,
-				Type:   WriterFile,
+				Writer: WriterFile,
 				Dir:    tempDir,
 			},
 		},
@@ -225,7 +225,7 @@ func TestSetDefaultLogger(t *testing.T) {
 	cfg := &LoggerConfig{
 		module: "test_default",
 		Level:  DebugLevel,
-		Type:   WriterConsole,
+		Writer: WriterConsole,
 		Dir:    "./test_log",
 	}
 	logger, err := newZapLogger(cfg)
@@ -266,7 +266,7 @@ func TestExtraKeys(t *testing.T) {
 			"test": {
 				module:    "test",
 				Level:     DebugLevel,
-				Type:      WriterConsole,
+				Writer:    WriterConsole,
 				Dir:       tempDir,
 				ExtraKeys: []string{"trace_id", "user_id", "request_id"},
 			},

@@ -3,9 +3,6 @@ package glog
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
@@ -38,56 +35,40 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	// 创建控制台输出
 	consoleCore := zapcore.NewCore(
 		encoder,
-		zapcore.AddSync(os.Stdout),
+		getZapStandoutWriter(),
 		logLevelMap[cfg.Level],
 	)
 
 	var cores []zapcore.Core
 
 	// 根据配置类型添加其他输出
-	switch cfg.Type {
+	switch cfg.Writer {
 	case WriterConsole:
 		cores = append(cores, consoleCore)
 	case WriterFile:
-		// 创建日志目录
-		if err := os.MkdirAll(cfg.Dir, 0755); err != nil {
-			return nil, err
+		defaultWriter, getDefaultWriterErr := getZapFileWriter(cfg, "_full.log")
+		if getDefaultWriterErr != nil {
+			return nil, getDefaultWriterErr
+		}
+		wfWriter, getWfWriterErr := getZapFileWriter(cfg, "_wf.log")
+		if getWfWriterErr != nil {
+			return nil, getWfWriterErr
 		}
 
-		// 创建主日志文件
-		mainFile, err := os.OpenFile(
-			filepath.Join(cfg.Dir, fmt.Sprintf("%s.log", cfg.service)),
-			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
-			0644,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		// 创建错误日志文件
-		errorFile, err := os.OpenFile(
-			filepath.Join(cfg.Dir, fmt.Sprintf("%s.error.log", cfg.service)),
-			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
-			0644,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		// 创建主日志core
-		mainCore := zapcore.NewCore(
+		// 创建默认日志core
+		defaultCore := zapcore.NewCore(
 			encoder,
-			zapcore.AddSync(mainFile),
+			defaultWriter,
 			logLevelMap[cfg.Level],
 		)
 
-		// 创建错误日志core
-		errorCore := zapcore.NewCore(
+		// 创建wf日志core
+		wfCore := zapcore.NewCore(
 			encoder,
-			zapcore.AddSync(errorFile),
-			zapcore.ErrorLevel,
+			wfWriter,
+			zapcore.WarnLevel,
 		)
-		cores = append(cores, consoleCore, mainCore, errorCore)
+		cores = append(cores, consoleCore, defaultCore, wfCore)
 	}
 
 	// 使用Tee将日志同时写入所有输出
@@ -317,7 +298,7 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ..
 func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
 	var fields []zap.Field
 	// 添加 writer 类型字段
-	fields = append(fields, zap.String("writer", string(l.cfg.Type)))
+	fields = append(fields, zap.String("writer", string(l.cfg.Writer)))
 
 	for _, key := range l.cfg.ExtraKeys {
 		if v := ctx.Value(key); v != nil {
@@ -333,6 +314,15 @@ type gZapEncoder struct {
 	messageHookFunc MessageHookFunc
 }
 
+func (enc *gZapEncoder) Clone() zapcore.Encoder {
+	encoderClone := enc.Encoder.Clone()
+	return &gZapEncoder{
+		Encoder:         encoderClone,
+		fieldHookFunc:   enc.fieldHookFunc,
+		messageHookFunc: enc.messageHookFunc,
+	}
+}
+
 func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	// 转换 zapcore.Field 到 Field
 	convertedFields := make([]Field, 0, len(fields))
@@ -341,6 +331,16 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 			Key:   f.Key,
 			Value: f.Interface,
 		})
+	}
+
+	// 执行字段钩子函数
+	if enc.fieldHookFunc != nil {
+		enc.fieldHookFunc(convertedFields)
+	}
+
+	// 执行消息钩子函数
+	if enc.messageHookFunc != nil {
+		ent.Message = enc.messageHookFunc(ent.Message)
 	}
 
 	// 将修改后的字段转换回 zapcore.Field
@@ -372,78 +372,4 @@ func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
 	}
 
 	return encoder
-}
-
-// getZapColorEncoder
-func getZapColorEncoder() zapcore.Encoder {
-	// 设置时间编码格式
-	encodeTime := zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.999999")
-
-	// 配置编码器配置
-	encoderCfg := zapcore.EncoderConfig{
-		LevelKey:       "level",                          // 日志级别的键名，例如 "INFO", "ERROR"
-		TimeKey:        "time",                           // 时间戳的键名，记录日志生成的时间
-		CallerKey:      "caller",                         // 调用者的键名，记录日志调用的位置 (文件名和行号)
-		FunctionKey:    "function",                       // 函数名的键名，记录调用函数的名称
-		MessageKey:     "msg",                            // 日志消息的键名，记录实际的日志内容
-		StacktraceKey:  "stacktrace",                     // 堆栈跟踪的键名，记录日志产生时的堆栈信息
-		LineEnding:     zapcore.DefaultLineEnding,        // 日志行的结束符，默认使用换行符
-		EncodeCaller:   zapcore.ShortCallerEncoder,       // 调用者编码器，使用短格式 (文件名:行号)
-		EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 日志级别编码器，增加颜色
-		EncodeTime:     encodeTime,                       // 时间编码器，使用自定义时间格式
-		EncodeDuration: zapcore.StringDurationEncoder,    // 持续时间编码器，使用字符串格式
-	}
-
-	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
-	return zapcore.NewJSONEncoder(encoderCfg)
-}
-
-// timeWriter 实现按时间切割的writer
-type timeWriter struct {
-	filePath string
-	file     *os.File
-	lastTime time.Time
-}
-
-func (w *timeWriter) Write(p []byte) (n int, err error) {
-	now := time.Now()
-	if w.file == nil || !w.isSameTimeUnit(now) {
-		if err := w.openFile(now); err != nil {
-			return 0, err
-		}
-	}
-	return w.file.Write(p)
-}
-
-func (w *timeWriter) isSameTimeUnit(t time.Time) bool {
-	if w.file == nil {
-		return false
-	}
-	// 判断是否在同一天
-	return t.Year() == w.lastTime.Year() && t.Month() == w.lastTime.Month() && t.Day() == w.lastTime.Day()
-}
-
-func (w *timeWriter) openFile(t time.Time) error {
-	if w.file != nil {
-		w.file.Close()
-	}
-
-	// 创建日志目录
-	dir := filepath.Dir(w.filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	// 生成日志文件名
-	filename := fmt.Sprintf("%s.%s.log", w.filePath, t.Format("2006-01-02"))
-
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-
-	w.file = file
-	w.lastTime = t
-
-	return nil
 }

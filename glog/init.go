@@ -5,7 +5,7 @@ func init() {
 	cfg := &LoggerConfig{
 		module:  "default",
 		Level:   InfoLevel,
-		Type:    WriterConsole,
+		Writer:  WriterConsole,
 		Dir:     "./log",
 		service: "app",
 	}

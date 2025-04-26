@@ -95,7 +95,7 @@ func TestZapLoggerWithHooks(t *testing.T) {
 		service: "test",
 		module:  "test",
 		Level:   DebugLevel,
-		Type:    WriterFile,
+		Writer:  WriterFile,
 		Dir:     tempDir,
 	}
 
