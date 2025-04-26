@@ -35,72 +35,76 @@ var loggerKey = loggerKeyType{}
 
 // 以下函数使用Context中的logger，如果没有则使用默认logger
 
-func Debug(ctx context.Context, args ...any) {
-	GetLogger(ctx).Debug(ctx, args...)
+func Debug(ctx context.Context, kvs ...any) {
+	GetLogger(ctx).Debug(ctx, kvs...)
 }
 
-func Debugf(ctx context.Context, format string, args ...any) {
-	GetLogger(ctx).Debugf(ctx, format, args...)
+func Debugf(ctx context.Context, format string, kvs ...any) {
+	GetLogger(ctx).Debugf(ctx, format, kvs...)
 }
 
-func Debugw(ctx context.Context, msg string, keysAndValues ...any) {
-	GetLogger(ctx).Debugw(ctx, msg, keysAndValues...)
+func Debugw(ctx context.Context, msg string, kvs ...any) {
+	GetLogger(ctx).Debugw(ctx, msg, kvs...)
 }
 
-func Info(ctx context.Context, args ...any) {
-	GetLogger(ctx).Info(ctx, args...)
+func Info(ctx context.Context, kvs ...any) {
+	GetLogger(ctx).Info(ctx, kvs...)
 }
 
-func Infof(ctx context.Context, format string, args ...any) {
-	GetLogger(ctx).Infof(ctx, format, args...)
+func Infof(ctx context.Context, format string, kvs ...any) {
+	GetLogger(ctx).Infof(ctx, format, kvs...)
 }
 
-func Infow(ctx context.Context, msg string, keysAndValues ...any) {
-	GetLogger(ctx).Infow(ctx, msg, keysAndValues...)
+func Infow(ctx context.Context, msg string, kvs ...any) {
+	GetLogger(ctx).Infow(ctx, msg, kvs...)
 }
 
-func Warn(ctx context.Context, args ...any) {
-	GetLogger(ctx).Warn(ctx, args...)
+func Warn(ctx context.Context, kvs ...any) {
+	GetLogger(ctx).Warn(ctx, kvs...)
 }
 
-func Warnf(ctx context.Context, format string, args ...any) {
-	GetLogger(ctx).Warnf(ctx, format, args...)
+func Warnf(ctx context.Context, format string, kvs ...any) {
+	GetLogger(ctx).Warnf(ctx, format, kvs...)
 }
 
-func Warnw(ctx context.Context, msg string, keysAndValues ...any) {
-	GetLogger(ctx).Warnw(ctx, msg, keysAndValues...)
+func Warnw(ctx context.Context, msg string, kvs ...any) {
+	GetLogger(ctx).Warnw(ctx, msg, kvs...)
 }
 
-func Error(ctx context.Context, args ...any) {
-	GetLogger(ctx).Error(ctx, args...)
+func Error(ctx context.Context, kvs ...any) {
+	GetLogger(ctx).Error(ctx, kvs...)
 }
 
-func Errorf(ctx context.Context, format string, args ...any) {
-	GetLogger(ctx).Errorf(ctx, format, args...)
+func Errorf(ctx context.Context, format string, kvs ...any) {
+	GetLogger(ctx).Errorf(ctx, format, kvs...)
 }
 
-func Errorw(ctx context.Context, msg string, keysAndValues ...any) {
-	GetLogger(ctx).Errorw(ctx, msg, keysAndValues...)
+func Errorw(ctx context.Context, msg string, kvs ...any) {
+	GetLogger(ctx).Errorw(ctx, msg, kvs...)
 }
 
-func Panic(ctx context.Context, args ...any) {
-	GetLogger(ctx).Panic(ctx, args...)
+func Panic(ctx context.Context, kvs ...any) {
+	GetLogger(ctx).Panic(ctx, kvs...)
 }
 
-func Panicf(ctx context.Context, format string, args ...any) {
-	GetLogger(ctx).Panicf(ctx, format, args...)
+func Panicf(ctx context.Context, format string, kvs ...any) {
+	GetLogger(ctx).Panicf(ctx, format, kvs...)
 }
 
-func Fatal(ctx context.Context, args ...any) {
-	GetLogger(ctx).Fatal(ctx, args...)
+func Panicw(ctx context.Context, msg string, kvs ...any) {
+	GetLogger(ctx).Panicw(ctx, msg, kvs...)
 }
 
-func Fatalf(ctx context.Context, format string, args ...any) {
-	GetLogger(ctx).Fatalf(ctx, format, args...)
+func Fatal(ctx context.Context, kvs ...any) {
+	GetLogger(ctx).Fatal(ctx, kvs...)
 }
 
-func Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
-	GetLogger(ctx).Fatalw(ctx, msg, keysAndValues...)
+func Fatalf(ctx context.Context, format string, kvs ...any) {
+	GetLogger(ctx).Fatalf(ctx, format, kvs...)
+}
+
+func Fatalw(ctx context.Context, msg string, kvs ...any) {
+	GetLogger(ctx).Fatalw(ctx, msg, kvs...)
 }
 
 // GetModuleLogger 获取指定模块的logger

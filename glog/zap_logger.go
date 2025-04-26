@@ -99,76 +99,76 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	return logger, nil
 }
 
-func (l *zapLogger) Debug(ctx context.Context, args ...any) {
-	l.ctxLog(DebugLevel, ctx, args...)
+func (l *zapLogger) Debug(ctx context.Context, kvs ...any) {
+	l.ctxLog(DebugLevel, ctx, kvs...)
 }
 
-func (l *zapLogger) Debugf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(DebugLevel, ctx, format, args...)
+func (l *zapLogger) Debugf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(DebugLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Debugw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(DebugLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Debugw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(DebugLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Info(ctx context.Context, args ...any) {
-	l.ctxLog(InfoLevel, ctx, args...)
+func (l *zapLogger) Info(ctx context.Context, kvs ...any) {
+	l.ctxLog(InfoLevel, ctx, kvs...)
 }
 
-func (l *zapLogger) Infof(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(InfoLevel, ctx, format, args...)
+func (l *zapLogger) Infof(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(InfoLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Infow(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(InfoLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Infow(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(InfoLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Warn(ctx context.Context, args ...any) {
-	l.ctxLog(WarnLevel, ctx, args...)
+func (l *zapLogger) Warn(ctx context.Context, kvs ...any) {
+	l.ctxLog(WarnLevel, ctx, kvs...)
 }
 
-func (l *zapLogger) Warnf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(WarnLevel, ctx, format, args...)
+func (l *zapLogger) Warnf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(WarnLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Warnw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(WarnLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Warnw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(WarnLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Error(ctx context.Context, args ...any) {
-	l.ctxLog(ErrorLevel, ctx, args...)
+func (l *zapLogger) Error(ctx context.Context, kvs ...any) {
+	l.ctxLog(ErrorLevel, ctx, kvs...)
 }
 
-func (l *zapLogger) Errorf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(ErrorLevel, ctx, format, args...)
+func (l *zapLogger) Errorf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(ErrorLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Errorw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(ErrorLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Errorw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(ErrorLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Panic(ctx context.Context, args ...any) {
-	l.ctxLog(PanicLevel, ctx, args...)
+func (l *zapLogger) Panic(ctx context.Context, kvs ...any) {
+	l.ctxLog(PanicLevel, ctx, kvs...)
 }
 
-func (l *zapLogger) Panicf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(PanicLevel, ctx, format, args...)
+func (l *zapLogger) Panicf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(PanicLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Panicw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(PanicLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Panicw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(PanicLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Fatal(ctx context.Context, args ...any) {
-	l.ctxLog(FatalLevel, ctx, args...)
+func (l *zapLogger) Fatal(ctx context.Context, kvs ...any) {
+	l.ctxLog(FatalLevel, ctx, kvs...)
 }
 
-func (l *zapLogger) Fatalf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(PanicLevel, ctx, format, args...)
+func (l *zapLogger) Fatalf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(FatalLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Fatalw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(FatalLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
@@ -195,91 +195,101 @@ func (l *zapLogger) Close() {
 	_ = l.logger.Sync()
 }
 
-func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...any) {
+func (l *zapLogger) ctxLog(level Level, ctx context.Context, kvs ...any) {
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
 
-	// 执行钩子函数
-	msg := fmt.Sprint(args...)
-	executeHooks(ctx, level, msg)
-
-	// 获取上下文字段
-	zapFields := l.extraFields(ctx)
-
-	// 记录日志
-	switch level {
-	case DebugLevel:
-		l.logger.Debug(msg, zapFields...)
-	case InfoLevel:
-		l.logger.Info(msg, zapFields...)
-	case WarnLevel:
-		l.logger.Warn(msg, zapFields...)
-	case ErrorLevel:
-		l.logger.Error(msg, zapFields...)
-	case PanicLevel:
-		l.logger.Panic(msg, zapFields...)
-	case FatalLevel:
-		l.logger.Fatal(msg, zapFields...)
-	}
-}
-
-func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...any) {
-	if nilCtx(ctx) || skipLog(ctx) {
-		return
-	}
+	fields := convertKvsToFields(kvs...)
 
 	// 执行钩子函数
-	msg := fmt.Sprintf(format, args...)
-	executeHooks(ctx, level, msg)
-
-	// 获取上下文字段
-	zapFields := l.extraFields(ctx)
-
-	// 记录日志
-	switch level {
-	case DebugLevel:
-		l.logger.Debug(msg, zapFields...)
-	case InfoLevel:
-		l.logger.Info(msg, zapFields...)
-	case WarnLevel:
-		l.logger.Warn(msg, zapFields...)
-	case ErrorLevel:
-		l.logger.Error(msg, zapFields...)
-	case PanicLevel:
-		l.logger.Panic(msg, zapFields...)
-	case FatalLevel:
-		l.logger.Fatal(msg, zapFields...)
+	msg := ""
+	if len(fields) > 0 {
+		msg = fmt.Sprint(fields[0].Value)
 	}
-}
-
-func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...any) {
-	if nilCtx(ctx) || skipLog(ctx) {
-		return
-	}
-
-	// 将 keysAndValues 转换为 Field 切片
-	fields := make([]Field, 0, len(keysAndValues)/2)
-	for i := 0; i < len(keysAndValues); i += 2 {
-		if i+1 < len(keysAndValues) {
-			fields = append(fields, Field{
-				Key:   fmt.Sprint(keysAndValues[i]),
-				Value: keysAndValues[i+1],
-			})
-		}
-	}
-
-	// 执行钩子函数
 	executeHooks(ctx, level, msg, fields...)
 
+	// 获取上下文字段
+	zapFields := l.extraFields(ctx)
+
 	// 将 Field 转换为 zap.Field
-	zapFields := make([]zap.Field, 0, len(fields))
 	for _, f := range fields {
 		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
 	}
 
-	// 添加上下文字段
-	zapFields = append(zapFields, l.extraFields(ctx)...)
+	// 记录日志
+	switch level {
+	case DebugLevel:
+		l.logger.Debug(msg, zapFields...)
+	case InfoLevel:
+		l.logger.Info(msg, zapFields...)
+	case WarnLevel:
+		l.logger.Warn(msg, zapFields...)
+	case ErrorLevel:
+		l.logger.Error(msg, zapFields...)
+	case PanicLevel:
+		l.logger.Panic(msg, zapFields...)
+	case FatalLevel:
+		l.logger.Fatal(msg, zapFields...)
+	}
+}
+
+func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, kvs ...any) {
+	if nilCtx(ctx) || skipLog(ctx) {
+		return
+	}
+
+	fields := convertKvsToFields(kvs...)
+
+	// 执行钩子函数
+	msg := ""
+	if len(fields) > 0 {
+		msg = fmt.Sprintf(format, fields[0].Value)
+	}
+	executeHooks(ctx, level, msg, fields...)
+
+	// 获取上下文字段
+	zapFields := l.extraFields(ctx)
+
+	// 将 Field 转换为 zap.Field
+	for _, f := range fields {
+		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
+	}
+
+	// 记录日志
+	switch level {
+	case DebugLevel:
+		l.logger.Debug(msg, zapFields...)
+	case InfoLevel:
+		l.logger.Info(msg, zapFields...)
+	case WarnLevel:
+		l.logger.Warn(msg, zapFields...)
+	case ErrorLevel:
+		l.logger.Error(msg, zapFields...)
+	case PanicLevel:
+		l.logger.Panic(msg, zapFields...)
+	case FatalLevel:
+		l.logger.Fatal(msg, zapFields...)
+	}
+}
+
+func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ...any) {
+	if nilCtx(ctx) || skipLog(ctx) {
+		return
+	}
+
+	fields := convertKvsToFields(kvs...)
+
+	// 执行钩子函数
+	executeHooks(ctx, level, msg, fields...)
+
+	// 获取上下文字段
+	zapFields := l.extraFields(ctx)
+
+	// 将 Field 转换为 zap.Field
+	for _, f := range fields {
+		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
+	}
 
 	// 记录日志
 	switch level {
@@ -301,6 +311,9 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAn
 // 提取 context 中的字段
 func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
 	var fields []zap.Field
+	// 添加 writer 类型字段
+	fields = append(fields, zap.String("writer", string(l.cfg.Type)))
+
 	for _, key := range l.cfg.ExtraKeys {
 		if v := ctx.Value(key); v != nil {
 			fields = append(fields, zap.Any(key, v))
@@ -370,7 +383,7 @@ func getZapColorEncoder() zapcore.Encoder {
 	encoderCfg := zapcore.EncoderConfig{
 		LevelKey:       "level",                          // 日志级别的键名，例如 "INFO", "ERROR"
 		TimeKey:        "time",                           // 时间戳的键名，记录日志生成的时间
-		CallerKey:      "file",                           // 调用者的键名，记录日志调用的位置 (文件名和行号)
+		CallerKey:      "caller",                         // 调用者的键名，记录日志调用的位置 (文件名和行号)
 		FunctionKey:    "function",                       // 函数名的键名，记录调用函数的名称
 		MessageKey:     "msg",                            // 日志消息的键名，记录实际的日志内容
 		StacktraceKey:  "stacktrace",                     // 堆栈跟踪的键名，记录日志产生时的堆栈信息

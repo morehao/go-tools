@@ -8,20 +8,28 @@
  */
 package glog
 
-// LoggerConfig 日志配置
+// LoggerConfig 模块级别的日志配置
 type LoggerConfig struct {
-	Service   string     `yaml:"service"` // 服务名称
-	Module    string     `yaml:"module"`  // 模块名称，如 default、gorm、es、redis 等
-	Level     Level      `yaml:"level"`
-	Type      WriterType `yaml:"type"` // 输出类型：console 或 file
-	Dir       string     `yaml:"dir"`  // 日志文件目录
-	ExtraKeys []string   `yaml:"extra_keys"`
+	// Service 服务名称，继承自父级 ServiceConfig
+	Service string `json:"service" yaml:"service"`
+	// Module 模块名称，如 "es", "gorm", "redis" 等
+	Module string `json:"module" yaml:"module"`
+	// Level 日志级别
+	Level Level `json:"level" yaml:"level"`
+	// Type 日志输出类型
+	Type WriterType `json:"type" yaml:"type"`
+	// Dir 日志文件目录
+	Dir string `json:"dir" yaml:"dir"`
+	// ExtraKeys 需要从上下文中提取的额外字段
+	ExtraKeys []string `json:"extra_keys" yaml:"extra_keys"`
 }
 
-// ServiceConfig 服务配置
+// ServiceConfig 服务级别的日志配置
 type ServiceConfig struct {
-	Service string                   `yaml:"service"` // 服务名称，如 myApp
-	Modules map[string]*LoggerConfig `yaml:"modules"` // 模块配置
+	// Service 服务名称，如 "myApp"
+	Service string `json:"service" yaml:"service"`
+	// Modules 模块配置，key 为模块名称
+	Modules map[string]*LoggerConfig `json:"modules" yaml:"modules"`
 }
 
 func getDefaultLoggerConfig() *LoggerConfig {
