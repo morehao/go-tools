@@ -1,40 +1,54 @@
+/*
+ * @Author: morehao morehao@qq.com
+ * @Date: 2025-04-26 09:55:22
+ * @LastEditors: morehao morehao@qq.com
+ * @LastEditTime: 2025-04-26 11:20:13
+ * @FilePath: /go-tools/glog/config.go
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 package glog
 
-import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-)
-
+// LoggerConfig 日志配置
 type LoggerConfig struct {
-	LoggerType LoggerType `yaml:"logger_type"`
-	Service    string     `yaml:"service"`
-	Level      Level      `yaml:"level"`
-	Dir        string     `yaml:"dir"`
-	Stdout     bool       `yaml:"stdout"`
-	ExtraKeys  []string   `yaml:"extra_keys"`
+	Service   string     `yaml:"service"` // 服务名称
+	Module    string     `yaml:"module"`  // 模块名称，如 default、gorm、es、redis 等
+	Level     Level      `yaml:"level"`
+	Type      WriterType `yaml:"type"` // 输出类型：console 或 file
+	Dir       string     `yaml:"dir"`  // 日志文件目录
+	ExtraKeys []string   `yaml:"extra_keys"`
+}
+
+// ServiceConfig 服务配置
+type ServiceConfig struct {
+	Service string                   `yaml:"service"` // 服务名称，如 myApp
+	Modules map[string]*LoggerConfig `yaml:"modules"` // 模块配置
 }
 
 func getDefaultLoggerConfig() *LoggerConfig {
 	return &LoggerConfig{
-		LoggerType: LoggerTypeZap,
-		Service:    "app",
-		Level:      InfoLevel,
-		Dir:        "./log",
+		Service: "app",
+		Module:  "default",
+		Level:   InfoLevel,
+		Type:    WriterConsole,
+		Dir:     "./log",
 	}
 }
 
-type ZapFieldHookFunc func(fields []zapcore.Field)
+// FieldHookFunc 字段钩子函数类型
+type FieldHookFunc func(fields []Field)
 
+// MessageHookFunc 消息钩子函数类型
 type MessageHookFunc func(message string) string
 
-type optConfig struct {
-	zapOpts          []zap.Option
-	zapFieldHookFunc ZapFieldHookFunc
-	messageHookFunc  MessageHookFunc
-}
-
+// Option 日志选项
 type Option interface {
 	apply(cfg *optConfig)
+}
+
+type optConfig struct {
+	callerSkip      int
+	fieldHookFunc   FieldHookFunc
+	messageHookFunc MessageHookFunc
 }
 
 type option func(cfg *optConfig)
@@ -42,18 +56,22 @@ type option func(cfg *optConfig)
 func (fn option) apply(cfg *optConfig) {
 	fn(cfg)
 }
-func WithZapOptions(opts ...zap.Option) Option {
+
+// WithCallerSkip 设置调用者跳过的层数
+func WithCallerSkip(skip int) Option {
 	return option(func(cfg *optConfig) {
-		cfg.zapOpts = append(cfg.zapOpts, opts...)
+		cfg.callerSkip = skip
 	})
 }
 
-func WithZapFieldHookFunc(fn ZapFieldHookFunc) Option {
+// WithFieldHookFunc 设置字段钩子函数
+func WithFieldHookFunc(fn FieldHookFunc) Option {
 	return option(func(cfg *optConfig) {
-		cfg.zapFieldHookFunc = fn
+		cfg.fieldHookFunc = fn
 	})
 }
 
+// WithMessageHookFunc 设置消息钩子函数
 func WithMessageHookFunc(fn MessageHookFunc) Option {
 	return option(func(cfg *optConfig) {
 		cfg.messageHookFunc = fn

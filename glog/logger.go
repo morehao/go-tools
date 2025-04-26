@@ -4,6 +4,37 @@ import (
 	"context"
 )
 
+// Field 日志字段类型
+type Field struct {
+	Key   string
+	Value interface{}
+}
+
+// Hook 钩子函数类型
+type Hook func(ctx context.Context, level Level, msg string, fields ...Field)
+
+// hooks 全局钩子函数列表
+var hooks []Hook
+
+// AddHook 添加钩子函数
+func AddHook(hook Hook) {
+	hooks = append(hooks, hook)
+}
+
+// executeHooks 执行所有钩子函数
+func executeHooks(ctx context.Context, level Level, msg string, fields ...Field) {
+	for _, hook := range hooks {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// 钩子函数中的panic不应该影响日志记录
+				}
+			}()
+			hook(ctx, level, msg, fields...)
+		}()
+	}
+}
+
 type Logger interface {
 	Debug(ctx context.Context, args ...any)
 	Debugf(ctx context.Context, format string, args ...any)
@@ -27,28 +58,6 @@ type Logger interface {
 	Close()
 }
 
-func NewLogger(cfg *LoggerConfig, opts ...Option) error {
-	var logger Logger
-	switch cfg.LoggerType {
-	case LoggerTypeZap:
-		l, err := newZapLogger(cfg, opts...)
-		if err != nil {
-			return err
-		}
-		logger = l
-	default:
-		l, err := newZapLogger(cfg, opts...)
-		if err != nil {
-			return err
-		}
-		logger = l
-	}
-	logInstance = &instance{
-		Logger: logger,
-	}
-	return nil
-}
-
 // newZapLogger 初始化zapLogger
 func newZapLogger(cfg *LoggerConfig, opts ...Option) (Logger, error) {
 	optCfg := &optConfig{}
@@ -61,7 +70,7 @@ func newZapLogger(cfg *LoggerConfig, opts ...Option) (Logger, error) {
 	}
 
 	return &zapLogger{
-		logger: logger.WithOptions(optCfg.zapOpts...),
+		logger: logger,
 		cfg:    cfg,
 	}, nil
 }

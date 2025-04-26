@@ -3,10 +3,8 @@ package glog
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"path"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -20,73 +18,100 @@ type zapLogger struct {
 	cfg    *LoggerConfig
 }
 
+type zapLoggerConfig struct {
+	callerSkip      int
+	fieldHookFunc   FieldHookFunc
+	messageHookFunc MessageHookFunc
+}
+
 func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
-	var zapCores []zapcore.Core
-	logLevel, ok := logLevelMap[cfg.Level]
-	if !ok {
-		logLevel = zapcore.InfoLevel
-	}
-	var infoLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= logLevel && lvl <= zapcore.InfoLevel
-	})
+	var core zapcore.Core
 
-	var errorLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= logLevel && lvl >= zapcore.WarnLevel
-	})
-
-	var stdLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= logLevel && lvl >= zapcore.DebugLevel
-	})
-	if cfg.Stdout {
-		writer, getWriterErr := getZapLogWriter(cfg, logOutputTypeStdout)
-		if getWriterErr != nil {
-			return nil, getWriterErr
+	switch cfg.Type {
+	case WriterConsole:
+		zapCfg := &zapLoggerConfig{
+			callerSkip:      optCfg.callerSkip,
+			fieldHookFunc:   optCfg.fieldHookFunc,
+			messageHookFunc: optCfg.messageHookFunc,
 		}
-		c := zapcore.NewCore(
-			getZapEncoder(optCfg),
-			writer,
-			stdLevel)
-		zapCores = append(zapCores, c)
+		core = zapcore.NewCore(
+			getZapEncoder(zapCfg),
+			zapcore.AddSync(os.Stdout),
+			zapcore.Level(logLevelMap[cfg.Level]),
+		)
+	case WriterFile:
+		// 创建日志目录
+		if err := os.MkdirAll(cfg.Dir, 0755); err != nil {
+			return nil, err
+		}
+
+		// 创建主日志文件
+		mainFile, err := os.OpenFile(
+			filepath.Join(cfg.Dir, fmt.Sprintf("%s.log", cfg.Service)),
+			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
+			0644,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 创建错误日志文件
+		errorFile, err := os.OpenFile(
+			filepath.Join(cfg.Dir, fmt.Sprintf("%s.error.log", cfg.Service)),
+			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
+			0644,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 创建主日志core
+		mainCore := zapcore.NewCore(
+			getZapEncoder(&zapLoggerConfig{
+				callerSkip:      optCfg.callerSkip,
+				fieldHookFunc:   optCfg.fieldHookFunc,
+				messageHookFunc: optCfg.messageHookFunc,
+			}),
+			zapcore.AddSync(mainFile),
+			zapcore.Level(logLevelMap[cfg.Level]),
+		)
+
+		// 创建错误日志core
+		errorCore := zapcore.NewCore(
+			getZapEncoder(&zapLoggerConfig{
+				callerSkip:      optCfg.callerSkip,
+				fieldHookFunc:   optCfg.fieldHookFunc,
+				messageHookFunc: optCfg.messageHookFunc,
+			}),
+			zapcore.AddSync(errorFile),
+			zapcore.ErrorLevel,
+		)
+
+		// 使用Tee将日志同时写入两个文件
+		core = zapcore.NewTee(mainCore, errorCore)
 	}
 
-	defaultWriter, getDefaultWriterErr := getZapLogWriter(cfg, logOutputTypeDefaultFile)
-	if getDefaultWriterErr != nil {
-		return nil, getDefaultWriterErr
+	// 如果有钩子函数，添加钩子
+	if optCfg != nil && (optCfg.fieldHookFunc != nil || optCfg.messageHookFunc != nil) {
+		zapCfg := &zapLoggerConfig{
+			callerSkip:      optCfg.callerSkip,
+			fieldHookFunc:   optCfg.fieldHookFunc,
+			messageHookFunc: optCfg.messageHookFunc,
+		}
+		core = zapcore.NewTee(core, zapcore.NewCore(
+			getZapEncoder(zapCfg),
+			zapcore.AddSync(os.Stdout),
+			zapcore.Level(logLevelMap[cfg.Level]),
+		))
 	}
-	zapCores = append(zapCores,
-		zapcore.NewCore(
-			getZapEncoder(optCfg),
-			defaultWriter,
-			infoLevel))
 
-	zapCores = append(zapCores,
-		zapcore.NewCore(
-			getZapEncoder(optCfg),
-			defaultWriter,
-			errorLevel))
+	// 创建 logger
+	logger := zap.New(core)
 
-	wfWriter, getWfWriterErr := getZapLogWriter(cfg, logOutputTypeWarnFatal)
-	if getWfWriterErr != nil {
-		return nil, getWfWriterErr
+	// 如果设置了 callerSkip，添加 caller skip
+	if optCfg != nil && optCfg.callerSkip > 0 {
+		logger = logger.WithOptions(zap.AddCallerSkip(optCfg.callerSkip))
 	}
-	zapCores = append(zapCores,
-		zapcore.NewCore(
-			getZapEncoder(optCfg),
-			wfWriter,
-			errorLevel))
-
-	core := zapcore.NewTee(zapCores...)
-
-	// 开启开发模式，堆栈跟踪
-	caller := zap.WithCaller(true)
-
-	development := zap.Development()
-
-	// 设置初始化字段
-	field := zap.Fields()
-
-	// 构造logger
-	logger := zap.New(core, field, caller, development)
 
 	return logger, nil
 }
@@ -168,7 +193,15 @@ func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
-	logger := l.logger.WithOptions(cfg.zapOpts...)
+
+	// 创建新的 logger
+	logger := l.logger
+
+	// 如果设置了 callerSkip，添加 caller skip
+	if cfg.callerSkip > 0 {
+		logger = logger.WithOptions(zap.AddCallerSkip(cfg.callerSkip))
+	}
+
 	return &zapLogger{
 		logger: logger,
 		cfg:    l.cfg,
@@ -183,19 +216,25 @@ func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...any) {
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
+
+	// 执行钩子函数
+	executeHooks(ctx, level, fmt.Sprint(args...))
+
+	// 原有的日志记录逻辑
+	fields := l.extraFields(ctx)
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Debug(args...)
+		l.logger.Sugar().With(fields...).Debug(args...)
 	case InfoLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Info(args...)
+		l.logger.Sugar().With(fields...).Info(args...)
 	case WarnLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Warn(args...)
+		l.logger.Sugar().With(fields...).Warn(args...)
 	case ErrorLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Error(args...)
+		l.logger.Sugar().With(fields...).Error(args...)
 	case PanicLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Panic(args...)
+		l.logger.Sugar().With(fields...).Panic(args...)
 	case FatalLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Fatal(args...)
+		l.logger.Sugar().With(fields...).Fatal(args...)
 	}
 }
 
@@ -203,19 +242,25 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, arg
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
+
+	// 执行钩子函数
+	executeHooks(ctx, level, fmt.Sprintf(format, args...))
+
+	// 原有的日志记录逻辑
+	fields := l.extraFields(ctx)
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Debugf(format, args...)
+		l.logger.Sugar().With(fields...).Debugf(format, args...)
 	case InfoLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Infof(format, args...)
+		l.logger.Sugar().With(fields...).Infof(format, args...)
 	case WarnLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Warnf(format, args...)
+		l.logger.Sugar().With(fields...).Warnf(format, args...)
 	case ErrorLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Errorf(format, args...)
+		l.logger.Sugar().With(fields...).Errorf(format, args...)
 	case PanicLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Panicf(format, args...)
+		l.logger.Sugar().With(fields...).Panicf(format, args...)
 	case FatalLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalf(format, args...)
+		l.logger.Sugar().With(fields...).Fatalf(format, args...)
 	}
 }
 
@@ -223,19 +268,36 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAn
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
+
+	// 将keysAndValues转换为Field切片
+	var fields []Field
+	for i := 0; i < len(keysAndValues); i += 2 {
+		if i+1 < len(keysAndValues) {
+			fields = append(fields, Field{
+				Key:   fmt.Sprint(keysAndValues[i]),
+				Value: keysAndValues[i+1],
+			})
+		}
+	}
+
+	// 执行钩子函数
+	executeHooks(ctx, level, msg, fields...)
+
+	// 原有的日志记录逻辑
+	extraFields := l.extraFields(ctx)
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Debugw(msg, keysAndValues...)
+		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Debugw(msg)
 	case InfoLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Infow(msg, keysAndValues...)
+		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Infow(msg)
 	case WarnLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Warnw(msg, keysAndValues...)
+		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Warnw(msg)
 	case ErrorLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Errorw(msg, keysAndValues...)
+		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Errorw(msg)
 	case PanicLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Panicw(msg, keysAndValues...)
+		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Panicw(msg)
 	case FatalLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalw(msg, keysAndValues...)
+		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Fatalw(msg)
 	}
 }
 
@@ -251,55 +313,54 @@ func (l *zapLogger) extraFields(ctx context.Context) []any {
 }
 
 type gZapEncoder struct {
-	fieldHookFunc   ZapFieldHookFunc
+	fieldHookFunc   FieldHookFunc
 	messageHookFunc MessageHookFunc
 	zapcore.Encoder
 }
 
-func (enc *gZapEncoder) Clone() zapcore.Encoder {
-	encoderClone := enc.Encoder.Clone()
-	return &gZapEncoder{
-		Encoder:         encoderClone,
-		fieldHookFunc:   enc.fieldHookFunc,
-		messageHookFunc: enc.messageHookFunc,
-	}
-}
-
 func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	if enc.fieldHookFunc != nil {
-		enc.fieldHookFunc(fields)
+	// 转换 zapcore.Field 到 Field
+	var convertedFields []Field
+	for _, f := range fields {
+		convertedFields = append(convertedFields, Field{
+			Key:   f.Key,
+			Value: f.Interface,
+		})
 	}
+
+	// 调用字段钩子函数
+	if enc.fieldHookFunc != nil {
+		enc.fieldHookFunc(convertedFields)
+	}
+
+	// 调用消息钩子函数
 	if enc.messageHookFunc != nil {
 		ent.Message = enc.messageHookFunc(ent.Message)
 	}
+
 	return enc.Encoder.EncodeEntry(ent, fields)
 }
 
-func getZapEncoder(optCfg *optConfig) zapcore.Encoder {
-	// 设置时间编码格式
-	encodeTime := zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.999999")
+func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+	encoderConfig.EncodeDuration = zapcore.StringDurationEncoder
+	encoderConfig.EncodeName = zapcore.FullNameEncoder
 
-	// 配置编码器配置
-	encoderCfg := zapcore.EncoderConfig{
-		LevelKey:      "level",      // 日志级别的键名，例如 "INFO", "ERROR"
-		TimeKey:       "time",       // 时间戳的键名，记录日志生成的时间
-		StacktraceKey: "stacktrace", // 堆栈跟踪的键名，记录日志产生时的堆栈信息
-		CallerKey:     "file",       // 调用者的键名，记录日志调用的位置 (文件名和行号)
-		// FunctionKey:    "function",                    // 函数名的键名，记录调用函数的名称
-		MessageKey:     "msg",                         // 日志消息的键名，记录实际的日志内容
-		LineEnding:     zapcore.DefaultLineEnding,     // 日志行的结束符，默认使用换行符
-		EncodeCaller:   zapcore.ShortCallerEncoder,    // 调用者编码器，使用短格式 (文件名:行号)
-		EncodeLevel:    zapcore.CapitalLevelEncoder,   // 日志级别编码器，使用大写格式，例如 "INFO", "ERROR"
-		EncodeTime:     encodeTime,                    // 时间编码器，使用自定义时间格式 "2006-01-02 15:04:05.999999"
-		EncodeDuration: zapcore.StringDurationEncoder, // 持续时间编码器，使用字符串格式记录持续时间
+	encoder := zapcore.NewJSONEncoder(encoderConfig)
+
+	// 如果配置了字段钩子函数或消息钩子函数，则使用自定义编码器
+	if cfg != nil && (cfg.fieldHookFunc != nil || cfg.messageHookFunc != nil) {
+		encoder = &gZapEncoder{
+			Encoder:         encoder,
+			fieldHookFunc:   cfg.fieldHookFunc,
+			messageHookFunc: cfg.messageHookFunc,
+		}
 	}
 
-	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
-	return &gZapEncoder{
-		Encoder:         zapcore.NewJSONEncoder(encoderCfg),
-		fieldHookFunc:   optCfg.zapFieldHookFunc,
-		messageHookFunc: optCfg.messageHookFunc,
-	}
+	return encoder
 }
 
 // getZapColorEncoder
@@ -318,74 +379,60 @@ func getZapColorEncoder() zapcore.Encoder {
 		LineEnding:     zapcore.DefaultLineEnding,        // 日志行的结束符，默认使用换行符
 		EncodeCaller:   zapcore.ShortCallerEncoder,       // 调用者编码器，使用短格式 (文件名:行号)
 		EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 日志级别编码器，增加颜色
-		EncodeTime:     encodeTime,                       // 时间编码器，使用自定义时间格式 "2006-01-02 15:04:05.999999"
-		EncodeDuration: zapcore.StringDurationEncoder,    // 持续时间编码器，使用字符串格式记录持续时间
+		EncodeTime:     encodeTime,                       // 时间编码器，使用自定义时间格式
+		EncodeDuration: zapcore.StringDurationEncoder,    // 持续时间编码器，使用字符串格式
 	}
 
 	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
 	return zapcore.NewJSONEncoder(encoderCfg)
 }
 
-func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSyncer, error) {
-	var w io.Writer
-	if logOutputType == logOutputTypeStdout {
-		w = os.Stdout
-	} else {
-		director := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
-		if ok := fileExists(director); !ok {
-			_ = os.MkdirAll(director, os.ModePerm)
+// timeWriter 实现按时间切割的writer
+type timeWriter struct {
+	filePath string
+	file     *os.File
+	lastTime time.Time
+}
+
+func (w *timeWriter) Write(p []byte) (n int, err error) {
+	now := time.Now()
+	if w.file == nil || !w.isSameTimeUnit(now) {
+		if err := w.openFile(now); err != nil {
+			return 0, err
 		}
-		var logFilename string
-		switch logOutputType {
-		case logOutputTypeDefaultFile:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
-		case logOutputTypeWarnFatal:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileWarnFatalSuffix)
-		default:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
-		}
+	}
+	return w.file.Write(p)
+}
 
-		// 使用 rotatelogs 进行日志切割，需要注意rotatelogs已停止维护
-		// rotator, err := rotatelogs.New(
-		// 	path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
-		// 	rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
-		// 	rotatelogs.WithRotationTime(time.Hour*24),                          // 日志切割时间间隔
-		// 	rotatelogs.WithMaxAge(time.Hour*24*7),                             // 保留旧文件的最大时间
-		// )
-		// if err != nil {
-		// 	panic(err)
-		// }
-		logFilepath := path.Join(director, logFilename)
+func (w *timeWriter) isSameTimeUnit(t time.Time) bool {
+	if w.file == nil {
+		return false
+	}
+	// 判断是否在同一天
+	return t.Year() == w.lastTime.Year() && t.Month() == w.lastTime.Month() && t.Day() == w.lastTime.Day()
+}
 
-		// 使用 lumberjack 进行日志切割
-		// l := &lumberjack.Logger{
-		// 	Filename:   logFilepath, // 分割后的文件名称
-		// 	MaxSize:    50,          // 单个日志文件的最大大小
-		// 	MaxBackups: 3,           // 要保留的旧日志文件的最大数量
-		// 	MaxAge:     7,           // 日志文件的最大保存天数
-		// 	LocalTime:  true,        // 使用本地时间
-		// 	Compress:   true,        // 是否压缩旧的日志文件
-		// }
-		// w = zapcore.AddSync(l)
-
-		file, openErr := os.OpenFile(logFilepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if openErr != nil {
-			return nil, openErr
-		}
-		w = file
-
+func (w *timeWriter) openFile(t time.Time) error {
+	if w.file != nil {
+		w.file.Close()
 	}
 
-	flushInterval := 5 * time.Second
-	if logOutputType == logOutputTypeStdout {
-		flushInterval = 1 * time.Second
-	}
-	ws := &zapcore.BufferedWriteSyncer{
-		WS:            zapcore.AddSync(w),
-		Size:          256 * 1024,
-		FlushInterval: flushInterval,
-		Clock:         nil,
+	// 创建日志目录
+	dir := filepath.Dir(w.filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
 	}
 
-	return ws, nil
+	// 生成日志文件名
+	filename := fmt.Sprintf("%s.%s.log", w.filePath, t.Format("2006-01-02"))
+
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	w.file = file
+	w.lastTime = t
+
+	return nil
 }

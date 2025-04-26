@@ -11,20 +11,6 @@ const (
 )
 
 const (
-	logOutputTypeStdout      = "stdout"     // 输出到控制台
-	logOutputTypeDefaultFile = "file"       // 输出到普通文件
-	logOutputTypeWarnFatal   = "warn_fatal" // 输出到警告和致命错误日志文件
-
-	logOutputFieldDefaultSuffix  = ".log"
-	logOutputFileWarnFatalSuffix = ".wf.log"
-)
-
-var logOutputFileSuffixMap = map[string]string{
-	logOutputTypeDefaultFile: logOutputFieldDefaultSuffix,
-	logOutputTypeWarnFatal:   logOutputFileWarnFatalSuffix,
-}
-
-const (
 	KeyRequestId  = "requestId"
 	KeyTraceId    = "traceId"
 	KeyTraceFlags = "traceFlags"
@@ -94,3 +80,10 @@ var logLevelMap = map[Level]zapcore.Level{
 	PanicLevel: zapcore.PanicLevel,
 	FatalLevel: zapcore.FatalLevel,
 }
+
+type WriterType string
+
+const (
+	WriterConsole WriterType = "console"
+	WriterFile    WriterType = "file"
+)
