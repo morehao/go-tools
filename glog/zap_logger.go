@@ -2,7 +2,6 @@ package glog
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -177,7 +176,7 @@ func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 }
 
 func (l *zapLogger) Close() {
-	_ = l.logger.Sync()
+	_ = l.logger.Sugar().Sync()
 }
 
 func (l *zapLogger) ctxLog(level Level, ctx context.Context, kvs ...any) {
@@ -185,37 +184,20 @@ func (l *zapLogger) ctxLog(level Level, ctx context.Context, kvs ...any) {
 		return
 	}
 
-	fields := convertKvsToFields(kvs...)
-
-	// 执行钩子函数
-	msg := ""
-	if len(fields) > 0 {
-		msg = fmt.Sprint(fields[0].Value)
-	}
-	executeHooks(ctx, level, msg, fields...)
-
-	// 获取上下文字段
-	zapFields := l.extraFields(ctx)
-
-	// 将 Field 转换为 zap.Field
-	for _, f := range fields {
-		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
-	}
-
 	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Debug(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debug(kvs...)
 	case InfoLevel:
-		l.logger.Info(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Info(kvs...)
 	case WarnLevel:
-		l.logger.Warn(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warn(kvs...)
 	case ErrorLevel:
-		l.logger.Error(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Error(kvs...)
 	case PanicLevel:
-		l.logger.Panic(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panic(kvs...)
 	case FatalLevel:
-		l.logger.Fatal(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatal(kvs...)
 	}
 }
 
@@ -224,37 +206,20 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, kvs
 		return
 	}
 
-	fields := convertKvsToFields(kvs...)
-
-	// 执行钩子函数
-	msg := ""
-	if len(fields) > 0 {
-		msg = fmt.Sprintf(format, fields[0].Value)
-	}
-	executeHooks(ctx, level, msg, fields...)
-
-	// 获取上下文字段
-	zapFields := l.extraFields(ctx)
-
-	// 将 Field 转换为 zap.Field
-	for _, f := range fields {
-		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
-	}
-
 	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Debug(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debugf(format, kvs...)
 	case InfoLevel:
-		l.logger.Info(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Infof(format, kvs...)
 	case WarnLevel:
-		l.logger.Warn(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warnf(format, kvs...)
 	case ErrorLevel:
-		l.logger.Error(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Errorf(format, kvs...)
 	case PanicLevel:
-		l.logger.Panic(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panicf(format, kvs...)
 	case FatalLevel:
-		l.logger.Fatal(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalf(format, kvs...)
 	}
 }
 
@@ -263,33 +228,20 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ..
 		return
 	}
 
-	fields := convertKvsToFields(kvs...)
-
-	// 执行钩子函数
-	executeHooks(ctx, level, msg, fields...)
-
-	// 获取上下文字段
-	zapFields := l.extraFields(ctx)
-
-	// 将 Field 转换为 zap.Field
-	for _, f := range fields {
-		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
-	}
-
 	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Debug(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debugw(msg, kvs...)
 	case InfoLevel:
-		l.logger.Info(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Infow(msg, kvs...)
 	case WarnLevel:
-		l.logger.Warn(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warnw(msg, kvs...)
 	case ErrorLevel:
-		l.logger.Error(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Errorw(msg, kvs...)
 	case PanicLevel:
-		l.logger.Panic(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panicw(msg, kvs...)
 	case FatalLevel:
-		l.logger.Fatal(msg, zapFields...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalw(msg, kvs...)
 	}
 }
 
@@ -300,8 +252,8 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ..
 // }
 
 // 提取 context 中的字段
-func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
-	var fields []zap.Field
+func (l *zapLogger) extraFields(ctx context.Context) []any {
+	var fields []any
 	for _, key := range l.cfg.ExtraKeys {
 		if v := ctx.Value(key); v != nil {
 			fields = append(fields, zap.Any(key, v))

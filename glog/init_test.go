@@ -138,9 +138,6 @@ func TestInit(t *testing.T) {
 
 		// 添加钩子函数
 		var hookCalled bool
-		AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
-			hookCalled = true
-		})
 
 		// 初始化日志系统
 		Init(config)

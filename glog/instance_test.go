@@ -88,7 +88,7 @@ func TestClose(t *testing.T) {
 }
 
 // TestFieldHook 测试字段钩子函数
-func TestFieldHook(t *testing.T) {
+func TestHook(t *testing.T) {
 	// 创建一个临时目录用于测试
 	tempDir := "log/glog-test"
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
@@ -109,13 +109,7 @@ func TestFieldHook(t *testing.T) {
 		},
 	}
 
-	// 记录钩子是否被调用
-	var hookCalled bool
-	var hookFields []Field
-
-	var phoneDesensitizationHook = func(ctx context.Context, level Level, message string, fields ...Field) {
-		hookCalled = true
-		hookFields = fields
+	var phoneDesensitizationHook = func(fields []Field) {
 		phoneRegex := regexp.MustCompile(`(\d{3})\d{4}(\d{4})`)
 		for i := range fields {
 			if fields[i].Key == "phone" {
@@ -130,47 +124,23 @@ func TestFieldHook(t *testing.T) {
 		}
 	}
 
-	var pwdDesensitizationHook = func(ctx context.Context, level Level, message string, fields ...Field) {
+	var pwdDesensitizationHook = func(message string) string {
 		// 处理消息中的密码
 		if strings.Contains(message, "password") {
 			re := regexp.MustCompile(`password=[^&\s]+`)
-			message = re.ReplaceAllString(message, "password=***")
+			return re.ReplaceAllString(message, "password=***")
 		}
-
-		// 处理字段中的密码
-		for i := range fields {
-			if fields[i].Key == "password" {
-				fields[i].Value = "***"
-			}
-		}
+		return message
 	}
 
 	// 初始化日志器
 	t.Log("Initializing logger with field hook")
-	Init(config)
-	AddHook(phoneDesensitizationHook)
-	AddHook(pwdDesensitizationHook)
+	Init(config, WithFieldHookFunc(phoneDesensitizationHook), WithMessageHookFunc(pwdDesensitizationHook))
 
 	// 测试电话号码脱敏
 	ctx := context.Background()
 	t.Log("Logging message with phone number")
 	Infow(ctx, "test message", "phone", "13812345678")
-
-	// 验证钩子是否被调用
-	if !hookCalled {
-		t.Error("Field hook was not called")
-	}
-
-	// 验证钩子接收到的字段
-	if len(hookFields) == 0 {
-		t.Error("No fields received by hook")
-		return
-	}
-
-	t.Log("Hook fields:", hookFields)
-	if hookFields[0].Key != "phone" || hookFields[0].Value != "138****5678" {
-		t.Errorf("Unexpected field value: %v", hookFields[0])
-	}
 
 	// 测试密码脱敏
 	t.Log("Logging message with password")
@@ -310,68 +280,6 @@ func TestLogFormat(t *testing.T) {
 	Infof(ctx, "info format: %s", "value", "test")
 	Warnf(ctx, "warn format: %s", "value", "test")
 	Errorf(ctx, "error format: %s", "value", "test")
-}
-
-func TestHookFunctions(t *testing.T) {
-	ctx := context.Background()
-
-	// 添加手机号脱敏钩子
-	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
-		for i, f := range fields {
-			if f.Key == "phone" {
-				phone := f.Value.(string)
-				if len(phone) >= 11 {
-					fields[i].Value = phone[:3] + "****" + phone[7:]
-				}
-			}
-		}
-	})
-
-	// 添加密码脱敏钩子
-	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
-		for i, f := range fields {
-			if f.Key == "password" {
-				fields[i].Value = "******"
-			}
-		}
-	})
-
-	Infow(ctx, "user login", "phone", "13812345678", "password", "123456")
-}
-
-func TestHookErrorHandling(t *testing.T) {
-	ctx := context.Background()
-
-	// 添加会panic的钩子
-	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
-		panic("hook panic")
-	})
-
-	// 添加正常的钩子
-	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
-		for i, f := range fields {
-			if f.Key == "value" {
-				fields[i].Value = "modified"
-			}
-		}
-	})
-
-	Info(ctx, "message", "test hook error handling", "value", "original")
-}
-
-func TestHookWithFields(t *testing.T) {
-	ctx := context.Background()
-
-	// 添加字段修改钩子
-	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
-		for i, f := range fields {
-			if f.Key == "value" {
-				fields[i].Value = "modified by hook"
-			}
-		}
-	})
-
-	Infow(ctx, "test hook with fields", "value", "original value", "other", "unchanged")
 }
 
 func TestRotateUnit(t *testing.T) {

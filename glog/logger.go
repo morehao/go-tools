@@ -2,7 +2,7 @@
  * @Author: morehao morehao@qq.com
  * @Date: 2025-04-26 19:13:30
  * @LastEditors: morehao morehao@qq.com
- * @LastEditTime: 2025-04-26 22:51:20
+ * @LastEditTime: 2025-04-26 23:12:30
  * @FilePath: /go-tools/glog/logger.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -11,30 +11,6 @@ package glog
 import (
 	"context"
 )
-
-// Field 日志字段类型
-type Field struct {
-	Key   string
-	Value interface{}
-}
-
-// Hook 钩子函数类型
-type Hook func(ctx context.Context, level Level, msg string, fields ...Field)
-
-// hooks 全局钩子函数列表
-var hooks []Hook
-
-// AddHook 添加钩子函数
-func AddHook(hook Hook) {
-	hooks = append(hooks, hook)
-}
-
-// executeHooks 执行所有钩子函数
-func executeHooks(ctx context.Context, level Level, msg string, fields ...Field) {
-	for _, hook := range hooks {
-		hook(ctx, level, msg, fields...)
-	}
-}
 
 type Logger interface {
 	Debug(ctx context.Context, kvs ...any)
@@ -74,20 +50,4 @@ func newZapLogger(cfg *ModuleLoggerConfig, opts ...Option) (Logger, error) {
 		logger: logger,
 		cfg:    cfg,
 	}, nil
-}
-
-// convertKvsToFields 将 kvs ...any 转换为 []Field
-func convertKvsToFields(kvs ...any) []Field {
-	fields := make([]Field, 0, len(kvs)/2)
-	for i := 0; i < len(kvs); i += 2 {
-		if i+1 >= len(kvs) {
-			break
-		}
-		key, ok := kvs[i].(string)
-		if !ok {
-			continue
-		}
-		fields = append(fields, Field{Key: key, Value: kvs[i+1]})
-	}
-	return fields
 }

@@ -28,18 +28,14 @@ func (enc *gZapEncoder) Clone() zapcore.Encoder {
 }
 
 func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	// 转换 zapcore.Field 到 Field
-	convertedFields := make([]Field, 0, len(fields))
-	for _, f := range fields {
-		convertedFields = append(convertedFields, Field{
-			Key:   f.Key,
-			Value: f.Interface,
-		})
-	}
 
 	// 执行字段钩子函数
 	if enc.fieldHookFunc != nil {
-		enc.fieldHookFunc(convertedFields)
+		kvs := make([]Field, 0, len(fields))
+		for _, f := range fields {
+			kvs = append(kvs, BuildField(f.Key, f.Interface))
+		}
+		enc.fieldHookFunc(kvs)
 	}
 
 	// 执行消息钩子函数
@@ -48,12 +44,12 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 	}
 
 	// 将修改后的字段转换回 zapcore.Field
-	modifiedFields := make([]zapcore.Field, 0, len(convertedFields))
-	for _, f := range convertedFields {
+	modifiedFields := make([]zapcore.Field, 0, len(fields))
+	for _, f := range fields {
 		modifiedFields = append(modifiedFields, zapcore.Field{
 			Key:       f.Key,
 			Type:      zapcore.ReflectType,
-			Interface: f.Value,
+			Interface: f,
 		})
 	}
 
