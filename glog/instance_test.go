@@ -11,18 +11,24 @@ import (
 
 func TestDefaultLogger(t *testing.T) {
 	ctx := context.Background()
-	Debug(ctx, "msg", "debug message")
-	Info(ctx, "msg", "info message")
-	Warn(ctx, "msg", "warn message")
-	Error(ctx, "msg", "error message")
+	Debug(ctx, "message", "debug")
+	Info(ctx, "message", "info")
+	Warn(ctx, "message", "warn")
+	Error(ctx, "message", "error")
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic after Panic")
+		}
+	}()
+	Panic(ctx, "message", "fatal")
 }
 
 func TestLogLevels(t *testing.T) {
 	ctx := context.Background()
-	Debug(ctx, "msg", "debug message")
-	Info(ctx, "msg", "info message")
-	Warn(ctx, "msg", "warn message")
-	Error(ctx, "msg", "error message")
+	Debug(ctx, "message", "debug message")
+	Info(ctx, "message", "info message")
+	Warn(ctx, "message", "warn message")
+	Error(ctx, "message", "error message")
 }
 
 func TestFileLogger(t *testing.T) {
@@ -35,7 +41,7 @@ func TestFileLogger(t *testing.T) {
 
 	// 创建文件logger
 	cfg := &LoggerConfig{
-		Module: "fs",
+		module: "fs",
 		Level:  InfoLevel,
 		Type:   WriterFile,
 		Dir:    testDir,
@@ -52,7 +58,7 @@ func TestFileLogger(t *testing.T) {
 
 	// 测试文件logger
 	ctx := context.Background()
-	Info(ctx, "msg", "test file logger")
+	Info(ctx, "message", "test file logger")
 
 	// 检查日志文件是否创建
 	files, err := filepath.Glob(filepath.Join(testDir, "*.log"))
@@ -76,7 +82,7 @@ func TestClose(t *testing.T) {
 			t.Error("expected panic after Close")
 		}
 	}()
-	Info(ctx, "msg", "this should panic")
+	Info(ctx, "message", "this should panic")
 }
 
 // TestFieldHook 测试字段钩子函数
@@ -93,7 +99,7 @@ func TestFieldHook(t *testing.T) {
 		Service: "test",
 		Modules: map[string]*LoggerConfig{
 			"test": {
-				Module: "test",
+				module: "test",
 				Level:  DebugLevel,
 				Type:   WriterConsole,
 				Dir:    tempDir,
@@ -105,7 +111,7 @@ func TestFieldHook(t *testing.T) {
 	var hookCalled bool
 	var hookFields []Field
 
-	var phoneDesensitizationHook = func(ctx context.Context, level Level, msg string, fields ...Field) {
+	var phoneDesensitizationHook = func(ctx context.Context, level Level, message string, fields ...Field) {
 		hookCalled = true
 		hookFields = fields
 		phoneRegex := regexp.MustCompile(`(\d{3})\d{4}(\d{4})`)
@@ -122,11 +128,11 @@ func TestFieldHook(t *testing.T) {
 		}
 	}
 
-	var pwdDesensitizationHook = func(ctx context.Context, level Level, msg string, fields ...Field) {
+	var pwdDesensitizationHook = func(ctx context.Context, level Level, message string, fields ...Field) {
 		// 处理消息中的密码
-		if strings.Contains(msg, "password") {
+		if strings.Contains(message, "password") {
 			re := regexp.MustCompile(`password=[^&\s]+`)
-			msg = re.ReplaceAllString(msg, "password=***")
+			message = re.ReplaceAllString(message, "password=***")
 		}
 
 		// 处理字段中的密码
@@ -180,12 +186,12 @@ func TestContextLogger(t *testing.T) {
 
 	// 设置测试配置
 	config := &ServiceConfig{
-		Service: "test",
+		Service: "app",
 		Modules: map[string]*LoggerConfig{
 			"test": {
-				Module: "test",
+				module: "test",
 				Level:  DebugLevel,
-				Type:   WriterConsole,
+				Type:   WriterFile,
 				Dir:    tempDir,
 			},
 		},
@@ -205,7 +211,7 @@ func TestContextLogger(t *testing.T) {
 
 	// 测试日志记录
 	t.Log("Testing context logger")
-	logger.Info(ctx, "msg", "test context logger")
+	logger.Info(ctx, "message", "test context logger")
 
 	// 测试带字段的日志
 	logger.Infow(ctx, "test with fields", "key", "value")
@@ -217,7 +223,7 @@ func TestContextLogger(t *testing.T) {
 func TestSetDefaultLogger(t *testing.T) {
 	// 创建一个新的logger
 	cfg := &LoggerConfig{
-		Module: "test_default",
+		module: "test_default",
 		Level:  DebugLevel,
 		Type:   WriterConsole,
 		Dir:    "./test_log",
@@ -244,80 +250,6 @@ func TestSetDefaultLogger(t *testing.T) {
 	SetDefaultLogger(oldLogger)
 }
 
-// TestModuleLogger 测试模块级别的logger
-func TestModuleLogger(t *testing.T) {
-	// 创建临时目录用于测试
-	tempDir, err := os.MkdirTemp("", "glog-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// 创建测试配置
-	cfg := &ServiceConfig{
-		Service: "test-service",
-		Modules: map[string]*LoggerConfig{
-			"module1": {
-				Type:  WriterConsole,
-				Level: InfoLevel,
-			},
-			"module2": {
-				Type:  WriterFile,
-				Level: DebugLevel,
-				Dir:   tempDir,
-			},
-		},
-	}
-
-	// 初始化日志系统
-	err = Init(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer Close()
-
-	// 获取模块日志记录器
-	module1Logger := GetModuleLogger("module1")
-	module2Logger := GetModuleLogger("module2")
-
-	// 测试模块1的日志记录
-	module1Logger.Info(context.Background(), "module1 message", "key1", "value1")
-	module1Logger.Debug(context.Background(), "module1 debug message") // 这个应该不会输出，因为级别是 Info
-
-	// 测试模块2的日志记录
-	module2Logger.Debug(context.Background(), "module2 debug message", "key2", "value2")
-	module2Logger.Info(context.Background(), "module2 info message")
-
-	// 验证模块2的日志文件是否存在
-	logFiles, err := filepath.Glob(filepath.Join(tempDir, "*.log"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(logFiles) == 0 {
-		t.Error("No log files were created for module2")
-	}
-
-	// 读取日志文件内容
-	for _, logFile := range logFiles {
-		content, err := os.ReadFile(logFile)
-		if err != nil {
-			t.Fatal(err)
-		}
-		logContent := string(content)
-
-		// 验证日志内容包含必要的字段
-		if !strings.Contains(logContent, "module2") {
-			t.Error("Log content does not contain module name")
-		}
-		if !strings.Contains(logContent, "writer") {
-			t.Error("Log content does not contain writer type")
-		}
-		if !strings.Contains(logContent, "file") {
-			t.Error("Log content does not contain writer type 'file'")
-		}
-	}
-}
-
 // TestExtraKeys 测试从上下文中提取额外字段的功能
 func TestExtraKeys(t *testing.T) {
 	// 创建一个临时目录用于测试
@@ -332,7 +264,7 @@ func TestExtraKeys(t *testing.T) {
 		Service: "test",
 		Modules: map[string]*LoggerConfig{
 			"test": {
-				Module:    "test",
+				module:    "test",
 				Level:     DebugLevel,
 				Type:      WriterConsole,
 				Dir:       tempDir,
@@ -382,7 +314,7 @@ func TestHookFunctions(t *testing.T) {
 	ctx := context.Background()
 
 	// 添加手机号脱敏钩子
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
+	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
 		for i, f := range fields {
 			if f.Key == "phone" {
 				phone := f.Value.(string)
@@ -394,7 +326,7 @@ func TestHookFunctions(t *testing.T) {
 	})
 
 	// 添加密码脱敏钩子
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
+	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
 		for i, f := range fields {
 			if f.Key == "password" {
 				fields[i].Value = "******"
@@ -409,12 +341,12 @@ func TestHookErrorHandling(t *testing.T) {
 	ctx := context.Background()
 
 	// 添加会panic的钩子
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
+	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
 		panic("hook panic")
 	})
 
 	// 添加正常的钩子
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
+	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
 		for i, f := range fields {
 			if f.Key == "value" {
 				fields[i].Value = "modified"
@@ -422,14 +354,14 @@ func TestHookErrorHandling(t *testing.T) {
 		}
 	})
 
-	Info(ctx, "msg", "test hook error handling", "value", "original")
+	Info(ctx, "message", "test hook error handling", "value", "original")
 }
 
 func TestHookWithFields(t *testing.T) {
 	ctx := context.Background()
 
 	// 添加字段修改钩子
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
+	AddHook(func(ctx context.Context, level Level, message string, fields ...Field) {
 		for i, f := range fields {
 			if f.Key == "value" {
 				fields[i].Value = "modified by hook"

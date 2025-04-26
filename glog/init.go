@@ -3,11 +3,11 @@ package glog
 func init() {
 	// 初始化默认logger
 	cfg := &LoggerConfig{
-		Service: "app",
-		Module:  "default",
+		module:  "default",
 		Level:   InfoLevel,
 		Type:    WriterConsole,
 		Dir:     "./log",
+		service: "app",
 	}
 	var err error
 	defaultLogger, err = newZapLogger(cfg)
@@ -20,8 +20,9 @@ func init() {
 func Init(config *ServiceConfig, opts ...Option) error {
 	// 初始化模块级别的logger
 	for module, cfg := range config.Modules {
-		// 设置模块配置的 Service 字段
-		cfg.Service = config.Service
+		// 设置模块配置的 service 和 module 字段
+		cfg.service = config.Service
+		cfg.module = module
 		logger, err := newZapLogger(cfg, opts...)
 		if err != nil {
 			return err
@@ -37,7 +38,8 @@ func Init(config *ServiceConfig, opts ...Option) error {
 	if defaultLogger == nil {
 		// 如果没有默认logger，创建一个
 		cfg := getDefaultLoggerConfig()
-		cfg.Service = config.Service
+		cfg.service = config.Service
+		cfg.module = "default"
 		logger, err := newZapLogger(cfg, opts...)
 		if err != nil {
 			return err

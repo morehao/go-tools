@@ -92,8 +92,8 @@ func TestZapLoggerWithHooks(t *testing.T) {
 
 	// 设置测试配置
 	config := &LoggerConfig{
-		Service: "test",
-		Module:  "test",
+		service: "test",
+		module:  "test",
 		Level:   DebugLevel,
 		Type:    WriterFile,
 		Dir:     tempDir,

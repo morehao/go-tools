@@ -25,8 +25,6 @@ type zapLoggerConfig struct {
 }
 
 func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
-	var core zapcore.Core
-
 	// 创建基础配置
 	zapCfg := &zapLoggerConfig{
 		callerSkip:      optCfg.callerSkip,
@@ -37,13 +35,19 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	// 创建编码器
 	encoder := getZapEncoder(zapCfg)
 
+	// 创建控制台输出
+	consoleCore := zapcore.NewCore(
+		encoder,
+		zapcore.AddSync(os.Stdout),
+		logLevelMap[cfg.Level],
+	)
+
+	var cores []zapcore.Core
+
+	// 根据配置类型添加其他输出
 	switch cfg.Type {
 	case WriterConsole:
-		core = zapcore.NewCore(
-			encoder,
-			zapcore.AddSync(os.Stdout),
-			logLevelMap[cfg.Level],
-		)
+		cores = append(cores, consoleCore)
 	case WriterFile:
 		// 创建日志目录
 		if err := os.MkdirAll(cfg.Dir, 0755); err != nil {
@@ -52,7 +56,7 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 
 		// 创建主日志文件
 		mainFile, err := os.OpenFile(
-			filepath.Join(cfg.Dir, fmt.Sprintf("%s.log", cfg.Service)),
+			filepath.Join(cfg.Dir, fmt.Sprintf("%s.log", cfg.service)),
 			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
 			0644,
 		)
@@ -62,7 +66,7 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 
 		// 创建错误日志文件
 		errorFile, err := os.OpenFile(
-			filepath.Join(cfg.Dir, fmt.Sprintf("%s.error.log", cfg.Service)),
+			filepath.Join(cfg.Dir, fmt.Sprintf("%s.error.log", cfg.service)),
 			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
 			0644,
 		)
@@ -74,7 +78,7 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 		mainCore := zapcore.NewCore(
 			encoder,
 			zapcore.AddSync(mainFile),
-			zapcore.Level(logLevelMap[cfg.Level]),
+			logLevelMap[cfg.Level],
 		)
 
 		// 创建错误日志core
@@ -83,16 +87,17 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 			zapcore.AddSync(errorFile),
 			zapcore.ErrorLevel,
 		)
-
-		// 使用Tee将日志同时写入两个文件
-		core = zapcore.NewTee(mainCore, errorCore)
+		cores = append(cores, consoleCore, mainCore, errorCore)
 	}
 
-	// 创建 logger
-	logger := zap.New(core)
+	// 使用Tee将日志同时写入所有输出
+	core := zapcore.NewTee(cores...)
+
+	// 创建 logger，添加 caller 选项
+	logger := zap.New(core, zap.Development(), zap.AddCaller(), zap.AddStacktrace(zapcore.PanicLevel))
 
 	// 如果设置了 callerSkip，添加 caller skip
-	if optCfg != nil && optCfg.callerSkip > 0 {
+	if optCfg.callerSkip > 0 {
 		logger = logger.WithOptions(zap.AddCallerSkip(optCfg.callerSkip))
 	}
 
@@ -353,15 +358,10 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 }
 
 func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	encoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-	encoderConfig.EncodeDuration = zapcore.StringDurationEncoder
-	encoderConfig.EncodeName = zapcore.FullNameEncoder
+	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	encoder := zapcore.NewJSONEncoder(encoderConfig)
-
+	encoder := zapcore.NewJSONEncoder(encoderCfg)
 	// 如果配置了字段钩子函数或消息钩子函数，则使用自定义编码器
 	if cfg != nil && (cfg.fieldHookFunc != nil || cfg.messageHookFunc != nil) {
 		encoder = &gZapEncoder{
