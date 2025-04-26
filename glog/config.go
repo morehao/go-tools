@@ -8,6 +8,14 @@
  */
 package glog
 
+// RotateUnit 日志切割的时间单位
+type RotateUnit string
+
+const (
+	RotateUnitDay  RotateUnit = "day"
+	RotateUnitHour RotateUnit = "hour"
+)
+
 // LoggerConfig 模块级别的日志配置
 type LoggerConfig struct {
 	// service 服务名，从 ServiceConfig 继承
@@ -24,6 +32,8 @@ type LoggerConfig struct {
 	Dir string `json:"dir" yaml:"dir"`
 	// ExtraKeys 需要从上下文中提取的额外字段
 	ExtraKeys []string `json:"extra_keys" yaml:"extra_keys"`
+	// RotateUnit 日志切割的时间单位
+	RotateUnit RotateUnit `json:"rotate_unit" yaml:"rotate_unit"`
 }
 
 // ServiceConfig 服务级别的日志配置
@@ -36,11 +46,12 @@ type ServiceConfig struct {
 
 func getDefaultLoggerConfig() *LoggerConfig {
 	return &LoggerConfig{
-		service: "app",
-		module:  "default",
-		Level:   InfoLevel,
-		Writer:  WriterConsole,
-		Dir:     "./log",
+		service:    "app",
+		module:     "default",
+		Level:      InfoLevel,
+		Writer:     WriterConsole,
+		Dir:        "./log",
+		RotateUnit: RotateUnitDay,
 	}
 }
 

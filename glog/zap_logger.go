@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -46,11 +45,11 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	case WriterConsole:
 		cores = append(cores, consoleCore)
 	case WriterFile:
-		defaultWriter, getDefaultWriterErr := getZapFileWriter(cfg, "_full.log")
+		defaultWriter, getDefaultWriterErr := getZapFileWriter(cfg, "full")
 		if getDefaultWriterErr != nil {
 			return nil, getDefaultWriterErr
 		}
-		wfWriter, getWfWriterErr := getZapFileWriter(cfg, "_wf.log")
+		wfWriter, getWfWriterErr := getZapFileWriter(cfg, "wf")
 		if getWfWriterErr != nil {
 			return nil, getWfWriterErr
 		}
@@ -306,70 +305,4 @@ func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
 		}
 	}
 	return fields
-}
-
-type gZapEncoder struct {
-	zapcore.Encoder
-	fieldHookFunc   FieldHookFunc
-	messageHookFunc MessageHookFunc
-}
-
-func (enc *gZapEncoder) Clone() zapcore.Encoder {
-	encoderClone := enc.Encoder.Clone()
-	return &gZapEncoder{
-		Encoder:         encoderClone,
-		fieldHookFunc:   enc.fieldHookFunc,
-		messageHookFunc: enc.messageHookFunc,
-	}
-}
-
-func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	// 转换 zapcore.Field 到 Field
-	convertedFields := make([]Field, 0, len(fields))
-	for _, f := range fields {
-		convertedFields = append(convertedFields, Field{
-			Key:   f.Key,
-			Value: f.Interface,
-		})
-	}
-
-	// 执行字段钩子函数
-	if enc.fieldHookFunc != nil {
-		enc.fieldHookFunc(convertedFields)
-	}
-
-	// 执行消息钩子函数
-	if enc.messageHookFunc != nil {
-		ent.Message = enc.messageHookFunc(ent.Message)
-	}
-
-	// 将修改后的字段转换回 zapcore.Field
-	modifiedFields := make([]zapcore.Field, 0, len(convertedFields))
-	for _, f := range convertedFields {
-		modifiedFields = append(modifiedFields, zapcore.Field{
-			Key:       f.Key,
-			Type:      zapcore.ReflectType,
-			Interface: f.Value,
-		})
-	}
-
-	// 使用修改后的字段进行编码
-	return enc.Encoder.EncodeEntry(ent, modifiedFields)
-}
-
-func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	encoder := zapcore.NewJSONEncoder(encoderCfg)
-	// 如果配置了字段钩子函数或消息钩子函数，则使用自定义编码器
-	if cfg != nil && (cfg.fieldHookFunc != nil || cfg.messageHookFunc != nil) {
-		encoder = &gZapEncoder{
-			Encoder:         encoder,
-			fieldHookFunc:   cfg.fieldHookFunc,
-			messageHookFunc: cfg.messageHookFunc,
-		}
-	}
-
-	return encoder
 }

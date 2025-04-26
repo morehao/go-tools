@@ -2,11 +2,13 @@ package glog
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDefaultLogger(t *testing.T) {
@@ -88,8 +90,8 @@ func TestClose(t *testing.T) {
 // TestFieldHook 测试字段钩子函数
 func TestFieldHook(t *testing.T) {
 	// 创建一个临时目录用于测试
-	tempDir, err := os.MkdirTemp("", "glog-test-*")
-	if err != nil {
+	tempDir := "log/glog-test"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
@@ -178,8 +180,8 @@ func TestFieldHook(t *testing.T) {
 // TestContextLogger 测试上下文相关的logger操作，主要用于自定义日志组件等特殊场景
 func TestContextLogger(t *testing.T) {
 	// 创建一个临时目录用于测试
-	tempDir, err := os.MkdirTemp("", "glog-test-*")
-	if err != nil {
+	tempDir := "log/glog-test"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
@@ -253,8 +255,8 @@ func TestSetDefaultLogger(t *testing.T) {
 // TestExtraKeys 测试从上下文中提取额外字段的功能
 func TestExtraKeys(t *testing.T) {
 	// 创建一个临时目录用于测试
-	tempDir, err := os.MkdirTemp("", "glog-test-*")
-	if err != nil {
+	tempDir := "log/glog-test"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
@@ -370,4 +372,103 @@ func TestHookWithFields(t *testing.T) {
 	})
 
 	Infow(ctx, "test hook with fields", "value", "original value", "other", "unchanged")
+}
+
+func TestRotateUnit(t *testing.T) {
+	// 创建临时目录
+	tempDir := "log/glog-test"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	// defer os.RemoveAll(tempDir)
+
+	// 使用固定的时间戳
+	now := time.Now()
+
+	// 测试按天切割
+	t.Run("TestRotateUnitDay", func(t *testing.T) {
+		config := &ServiceConfig{
+			Service: "test",
+			Modules: map[string]*LoggerConfig{
+				"test": {
+					Level:      InfoLevel,
+					Writer:     WriterFile,
+					Dir:        tempDir,
+					RotateUnit: RotateUnitDay,
+				},
+			},
+		}
+
+		// 初始化日志器
+		Init(config)
+
+		// 记录日志
+		ctx := context.Background()
+		Info(ctx, "test message")
+
+		// 验证日志文件是否存在
+		expectedDir := filepath.Join(tempDir, now.Format("20060102"))
+		expectedFile := filepath.Join(expectedDir, "test_full.log")
+		if !fileExists(expectedFile) {
+			t.Errorf("Expected log file %s does not exist", expectedFile)
+		}
+	})
+
+	// 测试按小时切割
+	t.Run("TestRotateUnitHour", func(t *testing.T) {
+		config := &ServiceConfig{
+			Service: "test",
+			Modules: map[string]*LoggerConfig{
+				"test": {
+					Level:      InfoLevel,
+					Writer:     WriterFile,
+					Dir:        tempDir,
+					RotateUnit: RotateUnitHour,
+				},
+			},
+		}
+
+		// 初始化日志器
+		Init(config)
+
+		// 记录日志
+		ctx := context.Background()
+		Info(ctx, "test message")
+
+		// 验证日志文件是否存在
+		expectedDir := filepath.Join(tempDir, now.Format("20060102"))
+		expectedFile := filepath.Join(expectedDir, fmt.Sprintf("test_full_%s.log", now.Format("15")))
+		if !fileExists(expectedFile) {
+			t.Errorf("Expected log file %s does not exist", expectedFile)
+		}
+	})
+
+	// 测试默认值
+	t.Run("TestDefaultRotateUnit", func(t *testing.T) {
+		config := &ServiceConfig{
+			Service: "app",
+			Modules: map[string]*LoggerConfig{
+				"default": {
+					Level:  InfoLevel,
+					Writer: WriterFile,
+					Dir:    tempDir,
+				},
+			},
+		}
+
+		// 初始化日志器
+		Init(config)
+
+		// 记录日志
+		ctx := context.Background()
+		Info(ctx, "test message")
+
+		// 验证日志文件是否存在
+		rootDir, _ := os.Getwd()
+		expectedDir := filepath.Join(rootDir, tempDir, now.Format("20060102"))
+		expectedFile := filepath.Join(expectedDir, "app_full.log")
+		if !fileExists(expectedFile) {
+			t.Errorf("Expected log file %s does not exist", expectedFile)
+		}
+	})
 }
