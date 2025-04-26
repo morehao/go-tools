@@ -63,6 +63,7 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 
 func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
 	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.NameKey = "module"
 	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	encoder := zapcore.NewJSONEncoder(encoderCfg)
@@ -101,9 +102,9 @@ func getZapFileWriter(cfg *ModuleLoggerConfig, fileSuffix string) (zapcore.Write
 	// 构建日志文件名
 	var logFilename string
 	if timeFormat != "" {
-		logFilename = fmt.Sprintf("%s_%s_%s.log", cfg.app, fileSuffix, time.Now().Format(timeFormat))
+		logFilename = fmt.Sprintf("%s_%s_%s.log", cfg.service, fileSuffix, time.Now().Format(timeFormat))
 	} else {
-		logFilename = fmt.Sprintf("%s_%s.log", cfg.app, fileSuffix)
+		logFilename = fmt.Sprintf("%s_%s.log", cfg.service, fileSuffix)
 	}
 
 	logFilepath := path.Join(dir, logFilename)

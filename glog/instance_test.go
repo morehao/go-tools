@@ -98,7 +98,7 @@ func TestFieldHook(t *testing.T) {
 
 	// 设置测试配置
 	config := &LogConfig{
-		App: "test",
+		Service: "test",
 		Modules: map[string]*ModuleLoggerConfig{
 			"test": {
 				module: "test",
@@ -188,7 +188,7 @@ func TestContextLogger(t *testing.T) {
 
 	// 设置测试配置
 	config := &LogConfig{
-		App: "app",
+		Service: "app",
 		Modules: map[string]*ModuleLoggerConfig{
 			"test": {
 				module: "test",
@@ -263,7 +263,7 @@ func TestExtraKeys(t *testing.T) {
 
 	// 设置测试配置
 	config := &LogConfig{
-		App: "test",
+		Service: "test",
 		Modules: map[string]*ModuleLoggerConfig{
 			"test": {
 				module:    "test",
@@ -388,7 +388,7 @@ func TestRotateUnit(t *testing.T) {
 	// 测试按天切割
 	t.Run("TestRotateUnitDay", func(t *testing.T) {
 		config := &LogConfig{
-			App: "test",
+			Service: "test",
 			Modules: map[string]*ModuleLoggerConfig{
 				"test": {
 					Level:      InfoLevel,
@@ -417,7 +417,7 @@ func TestRotateUnit(t *testing.T) {
 	// 测试按小时切割
 	t.Run("TestRotateUnitHour", func(t *testing.T) {
 		config := &LogConfig{
-			App: "test",
+			Service: "test",
 			Modules: map[string]*ModuleLoggerConfig{
 				"test": {
 					Level:      InfoLevel,
@@ -446,7 +446,7 @@ func TestRotateUnit(t *testing.T) {
 	// 测试默认值
 	t.Run("TestDefaultRotateUnit", func(t *testing.T) {
 		config := &LogConfig{
-			App: "app",
+			Service: "app",
 			Modules: map[string]*ModuleLoggerConfig{
 				"default": {
 					Level:  InfoLevel,

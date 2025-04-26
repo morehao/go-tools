@@ -1,13 +1,15 @@
 package glog
 
+import "sync"
+
 func init() {
 	// 初始化默认logger
 	cfg := &ModuleLoggerConfig{
-		module: "default",
-		Level:  InfoLevel,
-		Writer: WriterConsole,
-		Dir:    "./log",
-		app:    "app",
+		module:  "default",
+		Level:   InfoLevel,
+		Writer:  WriterConsole,
+		Dir:     "./log",
+		service: "app",
 	}
 	var err error
 	defaultLogger, err = newZapLogger(cfg)
@@ -18,28 +20,30 @@ func init() {
 
 // Init 初始化日志系统
 func Init(config *LogConfig, opts ...Option) error {
+	var mu sync.Mutex
 	// 初始化模块级别的logger
 	for module, cfg := range config.Modules {
 		// 设置模块配置的 service 和 module 字段
-		cfg.app = config.App
+		cfg.service = config.Service
 		cfg.module = module
 		logger, err := newZapLogger(cfg, opts...)
 		if err != nil {
 			return err
 		}
+		mu.Lock()
 		moduleLoggers[module] = logger
+		mu.Unlock()
 	}
 
 	// 设置默认logger
-	defaultLogger = moduleLoggers["default"]
-	if defaultLogger == nil {
-		defaultLogger = moduleLoggers["app"]
-	}
+	mu.Lock()
+	defaultLogger = moduleLoggers[defaultModuleName]
+	mu.Unlock()
 	if defaultLogger == nil {
 		// 如果没有默认logger，创建一个
 		cfg := getDefaultLoggerConfig()
-		cfg.app = config.App
-		cfg.module = "default"
+		cfg.service = config.Service
+		cfg.module = defaultModuleName
 		logger, err := newZapLogger(cfg, opts...)
 		if err != nil {
 			return err

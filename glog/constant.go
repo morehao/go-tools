@@ -94,3 +94,8 @@ const (
 	RotateIntervalTypeHour RotateIntervalType = "hour"
 	RotateIntervalTypeDay  RotateIntervalType = "day"
 )
+
+const (
+	defaultServiceName = "app"
+	defaultModuleName  = "app"
+)

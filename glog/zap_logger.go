@@ -75,6 +75,7 @@ func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, erro
 
 	// 创建 logger，添加 caller 选项
 	logger := zap.New(core, zap.Development(), zap.AddCaller(), zap.AddStacktrace(zapcore.PanicLevel))
+	logger = logger.Named(cfg.service).Named(cfg.module)
 
 	// 如果设置了 callerSkip，添加 caller skip
 	if optCfg.callerSkip > 0 {
@@ -83,7 +84,6 @@ func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, erro
 
 	return logger, nil
 }
-
 func (l *zapLogger) Debug(ctx context.Context, kvs ...any) {
 	l.ctxLog(DebugLevel, ctx, kvs...)
 }
@@ -293,13 +293,15 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ..
 	}
 }
 
+// func (l *zapLogger) commonFields(ctx context.Context) {
+// 	var fields []zap.Field
+// 	fields = append(fields, zap.String("service", l.cfg.service))
+// 	fields = append(fields, zap.String("writer", string(l.cfg.Writer)))
+// }
+
 // 提取 context 中的字段
 func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
 	var fields []zap.Field
-	// 添加 writer 类型字段
-	fields = append(fields, zap.String("app", l.cfg.app))
-	fields = append(fields, zap.String("writer", string(l.cfg.Writer)))
-
 	for _, key := range l.cfg.ExtraKeys {
 		if v := ctx.Value(key); v != nil {
 			fields = append(fields, zap.Any(key, v))

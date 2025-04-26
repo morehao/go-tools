@@ -18,8 +18,8 @@ const (
 
 // ModuleLoggerConfig 模块级别的日志配置
 type ModuleLoggerConfig struct {
-	// app 服务名，从 LogConfig 继承
-	app string
+	// service 服务名，从 LogConfig 继承
+	service string
 	// module 模块名称，如 "es", "gorm", "redis" 等
 	module string
 	// Level 日志级别
@@ -38,15 +38,15 @@ type ModuleLoggerConfig struct {
 
 // LogConfig 服务级别的日志配置
 type LogConfig struct {
-	// App 服务名称，如 "myApp"
-	App string `json:"app" yaml:"app"`
+	// Service 服务名称，如 "myApp"
+	Service string `json:"service" yaml:"service"`
 	// Modules 模块配置，key 为模块名称
 	Modules map[string]*ModuleLoggerConfig `json:"modules" yaml:"modules"`
 }
 
 func getDefaultLoggerConfig() *ModuleLoggerConfig {
 	return &ModuleLoggerConfig{
-		app:        "app",
+		service:    "app",
 		module:     "default",
 		Level:      InfoLevel,
 		Writer:     WriterConsole,
