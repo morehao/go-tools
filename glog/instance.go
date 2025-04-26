@@ -109,6 +109,8 @@ func Fatalw(ctx context.Context, msg string, kvs ...any) {
 
 // GetModuleLogger 获取指定模块的logger
 func GetModuleLogger(module string) Logger {
+	lock.RLock()
+	defer lock.RUnlock()
 	if logger, ok := moduleLoggers[module]; ok {
 		return logger
 	}

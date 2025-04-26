@@ -2,6 +2,8 @@ package glog
 
 import "sync"
 
+var lock sync.RWMutex
+
 func init() {
 	// 初始化默认logger
 	cfg := &ModuleLoggerConfig{
@@ -16,11 +18,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	lock.Lock()
+	moduleLoggers[defaultModuleName] = defaultLogger
+	lock.Unlock()
 }
 
 // Init 初始化日志系统
 func Init(config *LogConfig, opts ...Option) error {
-	var mu sync.Mutex
 	// 初始化模块级别的logger
 	for module, cfg := range config.Modules {
 		// 设置模块配置的 service 和 module 字段
@@ -30,15 +34,15 @@ func Init(config *LogConfig, opts ...Option) error {
 		if err != nil {
 			return err
 		}
-		mu.Lock()
+		lock.Lock()
 		moduleLoggers[module] = logger
-		mu.Unlock()
+		lock.Unlock()
 	}
 
 	// 设置默认logger
-	mu.Lock()
+	lock.Lock()
 	defaultLogger = moduleLoggers[defaultModuleName]
-	mu.Unlock()
+	lock.Unlock()
 	if defaultLogger == nil {
 		// 如果没有默认logger，创建一个
 		cfg := getDefaultLoggerConfig()
