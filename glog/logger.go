@@ -52,7 +52,7 @@ type Logger interface {
 }
 
 // newZapLogger 初始化zapLogger
-func newZapLogger(cfg *LoggerConfig, opts ...Option) (Logger, error) {
+func newZapLogger(cfg *ModuleLoggerConfig, opts ...Option) (Logger, error) {
 	optCfg := &optConfig{}
 	for _, opt := range opts {
 		opt.apply(optCfg)

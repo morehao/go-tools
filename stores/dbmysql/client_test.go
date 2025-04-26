@@ -12,7 +12,7 @@ import (
 
 func TestInitMysql(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.LoggerConfig{
+	logCfg := &glog.ModuleLoggerConfig{
 		Service:   "test",
 		Level:     glog.InfoLevel,
 		Dir:       "./log",

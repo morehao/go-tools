@@ -16,10 +16,10 @@ const (
 	RotateUnitHour RotateUnit = "hour"
 )
 
-// LoggerConfig 模块级别的日志配置
-type LoggerConfig struct {
-	// service 服务名，从 ServiceConfig 继承
-	service string
+// ModuleLoggerConfig 模块级别的日志配置
+type ModuleLoggerConfig struct {
+	// app 服务名，从 LogConfig 继承
+	app string
 	// module 模块名称，如 "es", "gorm", "redis" 等
 	module string
 	// Level 日志级别
@@ -36,17 +36,17 @@ type LoggerConfig struct {
 	RotateUnit RotateUnit `json:"rotate_unit" yaml:"rotate_unit"`
 }
 
-// ServiceConfig 服务级别的日志配置
-type ServiceConfig struct {
-	// Service 服务名称，如 "myApp"
-	Service string `json:"service" yaml:"service"`
+// LogConfig 服务级别的日志配置
+type LogConfig struct {
+	// App 服务名称，如 "myApp"
+	App string `json:"app" yaml:"app"`
 	// Modules 模块配置，key 为模块名称
-	Modules map[string]*LoggerConfig `json:"modules" yaml:"modules"`
+	Modules map[string]*ModuleLoggerConfig `json:"modules" yaml:"modules"`
 }
 
-func getDefaultLoggerConfig() *LoggerConfig {
-	return &LoggerConfig{
-		service:    "app",
+func getDefaultLoggerConfig() *ModuleLoggerConfig {
+	return &ModuleLoggerConfig{
+		app:        "app",
 		module:     "default",
 		Level:      InfoLevel,
 		Writer:     WriterConsole,

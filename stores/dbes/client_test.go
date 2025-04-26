@@ -14,7 +14,7 @@ import (
 
 func TestInitTypedES(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.LoggerConfig{
+	logCfg := &glog.ModuleLoggerConfig{
 		Service:   "ES",
 		Level:     glog.InfoLevel,
 		Dir:       "./log",
@@ -44,7 +44,7 @@ func TestInitTypedES(t *testing.T) {
 
 func TestInitSimpleES(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.LoggerConfig{
+	logCfg := &glog.ModuleLoggerConfig{
 		Service:   "ES",
 		Level:     glog.InfoLevel,
 		Dir:       "../../log",

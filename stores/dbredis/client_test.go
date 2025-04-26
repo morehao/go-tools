@@ -11,7 +11,7 @@ import (
 
 func TestInitRedis(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.LoggerConfig{
+	logCfg := &glog.ModuleLoggerConfig{
 		Service:   "test",
 		Level:     glog.DebugLevel,
 		Dir:       "./log",

@@ -28,7 +28,7 @@ type Account struct {
 func TestAccountsIndex(t *testing.T) {
 	ctx := context.Background()
 
-	logCfg := &glog.LoggerConfig{
+	logCfg := &glog.ModuleLoggerConfig{
 		Service:   "ES",
 		Level:     glog.InfoLevel,
 		Dir:       "./log",

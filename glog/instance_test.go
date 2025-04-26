@@ -42,7 +42,7 @@ func TestFileLogger(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	// 创建文件logger
-	cfg := &LoggerConfig{
+	cfg := &ModuleLoggerConfig{
 		module: "fs",
 		Level:  InfoLevel,
 		Writer: WriterFile,
@@ -97,9 +97,9 @@ func TestFieldHook(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// 设置测试配置
-	config := &ServiceConfig{
-		Service: "test",
-		Modules: map[string]*LoggerConfig{
+	config := &LogConfig{
+		App: "test",
+		Modules: map[string]*ModuleLoggerConfig{
 			"test": {
 				module: "test",
 				Level:  DebugLevel,
@@ -187,9 +187,9 @@ func TestContextLogger(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// 设置测试配置
-	config := &ServiceConfig{
-		Service: "app",
-		Modules: map[string]*LoggerConfig{
+	config := &LogConfig{
+		App: "app",
+		Modules: map[string]*ModuleLoggerConfig{
 			"test": {
 				module: "test",
 				Level:  DebugLevel,
@@ -224,7 +224,7 @@ func TestContextLogger(t *testing.T) {
 
 func TestSetDefaultLogger(t *testing.T) {
 	// 创建一个新的logger
-	cfg := &LoggerConfig{
+	cfg := &ModuleLoggerConfig{
 		module: "test_default",
 		Level:  DebugLevel,
 		Writer: WriterConsole,
@@ -262,9 +262,9 @@ func TestExtraKeys(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// 设置测试配置
-	config := &ServiceConfig{
-		Service: "test",
-		Modules: map[string]*LoggerConfig{
+	config := &LogConfig{
+		App: "test",
+		Modules: map[string]*ModuleLoggerConfig{
 			"test": {
 				module:    "test",
 				Level:     DebugLevel,
@@ -387,9 +387,9 @@ func TestRotateUnit(t *testing.T) {
 
 	// 测试按天切割
 	t.Run("TestRotateUnitDay", func(t *testing.T) {
-		config := &ServiceConfig{
-			Service: "test",
-			Modules: map[string]*LoggerConfig{
+		config := &LogConfig{
+			App: "test",
+			Modules: map[string]*ModuleLoggerConfig{
 				"test": {
 					Level:      InfoLevel,
 					Writer:     WriterFile,
@@ -416,9 +416,9 @@ func TestRotateUnit(t *testing.T) {
 
 	// 测试按小时切割
 	t.Run("TestRotateUnitHour", func(t *testing.T) {
-		config := &ServiceConfig{
-			Service: "test",
-			Modules: map[string]*LoggerConfig{
+		config := &LogConfig{
+			App: "test",
+			Modules: map[string]*ModuleLoggerConfig{
 				"test": {
 					Level:      InfoLevel,
 					Writer:     WriterFile,
@@ -445,9 +445,9 @@ func TestRotateUnit(t *testing.T) {
 
 	// 测试默认值
 	t.Run("TestDefaultRotateUnit", func(t *testing.T) {
-		config := &ServiceConfig{
-			Service: "app",
-			Modules: map[string]*LoggerConfig{
+		config := &LogConfig{
+			App: "app",
+			Modules: map[string]*ModuleLoggerConfig{
 				"default": {
 					Level:  InfoLevel,
 					Writer: WriterFile,

@@ -11,7 +11,7 @@ import (
 // Logger 是一个封装 zap.Logger 的结构体
 type zapLogger struct {
 	logger *zap.Logger
-	cfg    *LoggerConfig
+	cfg    *ModuleLoggerConfig
 }
 
 type zapLoggerConfig struct {
@@ -20,7 +20,7 @@ type zapLoggerConfig struct {
 	messageHookFunc MessageHookFunc
 }
 
-func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
+func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	// 创建基础配置
 	zapCfg := &zapLoggerConfig{
 		callerSkip:      optCfg.callerSkip,
@@ -297,6 +297,7 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ..
 func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
 	var fields []zap.Field
 	// 添加 writer 类型字段
+	fields = append(fields, zap.String("app", l.cfg.app))
 	fields = append(fields, zap.String("writer", string(l.cfg.Writer)))
 
 	for _, key := range l.cfg.ExtraKeys {
