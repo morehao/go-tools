@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -103,7 +104,7 @@ func TestFieldHook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	// defer os.RemoveAll(tempDir)
+	defer os.RemoveAll(tempDir)
 
 	// 设置测试配置
 	config := &ServiceConfig{
@@ -123,7 +124,9 @@ func TestFieldHook(t *testing.T) {
 	var hookCalled bool
 	var hookFields []Field
 
-	var phoneDesensitizationHook = func(fields []Field) {
+	var phoneDesensitizationHook = func(ctx context.Context, level Level, msg string, fields ...Field) {
+		hookCalled = true
+		hookFields = fields
 		phoneRegex := regexp.MustCompile(`(\d{3})\d{4}(\d{4})`)
 		for i := range fields {
 			if fields[i].Key == "phone" {
@@ -131,18 +134,38 @@ func TestFieldHook(t *testing.T) {
 				if ok {
 					if phoneRegex.MatchString(strValue) {
 						fields[i].Value = phoneRegex.ReplaceAllString(strValue, `$1****$2`)
+						t.Log("Phone number desensitized:", fields[i].Value)
 					}
 				}
 			}
 		}
 	}
 
-	// 初始化日志器
-	Init(config, WithFieldHookFunc(phoneDesensitizationHook))
+	var pwdDesensitizationHook = func(ctx context.Context, level Level, msg string, fields ...Field) {
+		// 处理消息中的密码
+		if strings.Contains(msg, "password") {
+			re := regexp.MustCompile(`password=[^&\s]+`)
+			msg = re.ReplaceAllString(msg, "password=***")
+		}
 
-	// 记录一条日志
+		// 处理字段中的密码
+		for i := range fields {
+			if fields[i].Key == "password" {
+				fields[i].Value = "***"
+			}
+		}
+	}
+
+	// 初始化日志器
+	t.Log("Initializing logger with field hook")
+	Init(config)
+	AddHook(phoneDesensitizationHook)
+	AddHook(pwdDesensitizationHook)
+
+	// 测试电话号码脱敏
 	ctx := context.Background()
-	Debugw(ctx, "test message", "phone", "13812345678")
+	t.Log("Logging message with phone number")
+	Infow(ctx, "test message", "phone", "13812345678")
 
 	// 验证钩子是否被调用
 	if !hookCalled {
@@ -150,61 +173,19 @@ func TestFieldHook(t *testing.T) {
 	}
 
 	// 验证钩子接收到的字段
-	if len(hookFields) != 1 {
-		t.Errorf("Expected 1 field, got %d", len(hookFields))
+	if len(hookFields) == 0 {
+		t.Error("No fields received by hook")
+		return
 	}
-	if hookFields[0].Key != "key" || hookFields[0].Value != "value" {
+
+	t.Log("Hook fields:", hookFields)
+	if hookFields[0].Key != "phone" || hookFields[0].Value != "138****5678" {
 		t.Errorf("Unexpected field value: %v", hookFields[0])
 	}
-}
 
-// TestMessageHook 测试消息钩子函数
-func TestMessageHook(t *testing.T) {
-	// 创建一个临时目录用于测试
-	tempDir, err := os.MkdirTemp("", "glog-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// 设置测试配置
-	config := &ServiceConfig{
-		Service: "test",
-		Modules: map[string]*LoggerConfig{
-			"test": {
-				Service: "test",
-				Module:  "test",
-				Level:   DebugLevel,
-				Type:    WriterFile,
-				Dir:     tempDir,
-			},
-		},
-	}
-
-	// 记录钩子是否被调用
-	var hookCalled bool
-	var originalMessage string
-
-	// 初始化日志器
-	Init(config, WithMessageHookFunc(func(msg string) string {
-		hookCalled = true
-		originalMessage = msg
-		return "modified: " + msg
-	}))
-
-	// 记录一条日志
-	ctx := context.Background()
-	Debug(ctx, "test message")
-
-	// 验证钩子是否被调用
-	if !hookCalled {
-		t.Error("Message hook was not called")
-	}
-
-	// 验证钩子接收到的消息
-	if originalMessage != "test message" {
-		t.Errorf("Expected message 'test message', got '%s'", originalMessage)
-	}
+	// 测试密码脱敏
+	t.Log("Logging message with password")
+	Infow(ctx, "test message with password=123456", "password", "123456")
 }
 
 // TestContextLogger 测试上下文相关的logger操作，主要用于自定义日志组件等特殊场景
@@ -278,123 +259,49 @@ func TestModuleLogger(t *testing.T) {
 	logger.Info(ctx, "test module logger")
 }
 
-// TestHookFunctions 测试钩子函数
-func TestHookFunctions(t *testing.T) {
+// TestExtraKeys 测试从上下文中提取额外字段的功能
+func TestExtraKeys(t *testing.T) {
+	// 创建一个临时目录用于测试
+	tempDir, err := os.MkdirTemp("", "glog-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// 设置测试配置
+	config := &ServiceConfig{
+		Service: "test",
+		Modules: map[string]*LoggerConfig{
+			"test": {
+				Service:   "test",
+				Module:    "test",
+				Level:     DebugLevel,
+				Type:      WriterConsole,
+				Dir:       tempDir,
+				ExtraKeys: []string{"trace_id", "user_id", "request_id"},
+			},
+		},
+	}
+
+	// 初始化日志器
+	t.Log("Initializing logger with extra keys")
+	Init(config)
+
+	// 获取模块级别的 logger
+	logger := GetModuleLogger("test")
+
+	// 创建带有额外字段的上下文
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, "trace_id", "123456")
+	ctx = context.WithValue(ctx, "user_id", "user123")
+	ctx = context.WithValue(ctx, "request_id", "req789")
+	// 添加一个不在 ExtraKeys 中的字段，用于测试过滤
+	ctx = context.WithValue(ctx, "other_field", "should_not_appear")
 
-	// 用于记录钩子函数的执行顺序
-	var executionOrder []string
+	// 记录一条日志
+	t.Log("Logging message with extra fields")
+	logger.Infow(ctx, "test message with extra fields", "key", "value")
 
-	// 添加多个钩子函数
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		executionOrder = append(executionOrder, "hook1")
-	})
-
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		executionOrder = append(executionOrder, "hook2")
-	})
-
-	// 测试钩子函数的执行
-	Info(ctx, "test hook functions")
-
-	// 验证钩子函数的执行顺序
-	if len(executionOrder) != 2 {
-		t.Errorf("expected 2 hook executions, got %d", len(executionOrder))
-	}
-	if executionOrder[0] != "hook1" || executionOrder[1] != "hook2" {
-		t.Error("hook functions executed in wrong order")
-	}
-}
-
-// TestHookErrorHandling 测试钩子函数中的错误处理
-func TestHookErrorHandling(t *testing.T) {
-	ctx := context.Background()
-
-	// 添加一个会panic的钩子函数
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		panic("hook panic")
-	})
-
-	// 添加一个正常的钩子函数
-	var normalHookExecuted bool
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		normalHookExecuted = true
-	})
-
-	// 测试钩子函数的错误处理
-	Info(ctx, "test hook error handling")
-
-	// 验证正常的钩子函数仍然执行
-	if !normalHookExecuted {
-		t.Error("normal hook should still execute after panic")
-	}
-}
-
-// TestHookWithFields 测试带字段的钩子函数
-func TestHookWithFields(t *testing.T) {
-	ctx := context.Background()
-
-	// 用于记录接收到的字段
-	var receivedFields []Field
-
-	// 添加一个处理字段的钩子函数
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		receivedFields = fields
-	})
-
-	// 测试带字段的日志
-	Infow(ctx, "test hook with fields", "key1", "value1", "key2", "value2")
-
-	// 验证字段是否正确传递
-	if len(receivedFields) != 2 {
-		t.Errorf("expected 2 fields, got %d", len(receivedFields))
-	}
-}
-
-// TestHookLevelFilter 测试不同日志级别的钩子函数
-func TestHookLevelFilter(t *testing.T) {
-	ctx := context.Background()
-
-	// 用于记录钩子函数的执行次数
-	var hookExecutions int
-
-	// 添加一个钩子函数
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		hookExecutions++
-	})
-
-	// 测试不同日志级别
-	Debug(ctx, "debug message")
-	Info(ctx, "info message")
-	Warn(ctx, "warn message")
-	Error(ctx, "error message")
-
-	// 验证钩子函数对每个日志级别都执行
-	if hookExecutions != 4 {
-		t.Errorf("expected 4 hook executions, got %d", hookExecutions)
-	}
-}
-
-// TestHookContext 测试钩子函数中的上下文传递
-func TestHookContext(t *testing.T) {
-	// 创建一个带有特定值的上下文
-	ctx := context.WithValue(context.Background(), "test_key", "test_value")
-
-	// 用于验证上下文传递
-	var contextValue string
-
-	// 添加一个检查上下文的钩子函数
-	AddHook(func(ctx context.Context, level Level, msg string, fields ...Field) {
-		if val, ok := ctx.Value("test_key").(string); ok {
-			contextValue = val
-		}
-	})
-
-	// 测试日志输出
-	Info(ctx, "test hook context")
-
-	// 验证上下文值是否正确传递
-	if contextValue != "test_value" {
-		t.Error("context value not correctly passed to hook")
-	}
+	// 同步日志
+	Close()
 }

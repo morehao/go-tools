@@ -105,13 +105,10 @@ func Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
 
 // GetModuleLogger 获取指定模块的logger
 func GetModuleLogger(module string) Logger {
-	// 这里可以扩展为支持模块级别的logger
+	if logger, ok := moduleLoggers[module]; ok {
+		return logger
+	}
 	return defaultLogger
-}
-
-// Close 关闭所有logger
-func Close() {
-	defaultLogger.Close()
 }
 
 // gotLogger 获取指定模块的logger，如果不存在则返回默认logger
@@ -120,4 +117,9 @@ func gotLogger(module string) Logger {
 		return logger
 	}
 	return defaultLogger
+}
+
+// Close 关闭所有logger
+func Close() {
+	defaultLogger.Close()
 }

@@ -27,17 +27,22 @@ type zapLoggerConfig struct {
 func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 	var core zapcore.Core
 
+	// 创建基础配置
+	zapCfg := &zapLoggerConfig{
+		callerSkip:      optCfg.callerSkip,
+		fieldHookFunc:   optCfg.fieldHookFunc,
+		messageHookFunc: optCfg.messageHookFunc,
+	}
+
+	// 创建编码器
+	encoder := getZapEncoder(zapCfg)
+
 	switch cfg.Type {
 	case WriterConsole:
-		zapCfg := &zapLoggerConfig{
-			callerSkip:      optCfg.callerSkip,
-			fieldHookFunc:   optCfg.fieldHookFunc,
-			messageHookFunc: optCfg.messageHookFunc,
-		}
 		core = zapcore.NewCore(
-			getZapEncoder(zapCfg),
+			encoder,
 			zapcore.AddSync(os.Stdout),
-			zapcore.Level(logLevelMap[cfg.Level]),
+			logLevelMap[cfg.Level],
 		)
 	case WriterFile:
 		// 创建日志目录
@@ -67,42 +72,20 @@ func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
 
 		// 创建主日志core
 		mainCore := zapcore.NewCore(
-			getZapEncoder(&zapLoggerConfig{
-				callerSkip:      optCfg.callerSkip,
-				fieldHookFunc:   optCfg.fieldHookFunc,
-				messageHookFunc: optCfg.messageHookFunc,
-			}),
+			encoder,
 			zapcore.AddSync(mainFile),
 			zapcore.Level(logLevelMap[cfg.Level]),
 		)
 
 		// 创建错误日志core
 		errorCore := zapcore.NewCore(
-			getZapEncoder(&zapLoggerConfig{
-				callerSkip:      optCfg.callerSkip,
-				fieldHookFunc:   optCfg.fieldHookFunc,
-				messageHookFunc: optCfg.messageHookFunc,
-			}),
+			encoder,
 			zapcore.AddSync(errorFile),
 			zapcore.ErrorLevel,
 		)
 
 		// 使用Tee将日志同时写入两个文件
 		core = zapcore.NewTee(mainCore, errorCore)
-	}
-
-	// 如果有钩子函数，添加钩子
-	if optCfg != nil && (optCfg.fieldHookFunc != nil || optCfg.messageHookFunc != nil) {
-		zapCfg := &zapLoggerConfig{
-			callerSkip:      optCfg.callerSkip,
-			fieldHookFunc:   optCfg.fieldHookFunc,
-			messageHookFunc: optCfg.messageHookFunc,
-		}
-		core = zapcore.NewTee(core, zapcore.NewCore(
-			getZapEncoder(zapCfg),
-			zapcore.AddSync(os.Stdout),
-			zapcore.Level(logLevelMap[cfg.Level]),
-		))
 	}
 
 	// 创建 logger
@@ -218,23 +201,26 @@ func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...any) {
 	}
 
 	// 执行钩子函数
-	executeHooks(ctx, level, fmt.Sprint(args...))
+	msg := fmt.Sprint(args...)
+	executeHooks(ctx, level, msg)
 
-	// 原有的日志记录逻辑
-	fields := l.extraFields(ctx)
+	// 获取上下文字段
+	zapFields := l.extraFields(ctx)
+
+	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(fields...).Debug(args...)
+		l.logger.Debug(msg, zapFields...)
 	case InfoLevel:
-		l.logger.Sugar().With(fields...).Info(args...)
+		l.logger.Info(msg, zapFields...)
 	case WarnLevel:
-		l.logger.Sugar().With(fields...).Warn(args...)
+		l.logger.Warn(msg, zapFields...)
 	case ErrorLevel:
-		l.logger.Sugar().With(fields...).Error(args...)
+		l.logger.Error(msg, zapFields...)
 	case PanicLevel:
-		l.logger.Sugar().With(fields...).Panic(args...)
+		l.logger.Panic(msg, zapFields...)
 	case FatalLevel:
-		l.logger.Sugar().With(fields...).Fatal(args...)
+		l.logger.Fatal(msg, zapFields...)
 	}
 }
 
@@ -244,23 +230,26 @@ func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, arg
 	}
 
 	// 执行钩子函数
-	executeHooks(ctx, level, fmt.Sprintf(format, args...))
+	msg := fmt.Sprintf(format, args...)
+	executeHooks(ctx, level, msg)
 
-	// 原有的日志记录逻辑
-	fields := l.extraFields(ctx)
+	// 获取上下文字段
+	zapFields := l.extraFields(ctx)
+
+	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(fields...).Debugf(format, args...)
+		l.logger.Debug(msg, zapFields...)
 	case InfoLevel:
-		l.logger.Sugar().With(fields...).Infof(format, args...)
+		l.logger.Info(msg, zapFields...)
 	case WarnLevel:
-		l.logger.Sugar().With(fields...).Warnf(format, args...)
+		l.logger.Warn(msg, zapFields...)
 	case ErrorLevel:
-		l.logger.Sugar().With(fields...).Errorf(format, args...)
+		l.logger.Error(msg, zapFields...)
 	case PanicLevel:
-		l.logger.Sugar().With(fields...).Panicf(format, args...)
+		l.logger.Panic(msg, zapFields...)
 	case FatalLevel:
-		l.logger.Sugar().With(fields...).Fatalf(format, args...)
+		l.logger.Fatal(msg, zapFields...)
 	}
 }
 
@@ -269,8 +258,8 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAn
 		return
 	}
 
-	// 将keysAndValues转换为Field切片
-	var fields []Field
+	// 将 keysAndValues 转换为 Field 切片
+	fields := make([]Field, 0, len(keysAndValues)/2)
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
 			fields = append(fields, Field{
@@ -283,27 +272,35 @@ func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAn
 	// 执行钩子函数
 	executeHooks(ctx, level, msg, fields...)
 
-	// 原有的日志记录逻辑
-	extraFields := l.extraFields(ctx)
+	// 将 Field 转换为 zap.Field
+	zapFields := make([]zap.Field, 0, len(fields))
+	for _, f := range fields {
+		zapFields = append(zapFields, zap.Any(f.Key, f.Value))
+	}
+
+	// 添加上下文字段
+	zapFields = append(zapFields, l.extraFields(ctx)...)
+
+	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Debugw(msg)
+		l.logger.Debug(msg, zapFields...)
 	case InfoLevel:
-		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Infow(msg)
+		l.logger.Info(msg, zapFields...)
 	case WarnLevel:
-		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Warnw(msg)
+		l.logger.Warn(msg, zapFields...)
 	case ErrorLevel:
-		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Errorw(msg)
+		l.logger.Error(msg, zapFields...)
 	case PanicLevel:
-		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Panicw(msg)
+		l.logger.Panic(msg, zapFields...)
 	case FatalLevel:
-		l.logger.Sugar().With(append(extraFields, keysAndValues...)...).Fatalw(msg)
+		l.logger.Fatal(msg, zapFields...)
 	}
 }
 
 // 提取 context 中的字段
-func (l *zapLogger) extraFields(ctx context.Context) []any {
-	var fields []any
+func (l *zapLogger) extraFields(ctx context.Context) []zap.Field {
+	var fields []zap.Field
 	for _, key := range l.cfg.ExtraKeys {
 		if v := ctx.Value(key); v != nil {
 			fields = append(fields, zap.Any(key, v))
@@ -313,14 +310,14 @@ func (l *zapLogger) extraFields(ctx context.Context) []any {
 }
 
 type gZapEncoder struct {
+	zapcore.Encoder
 	fieldHookFunc   FieldHookFunc
 	messageHookFunc MessageHookFunc
-	zapcore.Encoder
 }
 
 func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	// 转换 zapcore.Field 到 Field
-	var convertedFields []Field
+	convertedFields := make([]Field, 0, len(fields))
 	for _, f := range fields {
 		convertedFields = append(convertedFields, Field{
 			Key:   f.Key,
@@ -328,17 +325,18 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 		})
 	}
 
-	// 调用字段钩子函数
-	if enc.fieldHookFunc != nil {
-		enc.fieldHookFunc(convertedFields)
+	// 将修改后的字段转换回 zapcore.Field
+	modifiedFields := make([]zapcore.Field, 0, len(convertedFields))
+	for _, f := range convertedFields {
+		modifiedFields = append(modifiedFields, zapcore.Field{
+			Key:       f.Key,
+			Type:      zapcore.ReflectType,
+			Interface: f.Value,
+		})
 	}
 
-	// 调用消息钩子函数
-	if enc.messageHookFunc != nil {
-		ent.Message = enc.messageHookFunc(ent.Message)
-	}
-
-	return enc.Encoder.EncodeEntry(ent, fields)
+	// 使用修改后的字段进行编码
+	return enc.Encoder.EncodeEntry(ent, modifiedFields)
 }
 
 func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
