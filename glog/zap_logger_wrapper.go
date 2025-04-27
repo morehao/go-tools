@@ -21,7 +21,10 @@ type gZapEncoder struct {
 func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
 	encoderCfg := zap.NewProductionEncoderConfig()
 	encoderCfg.NameKey = "module"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+	// encoderCfg.EncodeTime 设置为本地时间到纳秒
+	encoderCfg.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("2006-01-02 15:04:05.000000"))
+	}
 
 	encoder := zapcore.NewJSONEncoder(encoderCfg)
 	customEncoder := &gZapEncoder{

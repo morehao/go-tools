@@ -6,9 +6,7 @@ import (
 	"testing"
 
 	"github.com/morehao/go-tools/glog"
-	"github.com/morehao/go-tools/gutils"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 type Account struct {
@@ -28,15 +26,18 @@ type Account struct {
 func TestAccountsIndex(t *testing.T) {
 	ctx := context.Background()
 
-	logCfg := &glog.ModuleLoggerConfig{
-		Service:   "ES",
-		Level:     glog.InfoLevel,
-		Dir:       "./log",
-		Stdout:    true,
-		ExtraKeys: []string{"requestId"},
+	logCfg := &glog.LogConfig{
+		Service: "test",
+		Modules: map[string]*glog.ModuleLoggerConfig{
+			"es": {
+				Level:          glog.DebugLevel,
+				Writer:         glog.WriterConsole,
+				RotateInterval: glog.RotateIntervalTypeDay,
+				ExtraKeys:      []string{glog.KeyRequestId},
+			},
+		},
 	}
-	opt := glog.WithZapOptions(zap.AddCallerSkip(2))
-	initLogErr := glog.NewLogger(logCfg, opt)
+	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(2))
 	assert.Nil(t, initLogErr)
 	cfg := ESConfig{
 		Service: "es",
@@ -99,7 +100,7 @@ func TestAccountsIndex(t *testing.T) {
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("Search Result: %s", gutils.ToJsonString(result))
+		t.Logf("Search Result: %s", glog.ToJsonString(result))
 	})
 
 	t.Run("BulkInsert", func(t *testing.T) {

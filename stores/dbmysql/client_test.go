@@ -5,27 +5,29 @@ import (
 	"testing"
 
 	"github.com/morehao/go-tools/glog"
-	"github.com/morehao/go-tools/gutils"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestInitMysql(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.ModuleLoggerConfig{
-		Service:   "test",
-		Level:     glog.InfoLevel,
-		Dir:       "./log",
-		Stdout:    true,
-		ExtraKeys: []string{"requestId"},
+	logCfg := &glog.LogConfig{
+		Service: "test",
+		Modules: map[string]*glog.ModuleLoggerConfig{
+			"gorm": {
+				Level:          glog.DebugLevel,
+				Writer:         glog.WriterConsole,
+				RotateInterval: glog.RotateIntervalTypeDay,
+				ExtraKeys:      []string{glog.KeyRequestId},
+			},
+		},
 	}
-	opt := glog.WithZapOptions(zap.AddCallerSkip(3))
-	initLogErr := glog.NewLogger(logCfg, opt)
+
+	initLogErr := glog.InitLogger(logCfg)
 	assert.Nil(t, initLogErr)
 	cfg := MysqlConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:3306",
-		Database: "demo",
+		Database: "practice",
 		User:     "root",
 		Password: "123456",
 	}
@@ -33,10 +35,18 @@ func TestInitMysql(t *testing.T) {
 	assert.Nil(t, initDbErr)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "requestId", "12312312312312")
-	var res []interface{}
+
+	type User struct {
+		ID   int
+		Name string
+		// 其他 user 表字段
+	}
+
+	var res []User
 	findErr := mysqlClient.WithContext(ctx).Table("user").Find(&res).Error
 	assert.Nil(t, findErr)
-	t.Log(gutils.ToJsonString(res))
+	glog.Infof(ctx, "find user %s", glog.ToJsonString(res))
+	t.Log(glog.ToJsonString(res))
 }
 
 func TestInitMysqlWithoutInitLog(t *testing.T) {
@@ -44,7 +54,7 @@ func TestInitMysqlWithoutInitLog(t *testing.T) {
 	cfg := MysqlConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:3306",
-		Database: "demo",
+		Database: "practice",
 		User:     "root",
 		Password: "123456",
 	}
@@ -52,8 +62,15 @@ func TestInitMysqlWithoutInitLog(t *testing.T) {
 	assert.Nil(t, initDbErr)
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "requestId", "12312312312312")
-	var res []interface{}
+	type User struct {
+		ID   int
+		Name string
+		// 其他 user 表字段
+	}
+
+	var res []User
 	findErr := mysqlClient.WithContext(ctx).Table("user").Find(&res).Error
 	assert.Nil(t, findErr)
-	t.Log(gutils.ToJsonString(res))
+	glog.Infof(ctx, "find user %s", glog.ToJsonString(res))
+	t.Log(glog.ToJsonString(res))
 }

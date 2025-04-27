@@ -10,8 +10,9 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	loggerInst := &loggerInstance{Logger: logger}
 	lock.Lock()
-	moduleLoggers[defaultModuleName] = logger
-	defaultLogger = logger
+	moduleLoggerInstanceMap[defaultModuleName] = &loggerInstance{Logger: logger}
+	defaultLogger = loggerInst
 	lock.Unlock()
 }

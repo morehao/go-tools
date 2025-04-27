@@ -42,7 +42,7 @@ func InitES(cfg ESConfig) (*elasticsearch.Client, *elasticsearch.TypedClient, er
 }
 
 func newEsLogger(cfg *ESConfig) (*esLog, error) {
-	l, err := glog.getLoggerFromCtx()
+	l, err := glog.GetModuleLogger("es", glog.WithCallerSkip(2))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 	if ralCode != 200 {
 		l.logger.Errorw(ctx, msg, fields...)
 	} else {
-		l.logger.Infow(ctx, msg, fields...)
+		l.logger.Debugw(ctx, msg, fields...)
 	}
 	return err
 }

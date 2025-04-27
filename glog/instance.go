@@ -4,11 +4,15 @@ import (
 	"context"
 )
 
-// defaultLogger 默认的日志实例
-var defaultLogger Logger
+type loggerInstance struct {
+	Logger
+}
 
-// moduleLoggers 存储模块级别的logger
-var moduleLoggers = make(map[string]Logger)
+// defaultLogger 默认的日志实例
+var defaultLogger *loggerInstance
+
+// moduleLoggerInstanceMap 存储模块级别的logger
+var moduleLoggerInstanceMap = make(map[string]*loggerInstance)
 
 // InitLogger 初始化日志系统
 func InitLogger(config *LogConfig, opts ...Option) error {
@@ -23,33 +27,33 @@ func InitLogger(config *LogConfig, opts ...Option) error {
 		if err != nil {
 			return err
 		}
-		moduleLoggers[module] = logger
+		moduleLoggerInstanceMap[module] = &loggerInstance{Logger: logger}
 	}
 
 	// 设置默认logger
-	defaultLogger = moduleLoggers[defaultModuleName]
+	defaultLogger = moduleLoggerInstanceMap[defaultModuleName]
 	if defaultLogger == nil {
 		logger, err := getDefaultLogger()
 		if err != nil {
 			return err
 		}
-		defaultLogger = logger
-		moduleLoggers[defaultModuleName] = logger
+		defaultLogger = &loggerInstance{Logger: logger}
+		moduleLoggerInstanceMap[defaultModuleName] = defaultLogger
 	}
 
 	return nil
 }
 
-func GetModuleLogger(moduleName string) (Logger, error) {
+func GetModuleLogger(moduleName string, opts ...Option) (Logger, error) {
 	lock.RLock()
 	defer lock.RUnlock()
-	logger, ok := moduleLoggers[moduleName]
+	loggerInst, ok := moduleLoggerInstanceMap[moduleName]
 	if !ok {
 		moduleCfg := getDefaultModuleLoggerConfig()
 		moduleCfg = moduleCfg.ResetModule(moduleName)
-		return newZapLogger(moduleCfg)
+		return newZapLogger(moduleCfg, opts...)
 	}
-	return logger, nil
+	return loggerInst.Logger.getLogger(opts...)
 }
 
 // getLoggerFromCtx 从Context中获取logger，如果没有则返回默认logger
@@ -67,75 +71,79 @@ func getLoggerFromCtx(ctx context.Context) Logger {
 // 以下函数使用Context中的logger，如果没有则使用默认logger
 
 func Debug(ctx context.Context, args ...any) {
-	getLoggerFromCtx(ctx).Debug(ctx, args...)
+	defaultLogger.Debug(ctx, args...)
 }
 
 func Debugf(ctx context.Context, format string, kvs ...any) {
-	getLoggerFromCtx(ctx).Debugf(ctx, format, kvs...)
+	defaultLogger.Debugf(ctx, format, kvs...)
 }
 
 func Debugw(ctx context.Context, msg string, kvs ...any) {
-	getLoggerFromCtx(ctx).Debugw(ctx, msg, kvs...)
+	defaultLogger.Debugw(ctx, msg, kvs...)
 }
 
 func Info(ctx context.Context, args ...any) {
-	getLoggerFromCtx(ctx).Info(ctx, args...)
+	defaultLogger.Info(ctx, args...)
 }
 
 func Infof(ctx context.Context, format string, kvs ...any) {
-	getLoggerFromCtx(ctx).Infof(ctx, format, kvs...)
+	defaultLogger.Infof(ctx, format, kvs...)
 }
 
 func Infow(ctx context.Context, msg string, kvs ...any) {
-	getLoggerFromCtx(ctx).Infow(ctx, msg, kvs...)
+	defaultLogger.Infow(ctx, msg, kvs...)
 }
 
 func Warn(ctx context.Context, args ...any) {
-	getLoggerFromCtx(ctx).Warn(ctx, args...)
+	defaultLogger.Warn(ctx, args...)
 }
 
 func Warnf(ctx context.Context, format string, kvs ...any) {
-	getLoggerFromCtx(ctx).Warnf(ctx, format, kvs...)
+	defaultLogger.Warnf(ctx, format, kvs...)
 }
 
 func Warnw(ctx context.Context, msg string, kvs ...any) {
-	getLoggerFromCtx(ctx).Warnw(ctx, msg, kvs...)
+	defaultLogger.Warnw(ctx, msg, kvs...)
 }
 
 func Error(ctx context.Context, args ...any) {
-	getLoggerFromCtx(ctx).Error(ctx, args...)
+	defaultLogger.Error(ctx, args...)
 }
 
 func Errorf(ctx context.Context, format string, kvs ...any) {
-	getLoggerFromCtx(ctx).Errorf(ctx, format, kvs...)
+	defaultLogger.Errorf(ctx, format, kvs...)
 }
 
 func Errorw(ctx context.Context, msg string, kvs ...any) {
-	getLoggerFromCtx(ctx).Errorw(ctx, msg, kvs...)
+	defaultLogger.Errorw(ctx, msg, kvs...)
 }
 
 func Panic(ctx context.Context, args ...any) {
-	getLoggerFromCtx(ctx).Panic(ctx, args...)
+	defaultLogger.Panic(ctx, args...)
 }
 
 func Panicf(ctx context.Context, format string, kvs ...any) {
-	getLoggerFromCtx(ctx).Panicf(ctx, format, kvs...)
+	defaultLogger.Panicf(ctx, format, kvs...)
 }
 
 func Panicw(ctx context.Context, msg string, kvs ...any) {
-	getLoggerFromCtx(ctx).Panicw(ctx, msg, kvs...)
+	defaultLogger.Panicw(ctx, msg, kvs...)
 }
 
 func Fatal(ctx context.Context, args ...any) {
-	getLoggerFromCtx(ctx).Fatal(ctx, args...)
+	defaultLogger.Fatal(ctx, args...)
 }
 
 func Fatalf(ctx context.Context, format string, kvs ...any) {
-	getLoggerFromCtx(ctx).Fatalf(ctx, format, kvs...)
+	defaultLogger.Fatalf(ctx, format, kvs...)
 }
 
 func Fatalw(ctx context.Context, msg string, kvs ...any) {
-	getLoggerFromCtx(ctx).Fatalw(ctx, msg, kvs...)
+	defaultLogger.Fatalw(ctx, msg, kvs...)
+}
+
+func Name(ctx context.Context) string {
+	return defaultLogger.Name()
 }
 
 // Close 关闭所有logger

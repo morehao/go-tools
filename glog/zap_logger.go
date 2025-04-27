@@ -175,6 +175,10 @@ func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 	}, nil
 }
 
+func (l *zapLogger) Name() string {
+	return l.logger.Name()
+}
+
 func (l *zapLogger) Close() {
 	_ = l.logger.Sugar().Sync()
 }

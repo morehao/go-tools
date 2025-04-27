@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/morehao/go-tools/glog"
-	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -81,7 +80,7 @@ func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
 	if cfg.Service == "" {
 		s = cfg.Database
 	}
-	l, err := glog.getLoggerFromCtx(glog.WithZapOptions(zap.AddCallerSkip(2)))
+	l, err := glog.GetModuleLogger("gorm", glog.WithCallerSkip(2))
 	if err != nil {
 		return nil, err
 	}
@@ -134,13 +133,11 @@ func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (strin
 		sql = sql[:l.MaxSqlLen]
 	}
 
-	fileLineNum := utils.FileWithLineNum()
+	// fileLineNum := utils.FileWithLineNum()
 	fields := l.commonFields(ctx)
 	fields = append(fields,
 		glog.KeyAffectedRows, rows,
-		glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
-		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
-		glog.KeyFile, fileLineNum,
+		// glog.KeyFile, fileLineNum,
 		glog.KeyCost, cost,
 		glog.KeyRalCode, ralCode,
 		glog.KeySql, sql,
@@ -150,14 +147,12 @@ func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (strin
 		msg = "slow sql"
 		l.Logger.Warnw(ctx, msg, fields...)
 	} else {
-		l.Logger.Infow(ctx, msg, fields...)
+		l.Logger.Debugw(ctx, msg, fields...)
 	}
 }
 
 func (l *ormLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
-		glog.KeyProto, glog.ValueProtoMysql,
-		glog.KeyService, l.Service,
 		glog.KeyAddr, l.Addr,
 		glog.KeyDatabase, l.Database,
 	}

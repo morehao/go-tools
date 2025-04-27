@@ -9,7 +9,6 @@ import (
 
 	"github.com/morehao/go-tools/glog"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 )
 
 type RedisConfig struct {
@@ -48,9 +47,9 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	if service == "" {
 		service = "redis"
 	}
-	l, newLogErr := glog.getLoggerFromCtx(glog.WithZapOptions(zap.AddCallerSkip(4)))
-	if newLogErr != nil {
-		return nil, newLogErr
+	l, getLoggerErr := glog.GetModuleLogger("redis", glog.WithCallerSkip(1))
+	if getLoggerErr != nil {
+		return nil, getLoggerErr
 	}
 	logger := redisLogger{
 		Service:  service,
@@ -101,8 +100,6 @@ func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 			fields = append(fields,
 				glog.KeyCmdContent, cmd.String(),
 				glog.KeyRalCode, ralCode,
-				glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
-				glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 				glog.KeyCost, cost,
 			)
 			l.Logger.Errorw(ctx, msg, fields...)
@@ -116,12 +113,10 @@ func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 		fields = append(fields,
 			glog.KeyCmdContent, cmd.String(),
 			glog.KeyRalCode, ralCode,
-			glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
-			glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 			glog.KeyCost, cost,
 		)
 
-		l.Logger.Infow(ctx, "redis execute success", fields...)
+		l.Logger.Debugw(ctx, "redis execute success", fields...)
 		return hook
 	}
 }
@@ -138,18 +133,16 @@ func (l redisLogger) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.P
 		fields := l.commonFields(ctx)
 		fields = append(fields,
 			glog.KeyCmdContent, l.cmdsToString(cmds),
-			glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
-			glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 			glog.KeyCost, cost,
 		)
 
 		// 根据执行结果记录日志
 		if err != nil {
 			fields = append(fields, glog.KeyRalCode, -1)
-			l.Logger.Errorw(ctx, "redis pipeline execute error", fields...)
+			l.Logger.Errorw(ctx, fmt.Sprintf("redis pipeline execute failed, err: %v", err), fields...)
 		} else {
 			fields = append(fields, glog.KeyRalCode, 0)
-			l.Logger.Infow(ctx, "redis pipeline execute success", fields...)
+			l.Logger.Debugw(ctx, "redis pipeline execute success", fields...)
 		}
 		return err
 	}
@@ -165,8 +158,6 @@ func (l redisLogger) cmdsToString(cmds []redis.Cmder) string {
 }
 func (l redisLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
-		glog.KeyProto, glog.ValueProtoRedis,
-		glog.KeyService, l.Service,
 		glog.KeyAddr, l.Addr,
 		glog.KeyDatabase, l.Database,
 	}

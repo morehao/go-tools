@@ -7,22 +7,23 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/morehao/go-tools/glog"
-	"github.com/morehao/go-tools/gutils"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestInitTypedES(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.ModuleLoggerConfig{
-		Service:   "ES",
-		Level:     glog.InfoLevel,
-		Dir:       "./log",
-		Stdout:    true,
-		ExtraKeys: []string{"requestId"},
+	logCfg := &glog.LogConfig{
+		Service: "app",
+		Modules: map[string]*glog.ModuleLoggerConfig{
+			"es": {
+				Level:          glog.DebugLevel,
+				Writer:         glog.WriterConsole,
+				RotateInterval: glog.RotateIntervalTypeDay,
+				ExtraKeys:      []string{glog.KeyRequestId},
+			},
+		},
 	}
-	opt := glog.WithZapOptions(zap.AddCallerSkip(2))
-	initLogErr := glog.NewLogger(logCfg, opt)
+	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(2))
 	assert.Nil(t, initLogErr)
 	cfg := ESConfig{
 		Service: "es",
@@ -39,20 +40,24 @@ func TestInitTypedES(t *testing.T) {
 			MatchAll: types.NewMatchAllQuery(),
 		}).Do(ctx)
 	assert.Nil(t, searchErr)
-	t.Log(gutils.ToJsonString(res))
+	glog.Infof(ctx, "search result: %s", glog.ToJsonString(res))
+	t.Log(glog.ToJsonString(res))
 }
 
 func TestInitSimpleES(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.ModuleLoggerConfig{
-		Service:   "ES",
-		Level:     glog.InfoLevel,
-		Dir:       "../../log",
-		Stdout:    true,
-		ExtraKeys: []string{"requestId"},
+	logCfg := &glog.LogConfig{
+		Service: "test",
+		Modules: map[string]*glog.ModuleLoggerConfig{
+			"es": {
+				Level:          glog.DebugLevel,
+				Writer:         glog.WriterConsole,
+				RotateInterval: glog.RotateIntervalTypeDay,
+				ExtraKeys:      []string{glog.KeyRequestId},
+			},
+		},
 	}
-	opt := glog.WithZapOptions(zap.AddCallerSkip(2))
-	initLogErr := glog.NewLogger(logCfg, opt)
+	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(2))
 	assert.Nil(t, initLogErr)
 	cfg := ESConfig{
 		Service: "es",
@@ -68,5 +73,6 @@ func TestInitSimpleES(t *testing.T) {
 		simpleClient.Search.WithBody(strings.NewReader(`{"query":{"match_all":{}}}`)),
 	)
 	assert.Nil(t, searchErr)
-	t.Log(gutils.ToJsonString(res))
+	glog.Infof(ctx, "search result: %s", glog.ToJsonString(res))
+	t.Log(glog.ToJsonString(res))
 }
