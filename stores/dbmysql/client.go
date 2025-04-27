@@ -81,7 +81,7 @@ func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
 	if cfg.Service == "" {
 		s = cfg.Database
 	}
-	l, err := glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(2)))
+	l, err := glog.getLoggerFromCtx(glog.WithZapOptions(zap.AddCallerSkip(2)))
 	if err != nil {
 		return nil, err
 	}

@@ -33,7 +33,7 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 	if enc.fieldHookFunc != nil {
 		kvs := make([]Field, 0, len(fields))
 		for _, f := range fields {
-			kvs = append(kvs, BuildField(f.Key, f.Interface))
+			kvs = append(kvs, KV(f.Key, f.Interface))
 		}
 		enc.fieldHookFunc(kvs)
 	}

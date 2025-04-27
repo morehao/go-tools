@@ -44,13 +44,36 @@ type LogConfig struct {
 	Modules map[string]*ModuleLoggerConfig `json:"modules" yaml:"modules"`
 }
 
-func getDefaultLoggerConfig() *ModuleLoggerConfig {
+func (c *LogConfig) SetDefault() {
+	if c.Service == "" {
+		c.Service = defaultServiceName
+	}
+
+	if c.Modules == nil {
+		c.Modules = make(map[string]*ModuleLoggerConfig)
+	}
+	if len(c.Modules) == 0 {
+		c.Modules[defaultModuleName] = getDefaultModuleLoggerConfig()
+	}
+}
+
+func (c *ModuleLoggerConfig) ResetModule(module string) *ModuleLoggerConfig {
+	if c == nil {
+		defaultModuleConfig := getDefaultModuleLoggerConfig()
+		defaultModuleConfig.module = module
+		return defaultModuleConfig
+	}
+	c.module = module
+	return c
+}
+
+func getDefaultModuleLoggerConfig() *ModuleLoggerConfig {
 	return &ModuleLoggerConfig{
-		service:    "app",
-		module:     "default",
+		service:    defaultServiceName,
+		module:     defaultModuleName,
 		Level:      InfoLevel,
 		Writer:     WriterConsole,
-		Dir:        "./log",
+		Dir:        defaultLogDir,
 		RotateUnit: RotateUnitDay,
 	}
 }

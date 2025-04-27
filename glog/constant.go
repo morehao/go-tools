@@ -11,6 +11,8 @@ const (
 )
 
 const (
+	KeyLogger = "logger"
+
 	KeyRequestId  = "requestId"
 	KeyTraceId    = "traceId"
 	KeyTraceFlags = "traceFlags"
@@ -97,5 +99,6 @@ const (
 
 const (
 	defaultServiceName = "app"
-	defaultModuleName  = "app"
+	defaultModuleName  = "default"
+	defaultLogDir      = "./logs"
 )

@@ -5,7 +5,7 @@ type Field struct {
 	Value any
 }
 
-func BuildField(key string, value any) Field {
+func KV(key string, value any) Field {
 	return Field{
 		Key:   key,
 		Value: value,

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInit(t *testing.T) {
@@ -29,10 +31,10 @@ func TestInit(t *testing.T) {
 		}
 
 		// 初始化日志系统
-		Init(config)
+		InitLogger(config)
 
 		// 验证默认 logger 是否创建成功
-		logger := GetLogger(context.Background())
+		logger := getLoggerFromCtx(context.Background())
 		if logger == nil {
 			t.Error("Default logger not initialized")
 		}
@@ -66,15 +68,17 @@ func TestInit(t *testing.T) {
 		}
 
 		// 初始化日志系统
-		Init(config)
+		InitLogger(config)
 
 		// 验证各个模块的 logger
-		module1Logger := GetModuleLogger("module1")
+		module1Logger, getModule1LoggerErr := GetModuleLogger("module1")
+		assert.Nil(t, getModule1LoggerErr)
 		if module1Logger == nil {
 			t.Error("Module1 logger not initialized")
 		}
 
-		module2Logger := GetModuleLogger("module2")
+		module2Logger, getModule2LoggerErr := GetModuleLogger("module2")
+		assert.Nil(t, getModule2LoggerErr)
 		if module2Logger == nil {
 			t.Error("Module2 logger not initialized")
 		}
@@ -110,10 +114,11 @@ func TestInit(t *testing.T) {
 		}
 
 		// 初始化日志系统
-		Init(config)
+		InitLogger(config)
 
 		// 验证 console logger
-		logger := GetModuleLogger("console")
+		logger, getLoggerErr := GetModuleLogger("console")
+		assert.Nil(t, getLoggerErr)
 		if logger == nil {
 			t.Error("Console logger not initialized")
 		}
@@ -140,7 +145,7 @@ func TestInit(t *testing.T) {
 		var hookCalled bool
 
 		// 初始化日志系统
-		Init(config)
+		InitLogger(config)
 
 		// 写入日志
 		ctx := context.Background()
@@ -166,7 +171,7 @@ func TestInit(t *testing.T) {
 		}
 
 		// 初始化日志系统
-		Init(config)
+		InitLogger(config)
 
 		// 创建带有额外字段的上下文
 		ctx := context.Background()
