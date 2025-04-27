@@ -12,7 +12,6 @@ func init() {
 	}
 	loggerInst := &loggerInstance{Logger: logger}
 	lock.Lock()
-	moduleLoggerInstanceMap[defaultModuleName] = &loggerInstance{Logger: logger}
 	defaultLogger = loggerInst
 	lock.Unlock()
 }

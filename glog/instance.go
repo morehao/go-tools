@@ -11,8 +11,8 @@ type loggerInstance struct {
 // defaultLogger 默认的日志实例
 var defaultLogger *loggerInstance
 
-// moduleLoggerInstanceMap 存储模块级别的logger
-var moduleLoggerInstanceMap = make(map[string]*loggerInstance)
+// moduleLoggerConfigMap 存储模块级别的logger
+var moduleLoggerConfigMap = make(map[string]*ModuleLoggerConfig)
 
 // InitLogger 初始化日志系统
 func InitLogger(config *LogConfig, opts ...Option) error {
@@ -23,23 +23,20 @@ func InitLogger(config *LogConfig, opts ...Option) error {
 		// 设置模块配置的 service 和 module 字段
 		cfg.service = config.Service
 		cfg.module = module
-		logger, err := newZapLogger(cfg, opts...)
-		if err != nil {
-			return err
-		}
-		moduleLoggerInstanceMap[module] = &loggerInstance{Logger: logger}
+		moduleLoggerConfigMap[module] = cfg
 	}
 
 	// 设置默认logger
-	defaultLogger = moduleLoggerInstanceMap[defaultModuleName]
-	if defaultLogger == nil {
-		logger, err := getDefaultLogger()
-		if err != nil {
-			return err
-		}
-		defaultLogger = &loggerInstance{Logger: logger}
-		moduleLoggerInstanceMap[defaultModuleName] = defaultLogger
+	defaultModuleConfig, ok := moduleLoggerConfigMap[defaultModuleName]
+	if !ok {
+		cfg := getDefaultModuleLoggerConfig()
+		defaultModuleConfig = cfg
 	}
+	logger, err := newZapLogger(defaultModuleConfig, opts...)
+	if err != nil {
+		return err
+	}
+	defaultLogger = &loggerInstance{Logger: logger}
 
 	return nil
 }
@@ -47,13 +44,17 @@ func InitLogger(config *LogConfig, opts ...Option) error {
 func GetModuleLogger(moduleName string, opts ...Option) (Logger, error) {
 	lock.RLock()
 	defer lock.RUnlock()
-	loggerInst, ok := moduleLoggerInstanceMap[moduleName]
+	moduleLogConfig, ok := moduleLoggerConfigMap[moduleName]
 	if !ok {
-		moduleCfg := getDefaultModuleLoggerConfig()
-		moduleCfg = moduleCfg.ResetModule(moduleName)
-		return newZapLogger(moduleCfg, opts...)
+		defaultModuleCfg := getDefaultModuleLoggerConfig()
+		defaultModuleCfg = defaultModuleCfg.ResetModule(moduleName)
+		return newZapLogger(defaultModuleCfg, opts...)
 	}
-	return loggerInst.Logger.getLogger(opts...)
+	logger, err := newZapLogger(moduleLogConfig, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &loggerInstance{Logger: logger}, nil
 }
 
 // getLoggerFromCtx 从Context中获取logger，如果没有则返回默认logger

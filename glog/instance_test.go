@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultLogger(t *testing.T) {
@@ -31,6 +33,126 @@ func TestLogLevels(t *testing.T) {
 	Info(ctx, "message", "info message")
 	Warn(ctx, "message", "warn message")
 	Error(ctx, "message", "error message")
+}
+
+func TestInit(t *testing.T) {
+	// 创建测试目录
+	tempDir := "log/glog-test"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	// defer os.RemoveAll(tempDir)
+
+	t.Run("TestBasicInit", func(t *testing.T) {
+		config := &LogConfig{
+			Service: "test-service",
+			Modules: map[string]*ModuleLoggerConfig{
+				"default": {
+					Level:  InfoLevel,
+					Writer: WriterFile,
+					Dir:    tempDir,
+				},
+			},
+		}
+
+		// 初始化日志系统
+		InitLogger(config)
+
+		// 验证默认 logger 是否创建成功
+		logger := getLoggerFromCtx(context.Background())
+		if logger == nil {
+			t.Error("Default logger not initialized")
+		}
+
+		// 写入一条日志
+		logger.Info(context.Background(), "test message")
+
+		// 验证日志文件是否创建
+		expectedDir := filepath.Join(tempDir, time.Now().Format("20060102"))
+		expectedFile := filepath.Join(expectedDir, "test-service_full.log")
+		if !fileExists(expectedFile) {
+			t.Errorf("Log file not created: %s", expectedFile)
+		}
+	})
+
+	t.Run("TestMultiModuleInit", func(t *testing.T) {
+		config := &LogConfig{
+			Service: "test-service",
+			Modules: map[string]*ModuleLoggerConfig{
+				"module1": {
+					Level:  DebugLevel,
+					Writer: WriterFile,
+					Dir:    tempDir,
+				},
+				"module2": {
+					Level:  InfoLevel,
+					Writer: WriterFile,
+					Dir:    tempDir,
+				},
+			},
+		}
+
+		// 初始化日志系统
+		InitLogger(config)
+
+		// 验证各个模块的 logger
+		module1Logger, getModule1LoggerErr := GetModuleLogger("module1")
+		assert.Nil(t, getModule1LoggerErr)
+		if module1Logger == nil {
+			t.Error("Module1 logger not initialized")
+		}
+
+		module2Logger, getModule2LoggerErr := GetModuleLogger("module2")
+		assert.Nil(t, getModule2LoggerErr)
+		if module2Logger == nil {
+			t.Error("Module2 logger not initialized")
+		}
+
+		// 写入日志
+		ctx := context.Background()
+		module1Logger.Debug(ctx, "debug message")
+		module2Logger.Info(ctx, "info message")
+
+		// 验证日志文件
+		expectedDir := filepath.Join(tempDir, time.Now().Format("20060102"))
+		module1File := filepath.Join(expectedDir, "test-service_full.log")
+		module2File := filepath.Join(expectedDir, "test-service_full.log")
+
+		if !fileExists(module1File) {
+			t.Errorf("Module1 log file not created: %s", module1File)
+		}
+		if !fileExists(module2File) {
+			t.Errorf("Module2 log file not created: %s", module2File)
+		}
+	})
+
+	t.Run("TestConsoleLogger", func(t *testing.T) {
+		config := &LogConfig{
+			Service: "test-service",
+			Modules: map[string]*ModuleLoggerConfig{
+				"console": {
+					Level:  DebugLevel,
+					Writer: WriterConsole,
+					Dir:    tempDir,
+				},
+			},
+		}
+
+		// 初始化日志系统
+		InitLogger(config)
+
+		// 验证 console logger
+		logger, getLoggerErr := GetModuleLogger("console")
+		assert.Nil(t, getLoggerErr)
+		if logger == nil {
+			t.Error("Console logger not initialized")
+		}
+
+		// 写入日志（这里主要测试不会panic）
+		ctx := context.Background()
+		logger.Debug(ctx, "debug to console")
+		logger.Info(ctx, "info to console")
+	})
 }
 
 func TestClose(t *testing.T) {
@@ -106,51 +228,6 @@ func TestHook(t *testing.T) {
 	Info(ctx, "test message with password=123456")
 }
 
-// TestContextLogger 测试上下文相关的logger操作，主要用于自定义日志组件等特殊场景
-func TestContextLogger(t *testing.T) {
-	// 创建一个临时目录用于测试
-	tempDir := "log/glog-test"
-	if err := os.MkdirAll(tempDir, 0755); err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// 设置测试配置
-	config := &LogConfig{
-		Service: "app",
-		Modules: map[string]*ModuleLoggerConfig{
-			"test": {
-				module: "test",
-				Level:  DebugLevel,
-				Writer: WriterFile,
-				Dir:    tempDir,
-			},
-		},
-	}
-
-	// 初始化日志器
-	t.Log("Initializing logger")
-	InitLogger(config)
-
-	// 创建测试上下文
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, "trace_id", "123456")
-	ctx = context.WithValue(ctx, "user_id", "user123")
-
-	// 获取上下文日志器
-	logger := getLoggerFromCtx(ctx)
-
-	// 测试日志记录
-	t.Log("Testing context logger")
-	logger.Info(ctx, "message", "test context logger")
-
-	// 测试带字段的日志
-	logger.Infow(ctx, "test with fields", "key", "value")
-
-	// 测试格式化日志
-	logger.Infof(ctx, "test format: %s", "value")
-}
-
 // TestExtraKeys 测试从上下文中提取额外字段的功能
 func TestExtraKeys(t *testing.T) {
 	// 创建一个临时目录用于测试
@@ -208,10 +285,10 @@ func TestLogWithFields(t *testing.T) {
 
 func TestLogFormat(t *testing.T) {
 	ctx := context.Background()
-	Debugf(ctx, "debug format: %s", "value", "test")
-	Infof(ctx, "info format: %s", "value", "test")
-	Warnf(ctx, "warn format: %s", "value", "test")
-	Errorf(ctx, "error format: %s", "value", "test")
+	Debugf(ctx, "debug format: %s", "value")
+	Infof(ctx, "info format: %s", "value")
+	Warnf(ctx, "warn format: %s", "value")
+	Errorf(ctx, "error format: %s", "value")
 }
 
 func TestRotateUnit(t *testing.T) {
