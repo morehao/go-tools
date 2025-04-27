@@ -18,6 +18,24 @@ type gZapEncoder struct {
 	messageHookFunc MessageHookFunc
 }
 
+func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
+	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.NameKey = "module"
+	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	encoder := zapcore.NewJSONEncoder(encoderCfg)
+	customEncoder := &gZapEncoder{
+		Encoder: encoder,
+	}
+	// 如果配置了字段钩子函数或消息钩子函数，则使用自定义编码器
+	if cfg != nil {
+		customEncoder.fieldHookFunc = cfg.fieldHookFunc
+		customEncoder.messageHookFunc = cfg.messageHookFunc
+	}
+
+	return customEncoder
+}
+
 func (enc *gZapEncoder) Clone() zapcore.Encoder {
 	encoderClone := enc.Encoder.Clone()
 	return &gZapEncoder{
@@ -36,6 +54,10 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 			kvs = append(kvs, KV(f.Key, f.String))
 		}
 		enc.fieldHookFunc(kvs)
+		for i, kv := range kvs {
+			fields[i].Type = zapcore.ReflectType
+			fields[i].Interface = kv.Value
+		}
 	}
 
 	// 执行消息钩子函数
@@ -45,24 +67,6 @@ func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 
 	// 使用修改后的字段进行编码
 	return enc.Encoder.EncodeEntry(ent, fields)
-}
-
-func getZapEncoder(cfg *zapLoggerConfig) zapcore.Encoder {
-	encoderCfg := zap.NewProductionEncoderConfig()
-	encoderCfg.NameKey = "module"
-	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	encoder := zapcore.NewJSONEncoder(encoderCfg)
-	customEncoder := &gZapEncoder{
-		Encoder: encoder,
-	}
-	// 如果配置了字段钩子函数或消息钩子函数，则使用自定义编码器
-	if cfg != nil {
-		customEncoder.fieldHookFunc = cfg.fieldHookFunc
-		customEncoder.messageHookFunc = cfg.messageHookFunc
-	}
-
-	return customEncoder
 }
 
 func getZapStandoutWriter() zapcore.WriteSyncer {

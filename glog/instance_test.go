@@ -60,8 +60,7 @@ func TestHook(t *testing.T) {
 	config := &LogConfig{
 		Service: "test",
 		Modules: map[string]*ModuleLoggerConfig{
-			"test": {
-				module: "test",
+			"default": {
 				Level:  DebugLevel,
 				Writer: WriterConsole,
 				Dir:    tempDir,
@@ -104,7 +103,7 @@ func TestHook(t *testing.T) {
 
 	// 测试密码脱敏
 	t.Log("Logging message with password")
-	Infow(ctx, "test message with password=123456", "password", "123456")
+	Info(ctx, "test message with password=123456")
 }
 
 // TestContextLogger 测试上下文相关的logger操作，主要用于自定义日志组件等特殊场景
@@ -151,36 +150,6 @@ func TestContextLogger(t *testing.T) {
 	// 测试格式化日志
 	logger.Infof(ctx, "test format: %s", "value")
 }
-
-// func TestSetDefaultLogger(t *testing.T) {
-// 	// 创建一个新的logger
-// 	cfg := &ModuleLoggerConfig{
-// 		module: "test_default",
-// 		Level:  DebugLevel,
-// 		Writer: WriterConsole,
-// 		Dir:    "./test_log",
-// 	}
-// 	logger, err := newZapLogger(cfg)
-// 	if err != nil {
-// 		t.Fatalf("failed to create logger: %v", err)
-// 	}
-//
-// 	// 保存旧的默认logger
-// 	oldLogger := getLoggerFromCtx(context.Background())
-//
-// 	// 设置新的默认logger
-// 	SetDefaultLogger(logger)
-//
-// 	// 测试新的默认logger是否生效
-// 	ctx := context.Background()
-// 	actualLogger := getLoggerFromCtx(ctx)
-// 	if actualLogger != logger {
-// 		t.Error("getLoggerFromCtx should return the new default logger")
-// 	}
-//
-// 	// 恢复旧的默认logger
-// 	SetDefaultLogger(oldLogger)
-// }
 
 // TestExtraKeys 测试从上下文中提取额外字段的功能
 func TestExtraKeys(t *testing.T) {

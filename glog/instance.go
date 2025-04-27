@@ -66,8 +66,8 @@ func getLoggerFromCtx(ctx context.Context) Logger {
 
 // 以下函数使用Context中的logger，如果没有则使用默认logger
 
-func Debug(ctx context.Context, kvs ...any) {
-	getLoggerFromCtx(ctx).Debug(ctx, kvs...)
+func Debug(ctx context.Context, args ...any) {
+	getLoggerFromCtx(ctx).Debug(ctx, args...)
 }
 
 func Debugf(ctx context.Context, format string, kvs ...any) {
@@ -78,8 +78,8 @@ func Debugw(ctx context.Context, msg string, kvs ...any) {
 	getLoggerFromCtx(ctx).Debugw(ctx, msg, kvs...)
 }
 
-func Info(ctx context.Context, kvs ...any) {
-	getLoggerFromCtx(ctx).Info(ctx, kvs...)
+func Info(ctx context.Context, args ...any) {
+	getLoggerFromCtx(ctx).Info(ctx, args...)
 }
 
 func Infof(ctx context.Context, format string, kvs ...any) {
@@ -90,8 +90,8 @@ func Infow(ctx context.Context, msg string, kvs ...any) {
 	getLoggerFromCtx(ctx).Infow(ctx, msg, kvs...)
 }
 
-func Warn(ctx context.Context, kvs ...any) {
-	getLoggerFromCtx(ctx).Warn(ctx, kvs...)
+func Warn(ctx context.Context, args ...any) {
+	getLoggerFromCtx(ctx).Warn(ctx, args...)
 }
 
 func Warnf(ctx context.Context, format string, kvs ...any) {
@@ -102,8 +102,8 @@ func Warnw(ctx context.Context, msg string, kvs ...any) {
 	getLoggerFromCtx(ctx).Warnw(ctx, msg, kvs...)
 }
 
-func Error(ctx context.Context, kvs ...any) {
-	getLoggerFromCtx(ctx).Error(ctx, kvs...)
+func Error(ctx context.Context, args ...any) {
+	getLoggerFromCtx(ctx).Error(ctx, args...)
 }
 
 func Errorf(ctx context.Context, format string, kvs ...any) {
@@ -114,8 +114,8 @@ func Errorw(ctx context.Context, msg string, kvs ...any) {
 	getLoggerFromCtx(ctx).Errorw(ctx, msg, kvs...)
 }
 
-func Panic(ctx context.Context, kvs ...any) {
-	getLoggerFromCtx(ctx).Panic(ctx, kvs...)
+func Panic(ctx context.Context, args ...any) {
+	getLoggerFromCtx(ctx).Panic(ctx, args...)
 }
 
 func Panicf(ctx context.Context, format string, kvs ...any) {
@@ -126,8 +126,8 @@ func Panicw(ctx context.Context, msg string, kvs ...any) {
 	getLoggerFromCtx(ctx).Panicw(ctx, msg, kvs...)
 }
 
-func Fatal(ctx context.Context, kvs ...any) {
-	getLoggerFromCtx(ctx).Fatal(ctx, kvs...)
+func Fatal(ctx context.Context, args ...any) {
+	getLoggerFromCtx(ctx).Fatal(ctx, args...)
 }
 
 func Fatalf(ctx context.Context, format string, kvs ...any) {

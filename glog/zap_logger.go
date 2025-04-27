@@ -83,8 +83,8 @@ func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, erro
 
 	return logger, nil
 }
-func (l *zapLogger) Debug(ctx context.Context, kvs ...any) {
-	l.ctxLog(DebugLevel, ctx, kvs...)
+func (l *zapLogger) Debug(ctx context.Context, args ...any) {
+	l.ctxLog(DebugLevel, ctx, args...)
 }
 
 func (l *zapLogger) Debugf(ctx context.Context, format string, kvs ...any) {
@@ -95,8 +95,8 @@ func (l *zapLogger) Debugw(ctx context.Context, msg string, kvs ...any) {
 	l.ctxLogw(DebugLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Info(ctx context.Context, kvs ...any) {
-	l.ctxLog(InfoLevel, ctx, kvs...)
+func (l *zapLogger) Info(ctx context.Context, args ...any) {
+	l.ctxLog(InfoLevel, ctx, args...)
 }
 
 func (l *zapLogger) Infof(ctx context.Context, format string, kvs ...any) {
@@ -107,8 +107,8 @@ func (l *zapLogger) Infow(ctx context.Context, msg string, kvs ...any) {
 	l.ctxLogw(InfoLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Warn(ctx context.Context, kvs ...any) {
-	l.ctxLog(WarnLevel, ctx, kvs...)
+func (l *zapLogger) Warn(ctx context.Context, args ...any) {
+	l.ctxLog(WarnLevel, ctx, args...)
 }
 
 func (l *zapLogger) Warnf(ctx context.Context, format string, kvs ...any) {
@@ -119,8 +119,8 @@ func (l *zapLogger) Warnw(ctx context.Context, msg string, kvs ...any) {
 	l.ctxLogw(WarnLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Error(ctx context.Context, kvs ...any) {
-	l.ctxLog(ErrorLevel, ctx, kvs...)
+func (l *zapLogger) Error(ctx context.Context, args ...any) {
+	l.ctxLog(ErrorLevel, ctx, args...)
 }
 
 func (l *zapLogger) Errorf(ctx context.Context, format string, kvs ...any) {
@@ -131,8 +131,8 @@ func (l *zapLogger) Errorw(ctx context.Context, msg string, kvs ...any) {
 	l.ctxLogw(ErrorLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Panic(ctx context.Context, kvs ...any) {
-	l.ctxLog(PanicLevel, ctx, kvs...)
+func (l *zapLogger) Panic(ctx context.Context, args ...any) {
+	l.ctxLog(PanicLevel, ctx, args...)
 }
 
 func (l *zapLogger) Panicf(ctx context.Context, format string, kvs ...any) {
@@ -143,8 +143,8 @@ func (l *zapLogger) Panicw(ctx context.Context, msg string, kvs ...any) {
 	l.ctxLogw(PanicLevel, ctx, msg, kvs...)
 }
 
-func (l *zapLogger) Fatal(ctx context.Context, kvs ...any) {
-	l.ctxLog(FatalLevel, ctx, kvs...)
+func (l *zapLogger) Fatal(ctx context.Context, args ...any) {
+	l.ctxLog(FatalLevel, ctx, args...)
 }
 
 func (l *zapLogger) Fatalf(ctx context.Context, format string, kvs ...any) {
