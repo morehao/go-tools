@@ -3,12 +3,16 @@ package dbredis
 import (
 	"context"
 	"fmt"
-	"net"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/morehao/go-tools/glog"
 	"github.com/redis/go-redis/v9"
+)
+
+var (
+	dbMap = map[string]*redis.Client{}
+	lock  sync.RWMutex
 )
 
 type RedisConfig struct {
@@ -22,6 +26,9 @@ type RedisConfig struct {
 }
 
 func InitRedis(cfg RedisConfig) (*redis.Client, error) {
+	if cfg.Service == "" {
+		return nil, fmt.Errorf("service name is empty")
+	}
 	opt := &redis.Options{
 		Addr:             cfg.Addr,
 		Password:         cfg.Password,
@@ -65,101 +72,27 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	} else {
 		fmt.Println("Redis connection successful:", pong)
 	}
+	lock.Lock()
+	defer lock.Unlock()
+	dbMap[cfg.Service] = rdb
 	return rdb, nil
 }
 
-type redisLogger struct {
-	Service  string
-	Addr     string
-	Database int
-	Logger   glog.Logger
-}
-
-// DialHook 当创建网络连接时调用的hook
-func (l redisLogger) DialHook(next redis.DialHook) redis.DialHook {
-	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return next(ctx, network, addr)
+func InitMultiRedis(configs []RedisConfig) error {
+	if len(configs) == 0 {
+		return fmt.Errorf("redis config is empty")
 	}
-}
-
-// ProcessHook 执行命令时调用的hook
-func (l redisLogger) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
-
-		begin := time.Now()
-		fields := l.commonFields(ctx)
-		fields = append(fields,
-			glog.KeyCmd, cmd.FullName(),
-		)
-		var ralCode int
-		if err := cmd.Err(); err != nil {
-			msg := err.Error()
-			ralCode = -1
-			end := time.Now()
-			cost := glog.GetRequestCost(begin, end)
-			fields = append(fields,
-				glog.KeyCmdContent, cmd.String(),
-				glog.KeyRalCode, ralCode,
-				glog.KeyCost, cost,
-			)
-			l.Logger.Errorw(ctx, msg, fields...)
+	for _, cfg := range configs {
+		_, err := InitRedis(cfg)
+		if err != nil {
 			return err
 		}
-
-		hook := next(ctx, cmd)
-
-		end := time.Now()
-		cost := glog.GetRequestCost(begin, end)
-		fields = append(fields,
-			glog.KeyCmdContent, cmd.String(),
-			glog.KeyRalCode, ralCode,
-			glog.KeyCost, cost,
-		)
-
-		l.Logger.Debugw(ctx, "redis execute success", fields...)
-		return hook
 	}
+	return nil
 }
 
-// ProcessPipelineHook 执行管道命令时调用的hook
-func (l redisLogger) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-	return func(ctx context.Context, cmds []redis.Cmder) error {
-		begin := time.Now() // 记录开始时间
-		err := next(ctx, cmds)
-		end := time.Now() // 记录结束时间
-		cost := glog.GetRequestCost(begin, end)
-
-		// 准备日志字段
-		fields := l.commonFields(ctx)
-		fields = append(fields,
-			glog.KeyCmdContent, l.cmdsToString(cmds),
-			glog.KeyCost, cost,
-		)
-
-		// 根据执行结果记录日志
-		if err != nil {
-			fields = append(fields, glog.KeyRalCode, -1)
-			l.Logger.Errorw(ctx, fmt.Sprintf("redis pipeline execute failed, err: %v", err), fields...)
-		} else {
-			fields = append(fields, glog.KeyRalCode, 0)
-			l.Logger.Debugw(ctx, "redis pipeline execute success", fields...)
-		}
-		return err
-	}
-}
-
-// cmdsToString 将管道命令转换为字符串表示，用于日志记录
-func (l redisLogger) cmdsToString(cmds []redis.Cmder) string {
-	var cmdStrs []string
-	for _, cmd := range cmds {
-		cmdStrs = append(cmdStrs, cmd.String())
-	}
-	return fmt.Sprintf("[%s]", strings.Join(cmdStrs, ", "))
-}
-func (l redisLogger) commonFields(ctx context.Context) []interface{} {
-	fields := []interface{}{
-		glog.KeyAddr, l.Addr,
-		glog.KeyDatabase, l.Database,
-	}
-	return fields
+func GetClient(service string) *redis.Client {
+	lock.RLock()
+	defer lock.RUnlock()
+	return dbMap[service]
 }

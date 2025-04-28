@@ -11,11 +11,10 @@ import (
 
 var (
 	dbMap = map[string]*gorm.DB{}
-	lock  sync.Mutex
+	lock  sync.RWMutex
 )
 
 type MysqlConfig struct {
-	Service       string        `yaml:"service"`        // 服务名
 	Addr          string        `yaml:"addr"`           // 地址
 	Database      string        `yaml:"database"`       // 数据库名
 	User          string        `yaml:"user"`           // 用户名
@@ -29,12 +28,11 @@ type MysqlConfig struct {
 }
 
 func InitMysql(cfg MysqlConfig) (*gorm.DB, error) {
-	if cfg.Service == "" {
-		return nil, fmt.Errorf("service name is empty")
+	if cfg.Database == "" {
+		return nil, fmt.Errorf("database name is empty")
 	}
 	dns := cfg.buildDns()
 	customLogger, newLogErr := newOrmLogger(&ormConfig{
-		Service:   cfg.Service,
 		Addr:      cfg.Addr,
 		Database:  cfg.Database,
 		MaxSqlLen: cfg.MaxSqlLen,
@@ -50,7 +48,7 @@ func InitMysql(cfg MysqlConfig) (*gorm.DB, error) {
 	}
 	lock.Lock()
 	defer lock.Unlock()
-	dbMap[cfg.Service] = db
+	dbMap[cfg.Database] = db
 	return db, nil
 }
 
@@ -66,8 +64,11 @@ func (cfg *MysqlConfig) buildDns() string {
 	return dns
 }
 
-func InitMultiMysql(cfgs []MysqlConfig) error {
-	for _, cfg := range cfgs {
+func InitMultiMysql(configs []MysqlConfig) error {
+	if len(configs) == 0 {
+		return fmt.Errorf("mysql configs is empty")
+	}
+	for _, cfg := range configs {
 		_, err := InitMysql(cfg)
 		if err != nil {
 			return err
@@ -76,8 +77,8 @@ func InitMultiMysql(cfgs []MysqlConfig) error {
 	return nil
 }
 
-func GetDB(service string) *gorm.DB {
-	lock.Lock()
-	defer lock.Unlock()
-	return dbMap[service]
+func GetDB(database string) *gorm.DB {
+	lock.RLock()
+	defer lock.RUnlock()
+	return dbMap[database]
 }

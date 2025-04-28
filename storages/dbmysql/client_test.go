@@ -25,7 +25,6 @@ func TestInitMysql(t *testing.T) {
 	initLogErr := glog.InitLogger(logCfg)
 	assert.Nil(t, initLogErr)
 	cfg := MysqlConfig{
-		Service:  "test",
 		Addr:     "127.0.0.1:3306",
 		Database: "practice",
 		User:     "root",
@@ -52,7 +51,6 @@ func TestInitMysql(t *testing.T) {
 func TestInitMysqlWithoutInitLog(t *testing.T) {
 	defer glog.Close()
 	cfg := MysqlConfig{
-		Service:  "test",
 		Addr:     "127.0.0.1:3306",
 		Database: "practice",
 		User:     "root",
