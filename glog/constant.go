@@ -11,20 +11,8 @@ const (
 )
 
 const (
-	logOutputTypeStdout      = "stdout"     // 输出到控制台
-	logOutputTypeDefaultFile = "file"       // 输出到普通文件
-	logOutputTypeWarnFatal   = "warn_fatal" // 输出到警告和致命错误日志文件
+	KeyLogger = "logger"
 
-	logOutputFieldDefaultSuffix  = ".log"
-	logOutputFileWarnFatalSuffix = ".wf.log"
-)
-
-var logOutputFileSuffixMap = map[string]string{
-	logOutputTypeDefaultFile: logOutputFieldDefaultSuffix,
-	logOutputTypeWarnFatal:   logOutputFileWarnFatalSuffix,
-}
-
-const (
 	KeyRequestId  = "requestId"
 	KeyTraceId    = "traceId"
 	KeyTraceFlags = "traceFlags"
@@ -51,8 +39,8 @@ const (
 	KeyResponseCode     = "responseCode"
 	KeyResponseBody     = "responseBody"
 	KeyResponseBodySize = "responseBodySize"
-	KeyRequestStartTime = "requestStartTime"
-	KeyRequestEndTime   = "requestEndTime"
+	KeyRequestStartTime = "start"
+	KeyRequestEndTime   = "end"
 	KeyCost             = "cost"
 	KeyRequestErr       = "requestErr"
 	KeyErrorCode        = "errorCode"
@@ -94,3 +82,24 @@ var logLevelMap = map[Level]zapcore.Level{
 	PanicLevel: zapcore.PanicLevel,
 	FatalLevel: zapcore.FatalLevel,
 }
+
+type WriterType string
+
+const (
+	WriterConsole WriterType = "console"
+	WriterFile    WriterType = "file"
+)
+
+type RotateIntervalType string
+
+const (
+	RotateIntervalTypeHour RotateIntervalType = "hour"
+	RotateIntervalTypeDay  RotateIntervalType = "day"
+)
+
+const (
+	defaultServiceName   = "app"
+	defaultModuleName    = "default"
+	defaultLogDir        = "./logs"
+	defaultLogCallerSkip = 3
+)

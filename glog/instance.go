@@ -4,92 +4,150 @@ import (
 	"context"
 )
 
-type instance struct {
+type loggerInstance struct {
 	Logger
 }
 
-var logInstance *instance
+// defaultLogger 默认的日志实例
+var defaultLogger *loggerInstance
+
+// moduleLoggerConfigMap 存储模块级别的logger
+var moduleLoggerConfigMap = make(map[string]*ModuleLoggerConfig)
+
+// InitLogger 初始化日志系统
+func InitLogger(config *LogConfig, opts ...Option) error {
+	lock.Lock()
+	defer lock.Unlock()
+	// 初始化模块级别的logger
+	for module, cfg := range config.Modules {
+		// 设置模块配置的 service 和 module 字段
+		cfg.service = config.Service
+		cfg.module = module
+		moduleLoggerConfigMap[module] = cfg
+	}
+
+	// 设置默认logger
+	defaultModuleConfig, ok := moduleLoggerConfigMap[defaultModuleName]
+	if !ok {
+		cfg := getDefaultModuleLoggerConfig()
+		defaultModuleConfig = cfg
+	}
+	logger, err := newZapLogger(defaultModuleConfig, opts...)
+	if err != nil {
+		return err
+	}
+	defaultLogger = &loggerInstance{Logger: logger}
+
+	return nil
+}
+
+func GetModuleLogger(moduleName string, opts ...Option) (Logger, error) {
+	lock.RLock()
+	defer lock.RUnlock()
+	moduleLogConfig, ok := moduleLoggerConfigMap[moduleName]
+	if !ok {
+		defaultModuleCfg := getDefaultModuleLoggerConfig()
+		defaultModuleCfg = defaultModuleCfg.ResetModule(moduleName)
+		return newZapLogger(defaultModuleCfg, opts...)
+	}
+	logger, err := newZapLogger(moduleLogConfig, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &loggerInstance{Logger: logger}, nil
+}
+
+// getLoggerFromCtx 从Context中获取logger，如果没有则返回默认logger
+func getLoggerFromCtx(ctx context.Context) Logger {
+	logger, ok := ctx.Value(KeyLogger).(Logger)
+	if ok {
+		if logger == nil {
+			return defaultLogger
+		}
+		return logger
+	}
+	return defaultLogger
+}
+
+// 以下函数使用Context中的logger，如果没有则使用默认logger
 
 func Debug(ctx context.Context, args ...any) {
-	logInstance.Debug(ctx, args...)
+	defaultLogger.Debug(ctx, args...)
 }
 
-func Debugf(ctx context.Context, format string, args ...any) {
-	logInstance.Debugf(ctx, format, args...)
+func Debugf(ctx context.Context, format string, kvs ...any) {
+	defaultLogger.Debugf(ctx, format, kvs...)
 }
 
-func Debugw(ctx context.Context, msg string, keysAndValues ...any) {
-	logInstance.Debugw(ctx, msg, keysAndValues...)
+func Debugw(ctx context.Context, msg string, kvs ...any) {
+	defaultLogger.Debugw(ctx, msg, kvs...)
 }
 
 func Info(ctx context.Context, args ...any) {
-	logInstance.Info(ctx, args...)
+	defaultLogger.Info(ctx, args...)
 }
 
-func Infof(ctx context.Context, format string, args ...any) {
-	logInstance.Infof(ctx, format, args...)
+func Infof(ctx context.Context, format string, kvs ...any) {
+	defaultLogger.Infof(ctx, format, kvs...)
 }
 
-func Infow(ctx context.Context, msg string, keysAndValues ...any) {
-	logInstance.Infow(ctx, msg, keysAndValues...)
+func Infow(ctx context.Context, msg string, kvs ...any) {
+	defaultLogger.Infow(ctx, msg, kvs...)
 }
 
 func Warn(ctx context.Context, args ...any) {
-	logInstance.Warn(ctx, args...)
+	defaultLogger.Warn(ctx, args...)
 }
 
-func Warnf(ctx context.Context, format string, args ...any) {
-	logInstance.Warnf(ctx, format, args...)
+func Warnf(ctx context.Context, format string, kvs ...any) {
+	defaultLogger.Warnf(ctx, format, kvs...)
 }
 
-func Warnw(ctx context.Context, msg string, keysAndValues ...any) {
-	logInstance.Warnw(ctx, msg, keysAndValues...)
+func Warnw(ctx context.Context, msg string, kvs ...any) {
+	defaultLogger.Warnw(ctx, msg, kvs...)
 }
 
 func Error(ctx context.Context, args ...any) {
-	logInstance.Error(ctx, args...)
-}
-func Errorf(ctx context.Context, format string, args ...any) {
-	logInstance.Errorf(ctx, format, args...)
+	defaultLogger.Error(ctx, args...)
 }
 
-func Errorw(ctx context.Context, msg string, keysAndValues ...any) {
-	logInstance.Errorw(ctx, msg, keysAndValues...)
+func Errorf(ctx context.Context, format string, kvs ...any) {
+	defaultLogger.Errorf(ctx, format, kvs...)
+}
+
+func Errorw(ctx context.Context, msg string, kvs ...any) {
+	defaultLogger.Errorw(ctx, msg, kvs...)
 }
 
 func Panic(ctx context.Context, args ...any) {
-	logInstance.Panic(ctx, args...)
+	defaultLogger.Panic(ctx, args...)
 }
 
-func Panicf(ctx context.Context, format string, args ...any) {
-	logInstance.Panicf(ctx, format, args...)
+func Panicf(ctx context.Context, format string, kvs ...any) {
+	defaultLogger.Panicf(ctx, format, kvs...)
+}
+
+func Panicw(ctx context.Context, msg string, kvs ...any) {
+	defaultLogger.Panicw(ctx, msg, kvs...)
 }
 
 func Fatal(ctx context.Context, args ...any) {
-	logInstance.Fatal(ctx, args...)
+	defaultLogger.Fatal(ctx, args...)
 }
 
-func Fatalf(ctx context.Context, format string, args ...any) {
-	logInstance.Fatalf(ctx, format, args...)
+func Fatalf(ctx context.Context, format string, kvs ...any) {
+	defaultLogger.Fatalf(ctx, format, kvs...)
 }
 
-func Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
-	logInstance.Fatalw(ctx, msg, keysAndValues...)
+func Fatalw(ctx context.Context, msg string, kvs ...any) {
+	defaultLogger.Fatalw(ctx, msg, kvs...)
 }
 
-func GetLogger(opts ...Option) (Logger, error) {
-	if logInstance == nil {
-		cfg := getDefaultLoggerConfig()
-		logger, err := newZapLogger(cfg, opts...)
-		if err != nil {
-			return nil, err
-		}
-		logInstance = &instance{Logger: logger}
-		return logger, nil
-	}
-	return logInstance.Logger.getLogger(opts...)
+func Name(ctx context.Context) string {
+	return defaultLogger.Name()
 }
 
+// Close 关闭所有logger
 func Close() {
-	logInstance.Close()
+	defaultLogger.Close()
 }

@@ -2,165 +2,158 @@ package glog
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"os"
-	"path"
-	"strings"
-	"time"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
 )
 
 // Logger 是一个封装 zap.Logger 的结构体
 type zapLogger struct {
 	logger *zap.Logger
-	cfg    *LoggerConfig
+	cfg    *ModuleLoggerConfig
 }
 
-func getZapLogger(cfg *LoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
-	var zapCores []zapcore.Core
-	logLevel, ok := logLevelMap[cfg.Level]
-	if !ok {
-		logLevel = zapcore.InfoLevel
+type zapLoggerConfig struct {
+	callerSkip      int
+	fieldHookFunc   FieldHookFunc
+	messageHookFunc MessageHookFunc
+}
+
+func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
+	// 创建基础配置
+	zapCfg := &zapLoggerConfig{
+		callerSkip:      optCfg.callerSkip,
+		fieldHookFunc:   optCfg.fieldHookFunc,
+		messageHookFunc: optCfg.messageHookFunc,
 	}
-	var infoLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= logLevel && lvl <= zapcore.InfoLevel
-	})
 
-	var errorLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= logLevel && lvl >= zapcore.WarnLevel
-	})
+	// 创建编码器
+	encoder := getZapEncoder(zapCfg)
 
-	var stdLevel = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= logLevel && lvl >= zapcore.DebugLevel
-	})
-	if cfg.Stdout {
-		writer, getWriterErr := getZapLogWriter(cfg, logOutputTypeStdout)
-		if getWriterErr != nil {
-			return nil, getWriterErr
+	// 创建控制台输出
+	consoleCore := zapcore.NewCore(
+		encoder,
+		getZapStandoutWriter(),
+		logLevelMap[cfg.Level],
+	)
+
+	var cores []zapcore.Core
+
+	// 根据配置类型添加其他输出
+	switch cfg.Writer {
+	case WriterConsole:
+		cores = append(cores, consoleCore)
+	case WriterFile:
+		defaultWriter, getDefaultWriterErr := getZapFileWriter(cfg, "full")
+		if getDefaultWriterErr != nil {
+			return nil, getDefaultWriterErr
 		}
-		c := zapcore.NewCore(
-			getZapEncoder(optCfg),
-			writer,
-			stdLevel)
-		zapCores = append(zapCores, c)
-	}
+		wfWriter, getWfWriterErr := getZapFileWriter(cfg, "wf")
+		if getWfWriterErr != nil {
+			return nil, getWfWriterErr
+		}
 
-	defaultWriter, getDefaultWriterErr := getZapLogWriter(cfg, logOutputTypeDefaultFile)
-	if getDefaultWriterErr != nil {
-		return nil, getDefaultWriterErr
-	}
-	zapCores = append(zapCores,
-		zapcore.NewCore(
-			getZapEncoder(optCfg),
+		// 创建默认日志core
+		defaultCore := zapcore.NewCore(
+			encoder,
 			defaultWriter,
-			infoLevel))
+			logLevelMap[cfg.Level],
+		)
 
-	zapCores = append(zapCores,
-		zapcore.NewCore(
-			getZapEncoder(optCfg),
-			defaultWriter,
-			errorLevel))
-
-	wfWriter, getWfWriterErr := getZapLogWriter(cfg, logOutputTypeWarnFatal)
-	if getWfWriterErr != nil {
-		return nil, getWfWriterErr
-	}
-	zapCores = append(zapCores,
-		zapcore.NewCore(
-			getZapEncoder(optCfg),
+		// 创建wf日志core
+		wfCore := zapcore.NewCore(
+			encoder,
 			wfWriter,
-			errorLevel))
+			zapcore.WarnLevel,
+		)
+		cores = append(cores, consoleCore, defaultCore, wfCore)
+	}
 
-	core := zapcore.NewTee(zapCores...)
+	// 使用Tee将日志同时写入所有输出
+	core := zapcore.NewTee(cores...)
 
-	// 开启开发模式，堆栈跟踪
-	caller := zap.WithCaller(true)
+	// 创建 logger，添加 caller 选项
+	logger := zap.New(core, zap.Development(), zap.AddCaller(), zap.AddStacktrace(zapcore.PanicLevel))
+	logger = logger.Named(cfg.service).Named(cfg.module)
 
-	development := zap.Development()
+	// 如果设置了 callerSkip，添加 caller skip
+	callerSkip := defaultLogCallerSkip
+	if optCfg.callerSkip > 0 {
+		callerSkip = optCfg.callerSkip
+	}
 
-	// 设置初始化字段
-	field := zap.Fields()
-
-	// 构造logger
-	logger := zap.New(core, field, caller, development)
-
-	return logger, nil
+	return logger.WithOptions(zap.AddCallerSkip(callerSkip)), nil
 }
-
 func (l *zapLogger) Debug(ctx context.Context, args ...any) {
 	l.ctxLog(DebugLevel, ctx, args...)
 }
 
-func (l *zapLogger) Debugf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(DebugLevel, ctx, format, args...)
+func (l *zapLogger) Debugf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(DebugLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Debugw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(DebugLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Debugw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(DebugLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) Info(ctx context.Context, args ...any) {
 	l.ctxLog(InfoLevel, ctx, args...)
 }
 
-func (l *zapLogger) Infof(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(InfoLevel, ctx, format, args...)
+func (l *zapLogger) Infof(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(InfoLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Infow(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(InfoLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Infow(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(InfoLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) Warn(ctx context.Context, args ...any) {
 	l.ctxLog(WarnLevel, ctx, args...)
 }
 
-func (l *zapLogger) Warnf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(WarnLevel, ctx, format, args...)
+func (l *zapLogger) Warnf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(WarnLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Warnw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(WarnLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Warnw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(WarnLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) Error(ctx context.Context, args ...any) {
 	l.ctxLog(ErrorLevel, ctx, args...)
 }
 
-func (l *zapLogger) Errorf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(ErrorLevel, ctx, format, args...)
+func (l *zapLogger) Errorf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(ErrorLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Errorw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(ErrorLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Errorw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(ErrorLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) Panic(ctx context.Context, args ...any) {
 	l.ctxLog(PanicLevel, ctx, args...)
 }
 
-func (l *zapLogger) Panicf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(PanicLevel, ctx, format, args...)
+func (l *zapLogger) Panicf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(PanicLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Panicw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(PanicLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Panicw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(PanicLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) Fatal(ctx context.Context, args ...any) {
 	l.ctxLog(FatalLevel, ctx, args...)
 }
 
-func (l *zapLogger) Fatalf(ctx context.Context, format string, args ...any) {
-	l.ctxLogf(PanicLevel, ctx, format, args...)
+func (l *zapLogger) Fatalf(ctx context.Context, format string, kvs ...any) {
+	l.ctxLogf(FatalLevel, ctx, format, kvs...)
 }
 
-func (l *zapLogger) Fatalw(ctx context.Context, msg string, keysAndValues ...any) {
-	l.ctxLogw(FatalLevel, ctx, msg, keysAndValues...)
+func (l *zapLogger) Fatalw(ctx context.Context, msg string, kvs ...any) {
+	l.ctxLogw(FatalLevel, ctx, msg, kvs...)
 }
 
 func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
@@ -168,76 +161,100 @@ func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
-	logger := l.logger.WithOptions(cfg.zapOpts...)
+
+	// 创建新的 logger
+	logger := l.logger
+
+	// 如果设置了 callerSkip，添加 caller skip
+	if cfg.callerSkip > 0 {
+		logger = logger.WithOptions(zap.AddCallerSkip(cfg.callerSkip))
+	}
+
 	return &zapLogger{
 		logger: logger,
 		cfg:    l.cfg,
 	}, nil
 }
 
+func (l *zapLogger) Name() string {
+	return l.logger.Name()
+}
+
 func (l *zapLogger) Close() {
-	_ = l.logger.Sync()
+	_ = l.logger.Sugar().Sync()
 }
 
-func (l *zapLogger) ctxLog(level Level, ctx context.Context, args ...any) {
+func (l *zapLogger) ctxLog(level Level, ctx context.Context, kvs ...any) {
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
+
+	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Debug(args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debug(kvs...)
 	case InfoLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Info(args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Info(kvs...)
 	case WarnLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Warn(args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warn(kvs...)
 	case ErrorLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Error(args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Error(kvs...)
 	case PanicLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Panic(args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panic(kvs...)
 	case FatalLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Fatal(args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatal(kvs...)
 	}
 }
 
-func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, args ...any) {
+func (l *zapLogger) ctxLogf(level Level, ctx context.Context, format string, kvs ...any) {
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
+
+	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Debugf(format, args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debugf(format, kvs...)
 	case InfoLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Infof(format, args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Infof(format, kvs...)
 	case WarnLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Warnf(format, args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warnf(format, kvs...)
 	case ErrorLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Errorf(format, args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Errorf(format, kvs...)
 	case PanicLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Panicf(format, args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panicf(format, kvs...)
 	case FatalLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalf(format, args...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalf(format, kvs...)
 	}
 }
 
-func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, keysAndValues ...any) {
+func (l *zapLogger) ctxLogw(level Level, ctx context.Context, msg string, kvs ...any) {
 	if nilCtx(ctx) || skipLog(ctx) {
 		return
 	}
+
+	// 记录日志
 	switch level {
 	case DebugLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Debugw(msg, keysAndValues...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Debugw(msg, kvs...)
 	case InfoLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Infow(msg, keysAndValues...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Infow(msg, kvs...)
 	case WarnLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Warnw(msg, keysAndValues...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Warnw(msg, kvs...)
 	case ErrorLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Errorw(msg, keysAndValues...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Errorw(msg, kvs...)
 	case PanicLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Panicw(msg, keysAndValues...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Panicw(msg, kvs...)
 	case FatalLevel:
-		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalw(msg, keysAndValues...)
+		l.logger.Sugar().With(l.extraFields(ctx)...).Fatalw(msg, kvs...)
 	}
 }
+
+// func (l *zapLogger) commonFields(ctx context.Context) {
+// 	var fields []zap.Field
+// 	fields = append(fields, zap.String("service", l.cfg.service))
+// 	fields = append(fields, zap.String("writer", string(l.cfg.Writer)))
+// }
 
 // 提取 context 中的字段
 func (l *zapLogger) extraFields(ctx context.Context) []any {
@@ -248,144 +265,4 @@ func (l *zapLogger) extraFields(ctx context.Context) []any {
 		}
 	}
 	return fields
-}
-
-type gZapEncoder struct {
-	fieldHookFunc   ZapFieldHookFunc
-	messageHookFunc MessageHookFunc
-	zapcore.Encoder
-}
-
-func (enc *gZapEncoder) Clone() zapcore.Encoder {
-	encoderClone := enc.Encoder.Clone()
-	return &gZapEncoder{
-		Encoder:         encoderClone,
-		fieldHookFunc:   enc.fieldHookFunc,
-		messageHookFunc: enc.messageHookFunc,
-	}
-}
-
-func (enc *gZapEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	if enc.fieldHookFunc != nil {
-		enc.fieldHookFunc(fields)
-	}
-	if enc.messageHookFunc != nil {
-		ent.Message = enc.messageHookFunc(ent.Message)
-	}
-	return enc.Encoder.EncodeEntry(ent, fields)
-}
-
-func getZapEncoder(optCfg *optConfig) zapcore.Encoder {
-	// 设置时间编码格式
-	encodeTime := zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.999999")
-
-	// 配置编码器配置
-	encoderCfg := zapcore.EncoderConfig{
-		LevelKey:      "level",      // 日志级别的键名，例如 "INFO", "ERROR"
-		TimeKey:       "time",       // 时间戳的键名，记录日志生成的时间
-		StacktraceKey: "stacktrace", // 堆栈跟踪的键名，记录日志产生时的堆栈信息
-		CallerKey:     "file",       // 调用者的键名，记录日志调用的位置 (文件名和行号)
-		// FunctionKey:    "function",                    // 函数名的键名，记录调用函数的名称
-		MessageKey:     "msg",                         // 日志消息的键名，记录实际的日志内容
-		LineEnding:     zapcore.DefaultLineEnding,     // 日志行的结束符，默认使用换行符
-		EncodeCaller:   zapcore.ShortCallerEncoder,    // 调用者编码器，使用短格式 (文件名:行号)
-		EncodeLevel:    zapcore.CapitalLevelEncoder,   // 日志级别编码器，使用大写格式，例如 "INFO", "ERROR"
-		EncodeTime:     encodeTime,                    // 时间编码器，使用自定义时间格式 "2006-01-02 15:04:05.999999"
-		EncodeDuration: zapcore.StringDurationEncoder, // 持续时间编码器，使用字符串格式记录持续时间
-	}
-
-	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
-	return &gZapEncoder{
-		Encoder:         zapcore.NewJSONEncoder(encoderCfg),
-		fieldHookFunc:   optCfg.zapFieldHookFunc,
-		messageHookFunc: optCfg.messageHookFunc,
-	}
-}
-
-// getZapColorEncoder
-func getZapColorEncoder() zapcore.Encoder {
-	// 设置时间编码格式
-	encodeTime := zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.999999")
-
-	// 配置编码器配置
-	encoderCfg := zapcore.EncoderConfig{
-		LevelKey:       "level",                          // 日志级别的键名，例如 "INFO", "ERROR"
-		TimeKey:        "time",                           // 时间戳的键名，记录日志生成的时间
-		CallerKey:      "file",                           // 调用者的键名，记录日志调用的位置 (文件名和行号)
-		FunctionKey:    "function",                       // 函数名的键名，记录调用函数的名称
-		MessageKey:     "msg",                            // 日志消息的键名，记录实际的日志内容
-		StacktraceKey:  "stacktrace",                     // 堆栈跟踪的键名，记录日志产生时的堆栈信息
-		LineEnding:     zapcore.DefaultLineEnding,        // 日志行的结束符，默认使用换行符
-		EncodeCaller:   zapcore.ShortCallerEncoder,       // 调用者编码器，使用短格式 (文件名:行号)
-		EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 日志级别编码器，增加颜色
-		EncodeTime:     encodeTime,                       // 时间编码器，使用自定义时间格式 "2006-01-02 15:04:05.999999"
-		EncodeDuration: zapcore.StringDurationEncoder,    // 持续时间编码器，使用字符串格式记录持续时间
-	}
-
-	// 返回一个 JSON 编码器，用于将日志编码为 JSON 格式
-	return zapcore.NewJSONEncoder(encoderCfg)
-}
-
-func getZapLogWriter(cfg *LoggerConfig, logOutputType string) (zapcore.WriteSyncer, error) {
-	var w io.Writer
-	if logOutputType == logOutputTypeStdout {
-		w = os.Stdout
-	} else {
-		director := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
-		if ok := fileExists(director); !ok {
-			_ = os.MkdirAll(director, os.ModePerm)
-		}
-		var logFilename string
-		switch logOutputType {
-		case logOutputTypeDefaultFile:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
-		case logOutputTypeWarnFatal:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFileWarnFatalSuffix)
-		default:
-			logFilename = fmt.Sprintf("%s%s", cfg.Service, logOutputFieldDefaultSuffix)
-		}
-
-		// 使用 rotatelogs 进行日志切割，需要注意rotatelogs已停止维护
-		// rotator, err := rotatelogs.New(
-		// 	path.Join(strings.TrimSuffix(cfg.Dir, "/"), "%Y%m%d", logFilename), // 分割后的文件名称
-		// 	rotatelogs.WithClock(rotatelogs.Local),                             // 使用本地时间
-		// 	rotatelogs.WithRotationTime(time.Hour*24),                          // 日志切割时间间隔
-		// 	rotatelogs.WithMaxAge(time.Hour*24*7),                             // 保留旧文件的最大时间
-		// )
-		// if err != nil {
-		// 	panic(err)
-		// }
-		logFilepath := path.Join(director, logFilename)
-
-		// 使用 lumberjack 进行日志切割
-		// l := &lumberjack.Logger{
-		// 	Filename:   logFilepath, // 分割后的文件名称
-		// 	MaxSize:    50,          // 单个日志文件的最大大小
-		// 	MaxBackups: 3,           // 要保留的旧日志文件的最大数量
-		// 	MaxAge:     7,           // 日志文件的最大保存天数
-		// 	LocalTime:  true,        // 使用本地时间
-		// 	Compress:   true,        // 是否压缩旧的日志文件
-		// }
-		// w = zapcore.AddSync(l)
-
-		file, openErr := os.OpenFile(logFilepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if openErr != nil {
-			return nil, openErr
-		}
-		w = file
-
-	}
-
-	flushInterval := 5 * time.Second
-	if logOutputType == logOutputTypeStdout {
-		flushInterval = 1 * time.Second
-	}
-	ws := &zapcore.BufferedWriteSyncer{
-		WS:            zapcore.AddSync(w),
-		Size:          256 * 1024,
-		FlushInterval: flushInterval,
-		Clock:         nil,
-	}
-
-	return ws, nil
 }

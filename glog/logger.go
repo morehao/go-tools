@@ -1,3 +1,11 @@
+/*
+ * @Author: morehao morehao@qq.com
+ * @Date: 2025-04-26 19:13:30
+ * @LastEditors: morehao morehao@qq.com
+ * @LastEditTime: 2025-04-27 15:20:49
+ * @FilePath: /go-tools/glog/logger.go
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 package glog
 
 import (
@@ -6,51 +14,37 @@ import (
 
 type Logger interface {
 	Debug(ctx context.Context, args ...any)
-	Debugf(ctx context.Context, format string, args ...any)
-	Debugw(ctx context.Context, msg string, keysAndValues ...any)
+	Debugf(ctx context.Context, format string, kvs ...any)
+	Debugw(ctx context.Context, msg string, kvs ...any)
 	Info(ctx context.Context, args ...any)
-	Infof(ctx context.Context, format string, args ...any)
-	Infow(ctx context.Context, msg string, keysAndValues ...any)
+	Infof(ctx context.Context, format string, kvs ...any)
+	Infow(ctx context.Context, msg string, kvs ...any)
 	Warn(ctx context.Context, args ...any)
-	Warnf(ctx context.Context, format string, args ...any)
-	Warnw(ctx context.Context, msg string, keysAndValues ...any)
+	Warnf(ctx context.Context, format string, kvs ...any)
+	Warnw(ctx context.Context, msg string, kvs ...any)
 	Error(ctx context.Context, args ...any)
-	Errorf(ctx context.Context, format string, args ...any)
-	Errorw(ctx context.Context, msg string, keysAndValues ...any)
+	Errorf(ctx context.Context, format string, kvs ...any)
+	Errorw(ctx context.Context, msg string, kvs ...any)
 	Panic(ctx context.Context, args ...any)
-	Panicf(ctx context.Context, format string, args ...any)
-	Panicw(ctx context.Context, msg string, keysAndValues ...any)
+	Panicf(ctx context.Context, format string, kvs ...any)
+	Panicw(ctx context.Context, msg string, kvs ...any)
 	Fatal(ctx context.Context, args ...any)
-	Fatalf(ctx context.Context, format string, args ...any)
-	Fatalw(ctx context.Context, msg string, keysAndValues ...any)
+	Fatalf(ctx context.Context, format string, kvs ...any)
+	Fatalw(ctx context.Context, msg string, kvs ...any)
 	getLogger(opts ...Option) (Logger, error)
+	Name() string
 	Close()
 }
 
-func NewLogger(cfg *LoggerConfig, opts ...Option) error {
-	var logger Logger
-	switch cfg.LoggerType {
-	case LoggerTypeZap:
-		l, err := newZapLogger(cfg, opts...)
-		if err != nil {
-			return err
-		}
-		logger = l
-	default:
-		l, err := newZapLogger(cfg, opts...)
-		if err != nil {
-			return err
-		}
-		logger = l
+func getDefaultLogger() (Logger, error) {
+	if defaultLogger != nil {
+		return defaultLogger, nil
 	}
-	logInstance = &instance{
-		Logger: logger,
-	}
-	return nil
+	return newZapLogger(getDefaultModuleLoggerConfig(), WithCallerSkip(defaultLogCallerSkip))
 }
 
 // newZapLogger 初始化zapLogger
-func newZapLogger(cfg *LoggerConfig, opts ...Option) (Logger, error) {
+func newZapLogger(cfg *ModuleLoggerConfig, opts ...Option) (Logger, error) {
 	optCfg := &optConfig{}
 	for _, opt := range opts {
 		opt.apply(optCfg)
@@ -61,7 +55,7 @@ func newZapLogger(cfg *LoggerConfig, opts ...Option) (Logger, error) {
 	}
 
 	return &zapLogger{
-		logger: logger.WithOptions(optCfg.zapOpts...),
+		logger: logger,
 		cfg:    cfg,
 	}, nil
 }

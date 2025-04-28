@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // GenRequestID 生成requestId
@@ -40,4 +42,9 @@ func nilCtx(ctx context.Context) bool {
 
 func skipLog(ctx context.Context) bool {
 	return ctx.Value(KeySkipLog) != nil
+}
+
+func ToJsonString(v any) string {
+	d, _ := jsoniter.MarshalToString(v)
+	return d
 }
