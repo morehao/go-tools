@@ -80,7 +80,7 @@ func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
 	if cfg.Service == "" {
 		s = cfg.Database
 	}
-	l, err := glog.GetModuleLogger("gorm", glog.WithCallerSkip(2))
+	l, err := glog.GetModuleLogger("gorm", glog.WithCallerSkip(5))
 	if err != nil {
 		return nil, err
 	}

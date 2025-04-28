@@ -71,7 +71,7 @@ func getDefaultModuleLoggerConfig() *ModuleLoggerConfig {
 	return &ModuleLoggerConfig{
 		service:    defaultServiceName,
 		module:     defaultModuleName,
-		Level:      InfoLevel,
+		Level:      DebugLevel,
 		Writer:     WriterConsole,
 		Dir:        defaultLogDir,
 		RotateUnit: RotateUnitDay,

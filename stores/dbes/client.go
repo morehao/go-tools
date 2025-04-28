@@ -42,7 +42,7 @@ func InitES(cfg ESConfig) (*elasticsearch.Client, *elasticsearch.TypedClient, er
 }
 
 func newEsLogger(cfg *ESConfig) (*esLog, error) {
-	l, err := glog.GetModuleLogger("es", glog.WithCallerSkip(2))
+	l, err := glog.GetModuleLogger("es", glog.WithCallerSkip(8))
 	if err != nil {
 		return nil, err
 	}

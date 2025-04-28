@@ -98,7 +98,8 @@ const (
 )
 
 const (
-	defaultServiceName = "app"
-	defaultModuleName  = "default"
-	defaultLogDir      = "./logs"
+	defaultServiceName   = "app"
+	defaultModuleName    = "default"
+	defaultLogDir        = "./logs"
+	defaultLogCallerSkip = 3
 )

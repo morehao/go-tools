@@ -77,11 +77,12 @@ func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, erro
 	logger = logger.Named(cfg.service).Named(cfg.module)
 
 	// 如果设置了 callerSkip，添加 caller skip
+	callerSkip := defaultLogCallerSkip
 	if optCfg.callerSkip > 0 {
-		logger = logger.WithOptions(zap.AddCallerSkip(optCfg.callerSkip))
+		callerSkip = optCfg.callerSkip
 	}
 
-	return logger, nil
+	return logger.WithOptions(zap.AddCallerSkip(callerSkip)), nil
 }
 func (l *zapLogger) Debug(ctx context.Context, args ...any) {
 	l.ctxLog(DebugLevel, ctx, args...)

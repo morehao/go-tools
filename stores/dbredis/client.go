@@ -47,7 +47,7 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	if service == "" {
 		service = "redis"
 	}
-	l, getLoggerErr := glog.GetModuleLogger("redis", glog.WithCallerSkip(1))
+	l, getLoggerErr := glog.GetModuleLogger("redis", glog.WithCallerSkip(6))
 	if getLoggerErr != nil {
 		return nil, getLoggerErr
 	}

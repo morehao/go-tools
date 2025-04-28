@@ -40,7 +40,7 @@ func getDefaultLogger() (Logger, error) {
 	if defaultLogger != nil {
 		return defaultLogger, nil
 	}
-	return newZapLogger(getDefaultModuleLoggerConfig(), WithCallerSkip(1))
+	return newZapLogger(getDefaultModuleLoggerConfig(), WithCallerSkip(defaultLogCallerSkip))
 }
 
 // newZapLogger 初始化zapLogger
