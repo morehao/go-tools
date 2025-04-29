@@ -1,4 +1,4 @@
-package dbclient
+package dbes
 
 import (
 	"bytes"
@@ -7,42 +7,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/morehao/go-tools/glog"
 )
 
-type ESConfig struct {
-	Service  string `yaml:"service"`  // 服务名称
-	Addr     string `yaml:"addr"`     // 地址
-	User     string `yaml:"user"`     // 用户名
-	Password string `yaml:"password"` // 密码
-}
-
-func InitES(cfg ESConfig) (*elasticsearch.Client, *elasticsearch.TypedClient, error) {
-	customLogger, getLoggerErr := newEsLogger(&cfg)
-	if getLoggerErr != nil {
-		return nil, nil, getLoggerErr
-	}
-	commonCfg := elasticsearch.Config{
-		Addresses: []string{cfg.Addr},
-		Username:  cfg.User,
-		Password:  cfg.Password,
-		Logger:    customLogger,
-	}
-	simpleClient, newSimpleClientErr := elasticsearch.NewClient(commonCfg)
-	if newSimpleClientErr != nil {
-		return nil, nil, newSimpleClientErr
-	}
-	typedClient, newTypedClientErr := elasticsearch.NewTypedClient(commonCfg)
-	if newTypedClientErr != nil {
-		return nil, nil, newTypedClientErr
-	}
-	return simpleClient, typedClient, nil
-}
-
 func newEsLogger(cfg *ESConfig) (*esLog, error) {
-	l, err := glog.GetLogger()
+	l, err := glog.GetLogger(cfg.loggerConfig, glog.WithCallerSkip(8))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +35,7 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 	// 获取查询的 HTTP method 和路径
 	method := req.Method
 	path := req.URL.Path
-	realCode := res.StatusCode
+	ralCode := res.StatusCode
 
 	var fields []any
 	fields = append(fields,
@@ -74,13 +44,13 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 		glog.KeyRequestStartTime, glog.FormatRequestTime(start),
 		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
 		glog.KeyCost, cost,
-		glog.KeyRalCode, realCode,
+		glog.KeyRalCode, ralCode,
 		glog.KeyDslMethod, method,
 		glog.KeyDslPath, path,
 	)
 	msg := "es execute success"
 	if err != nil {
-		realCode = -1
+		ralCode = -1
 		msg = err.Error()
 		fields = append(fields, glog.KeyErrorMsg, msg)
 		l.logger.Errorw(ctx, msg, fields...)
@@ -107,6 +77,9 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 			return nil
 		}
 
+		if ralCode != 200 {
+			msg = string(bodyBytes)
+		}
 		var resBody map[string]any
 		if err := jsoniter.Unmarshal(bodyBytes, &resBody); err == nil {
 			if hits, ok := resBody["hits"].(map[string]any); ok {
@@ -121,10 +94,10 @@ func (l *esLog) LogRoundTrip(req *http.Request, res *http.Response, err error, s
 			glog.KeyAffectedRows, affectedRows,
 		)
 	}
-	if realCode != 200 {
+	if ralCode != 200 {
 		l.logger.Errorw(ctx, msg, fields...)
 	} else {
-		l.logger.Infow(ctx, msg, fields...)
+		l.logger.Debugw(ctx, msg, fields...)
 	}
 	return err
 }

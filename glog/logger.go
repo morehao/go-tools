@@ -37,14 +37,17 @@ type Logger interface {
 }
 
 func getDefaultLogger() (Logger, error) {
-	if defaultLogger != nil {
-		return defaultLogger, nil
+	if defaultLoggerInstance != nil {
+		return defaultLoggerInstance, nil
 	}
-	return newZapLogger(getDefaultModuleLoggerConfig(), WithCallerSkip(defaultLogCallerSkip))
+	return newZapLogger(GetDefaultLogConfig(), WithCallerSkip(defaultLogCallerSkip))
 }
 
 // newZapLogger 初始化zapLogger
-func newZapLogger(cfg *ModuleLoggerConfig, opts ...Option) (Logger, error) {
+func newZapLogger(cfg *LogConfig, opts ...Option) (Logger, error) {
+	if cfg == nil {
+		cfg = GetDefaultLogConfig()
+	}
 	optCfg := &optConfig{}
 	for _, opt := range opts {
 		opt.apply(optCfg)

@@ -16,12 +16,12 @@ const (
 	RotateUnitHour RotateUnit = "hour"
 )
 
-// ModuleLoggerConfig 模块级别的日志配置
-type ModuleLoggerConfig struct {
-	// service 服务名，从 LogConfig 继承
-	service string
-	// module 模块名称，如 "es", "gorm", "redis" 等
-	module string
+// LogConfig 模块级别的日志配置
+type LogConfig struct {
+	// Service 服务名
+	Service string
+	// Module 模块名称，如 "es", "gorm", "redis" 等
+	Module string
 	// Level 日志级别
 	Level Level `json:"level" yaml:"level"`
 	// Writer 日志输出类型
@@ -36,41 +36,10 @@ type ModuleLoggerConfig struct {
 	RotateUnit RotateUnit `json:"rotate_unit" yaml:"rotate_unit"`
 }
 
-// LogConfig 服务级别的日志配置
-type LogConfig struct {
-	// Service 服务名称，如 "myApp"
-	Service string `json:"service" yaml:"service"`
-	// Modules 模块配置，key 为模块名称
-	Modules map[string]*ModuleLoggerConfig `json:"modules" yaml:"modules"`
-}
-
-func (c *LogConfig) SetDefault() {
-	if c.Service == "" {
-		c.Service = defaultServiceName
-	}
-
-	if c.Modules == nil {
-		c.Modules = make(map[string]*ModuleLoggerConfig)
-	}
-	if len(c.Modules) == 0 {
-		c.Modules[defaultModuleName] = getDefaultModuleLoggerConfig()
-	}
-}
-
-func (c *ModuleLoggerConfig) ResetModule(module string) *ModuleLoggerConfig {
-	if c == nil {
-		defaultModuleConfig := getDefaultModuleLoggerConfig()
-		defaultModuleConfig.module = module
-		return defaultModuleConfig
-	}
-	c.module = module
-	return c
-}
-
-func getDefaultModuleLoggerConfig() *ModuleLoggerConfig {
-	return &ModuleLoggerConfig{
-		service:    defaultServiceName,
-		module:     defaultModuleName,
+func GetDefaultLogConfig() *LogConfig {
+	return &LogConfig{
+		Service:    defaultServiceName,
+		Module:     defaultModuleName,
 		Level:      DebugLevel,
 		Writer:     WriterConsole,
 		Dir:        defaultLogDir,

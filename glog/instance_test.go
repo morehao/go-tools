@@ -46,13 +46,10 @@ func TestInit(t *testing.T) {
 	t.Run("TestBasicInit", func(t *testing.T) {
 		config := &LogConfig{
 			Service: "test-service",
-			Modules: map[string]*ModuleLoggerConfig{
-				"default": {
-					Level:  InfoLevel,
-					Writer: WriterFile,
-					Dir:    tempDir,
-				},
-			},
+			Module:  "test-module",
+			Level:   InfoLevel,
+			Writer:  WriterFile,
+			Dir:     tempDir,
 		}
 
 		// 初始化日志系统
@@ -75,74 +72,17 @@ func TestInit(t *testing.T) {
 		}
 	})
 
-	t.Run("TestMultiModuleInit", func(t *testing.T) {
-		config := &LogConfig{
-			Service: "test-service",
-			Modules: map[string]*ModuleLoggerConfig{
-				"module1": {
-					Level:  DebugLevel,
-					Writer: WriterFile,
-					Dir:    tempDir,
-				},
-				"module2": {
-					Level:  InfoLevel,
-					Writer: WriterFile,
-					Dir:    tempDir,
-				},
-			},
-		}
-
-		// 初始化日志系统
-		InitLogger(config)
-
-		// 验证各个模块的 logger
-		module1Logger, getModule1LoggerErr := GetModuleLogger("module1")
-		assert.Nil(t, getModule1LoggerErr)
-		if module1Logger == nil {
-			t.Error("Module1 logger not initialized")
-		}
-
-		module2Logger, getModule2LoggerErr := GetModuleLogger("module2")
-		assert.Nil(t, getModule2LoggerErr)
-		if module2Logger == nil {
-			t.Error("Module2 logger not initialized")
-		}
-
-		// 写入日志
-		ctx := context.Background()
-		module1Logger.Debug(ctx, "debug message")
-		module2Logger.Info(ctx, "info message")
-
-		// 验证日志文件
-		expectedDir := filepath.Join(tempDir, time.Now().Format("20060102"))
-		module1File := filepath.Join(expectedDir, "test-service_full.log")
-		module2File := filepath.Join(expectedDir, "test-service_full.log")
-
-		if !fileExists(module1File) {
-			t.Errorf("Module1 log file not created: %s", module1File)
-		}
-		if !fileExists(module2File) {
-			t.Errorf("Module2 log file not created: %s", module2File)
-		}
-	})
-
 	t.Run("TestConsoleLogger", func(t *testing.T) {
 		config := &LogConfig{
 			Service: "test-service",
-			Modules: map[string]*ModuleLoggerConfig{
-				"console": {
-					Level:  DebugLevel,
-					Writer: WriterConsole,
-					Dir:    tempDir,
-				},
-			},
+			Module:  "test-module",
+			Level:   InfoLevel,
+			Writer:  WriterConsole,
+			Dir:     tempDir,
 		}
 
-		// 初始化日志系统
-		InitLogger(config)
-
 		// 验证 console logger
-		logger, getLoggerErr := GetModuleLogger("console")
+		logger, getLoggerErr := GetLogger(config)
 		assert.Nil(t, getLoggerErr)
 		if logger == nil {
 			t.Error("Console logger not initialized")
@@ -181,13 +121,9 @@ func TestHook(t *testing.T) {
 	// 设置测试配置
 	config := &LogConfig{
 		Service: "test",
-		Modules: map[string]*ModuleLoggerConfig{
-			"default": {
-				Level:  DebugLevel,
-				Writer: WriterConsole,
-				Dir:    tempDir,
-			},
-		},
+		Level:   DebugLevel,
+		Writer:  WriterConsole,
+		Dir:     tempDir,
 	}
 
 	var phoneDesensitizationHook = func(fields []Field) {
@@ -239,24 +175,19 @@ func TestExtraKeys(t *testing.T) {
 
 	// 设置测试配置
 	config := &LogConfig{
-		Service: "test",
-		Modules: map[string]*ModuleLoggerConfig{
-			"test": {
-				module:    "test",
-				Level:     DebugLevel,
-				Writer:    WriterConsole,
-				Dir:       tempDir,
-				ExtraKeys: []string{"trace_id", "user_id", "request_id"},
-			},
-		},
+		Service:   "test",
+		Module:    "test",
+		Level:     DebugLevel,
+		Writer:    WriterConsole,
+		Dir:       tempDir,
+		ExtraKeys: []string{"trace_id", "user_id", "request_id"},
 	}
 
 	// 初始化日志器
 	t.Log("Initializing logger with extra keys")
-	InitLogger(config)
 
 	// 获取模块级别的 logger
-	logger, getLoggerErr := GetModuleLogger("test")
+	logger, getLoggerErr := GetLogger(config)
 	if getLoggerErr != nil {
 		t.Fatalf("failed to get logger: %v", getLoggerErr)
 	}
@@ -305,15 +236,11 @@ func TestRotateUnit(t *testing.T) {
 	// 测试按天切割
 	t.Run("TestRotateUnitDay", func(t *testing.T) {
 		config := &LogConfig{
-			Service: "test",
-			Modules: map[string]*ModuleLoggerConfig{
-				"test": {
-					Level:      InfoLevel,
-					Writer:     WriterFile,
-					Dir:        tempDir,
-					RotateUnit: RotateUnitDay,
-				},
-			},
+			Service:    "test",
+			Level:      InfoLevel,
+			Writer:     WriterFile,
+			Dir:        tempDir,
+			RotateUnit: RotateUnitDay,
 		}
 
 		// 初始化日志器
@@ -334,15 +261,11 @@ func TestRotateUnit(t *testing.T) {
 	// 测试按小时切割
 	t.Run("TestRotateUnitHour", func(t *testing.T) {
 		config := &LogConfig{
-			Service: "test",
-			Modules: map[string]*ModuleLoggerConfig{
-				"test": {
-					Level:      InfoLevel,
-					Writer:     WriterFile,
-					Dir:        tempDir,
-					RotateUnit: RotateUnitHour,
-				},
-			},
+			Service:    "test",
+			Level:      InfoLevel,
+			Writer:     WriterFile,
+			Dir:        tempDir,
+			RotateUnit: RotateUnitHour,
 		}
 
 		// 初始化日志器
@@ -364,13 +287,9 @@ func TestRotateUnit(t *testing.T) {
 	t.Run("TestDefaultRotateUnit", func(t *testing.T) {
 		config := &LogConfig{
 			Service: "app",
-			Modules: map[string]*ModuleLoggerConfig{
-				"default": {
-					Level:  InfoLevel,
-					Writer: WriterFile,
-					Dir:    tempDir,
-				},
-			},
+			Level:   InfoLevel,
+			Writer:  WriterFile,
+			Dir:     tempDir,
 		}
 
 		// 初始化日志器

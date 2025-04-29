@@ -1,4 +1,4 @@
-package dbclient
+package dbmysql
 
 import (
 	"context"
@@ -7,58 +7,10 @@ import (
 	"time"
 
 	"github.com/morehao/go-tools/glog"
-	"go.uber.org/zap"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/utils"
 )
-
-type MysqlConfig struct {
-	Service       string        `yaml:"service"`        // 服务名
-	Addr          string        `yaml:"addr"`           // 地址
-	Database      string        `yaml:"database"`       // 数据库名
-	User          string        `yaml:"user"`           // 用户名
-	Password      string        `yaml:"password"`       // 密码
-	Charset       string        `yaml:"charset"`        // 字符集
-	Timeout       time.Duration `yaml:"timeout"`        // 连接超时
-	ReadTimeout   time.Duration `yaml:"read_timeout"`   // 读取超时
-	WriteTimeout  time.Duration `yaml:"write_timeout"`  // 写入超时
-	SlowThreshold time.Duration `yaml:"slow_threshold"` // 慢SQL阈值
-	MaxSqlLen     int           `yaml:"max_sql_len"`    // 日志最大SQL长度
-}
-
-func InitMysql(cfg MysqlConfig) (*gorm.DB, error) {
-	dns := cfg.buildDns()
-	customLogger, newLogErr := newOrmLogger(&ormConfig{
-		Service:   cfg.Service,
-		Addr:      cfg.Addr,
-		Database:  cfg.Database,
-		MaxSqlLen: cfg.MaxSqlLen,
-	})
-	if newLogErr != nil {
-		return nil, newLogErr
-	}
-	db, err := gorm.Open(mysql.Open(dns), &gorm.Config{
-		Logger: customLogger,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
-func (cfg *MysqlConfig) buildDns() string {
-	dns := fmt.Sprintf("%s:%s@tcp(%s)/%s?&parseTime=True&loc=Local&timeout=%s&readTimeout=%s&writeTimeout=%s",
-		cfg.User, cfg.Password, cfg.Addr, cfg.Database,
-		cfg.Timeout, cfg.ReadTimeout, cfg.WriteTimeout)
-	var charset = "utf8mb4"
-	if cfg.Charset != "" {
-		charset = cfg.Charset
-	}
-	dns += "&charset=" + charset
-	return dns
-}
 
 type ormLogger struct {
 	Service       string
@@ -70,10 +22,11 @@ type ormLogger struct {
 }
 
 type ormConfig struct {
-	Service   string
-	Addr      string
-	Database  string
-	MaxSqlLen int
+	Service      string
+	Addr         string
+	Database     string
+	MaxSqlLen    int
+	loggerConfig *glog.LogConfig
 }
 
 func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
@@ -81,7 +34,7 @@ func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
 	if cfg.Service == "" {
 		s = cfg.Database
 	}
-	l, err := glog.GetLogger(glog.WithZapOptions(zap.AddCallerSkip(2)))
+	l, err := glog.GetLogger(cfg.loggerConfig, glog.WithCallerSkip(5))
 	if err != nil {
 		return nil, err
 	}
@@ -134,13 +87,11 @@ func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (strin
 		sql = sql[:l.MaxSqlLen]
 	}
 
-	fileLineNum := utils.FileWithLineNum()
+	// fileLineNum := utils.FileWithLineNum()
 	fields := l.commonFields(ctx)
 	fields = append(fields,
 		glog.KeyAffectedRows, rows,
-		glog.KeyRequestStartTime, glog.FormatRequestTime(begin),
-		glog.KeyRequestEndTime, glog.FormatRequestTime(end),
-		glog.KeyFile, fileLineNum,
+		// glog.KeyFile, fileLineNum,
 		glog.KeyCost, cost,
 		glog.KeyRalCode, ralCode,
 		glog.KeySql, sql,
@@ -150,14 +101,12 @@ func (l *ormLogger) Trace(ctx context.Context, begin time.Time, fc func() (strin
 		msg = "slow sql"
 		l.Logger.Warnw(ctx, msg, fields...)
 	} else {
-		l.Logger.Infow(ctx, msg, fields...)
+		l.Logger.Debugw(ctx, msg, fields...)
 	}
 }
 
 func (l *ormLogger) commonFields(ctx context.Context) []interface{} {
 	fields := []interface{}{
-		glog.KeyProto, glog.ValueProtoMysql,
-		glog.KeyService, l.Service,
 		glog.KeyAddr, l.Addr,
 		glog.KeyDatabase, l.Database,
 	}

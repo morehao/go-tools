@@ -1,4 +1,4 @@
-package dbclient
+package dbredis
 
 import (
 	"context"
@@ -6,26 +6,24 @@ import (
 
 	"github.com/morehao/go-tools/glog"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestInitRedis(t *testing.T) {
 	defer glog.Close()
-	logCfg := &glog.LoggerConfig{
-		Service:   "test",
-		Level:     glog.DebugLevel,
-		Dir:       "./log",
-		Stdout:    true,
-		ExtraKeys: []string{"requestId"},
+	logCfg := &glog.LogConfig{
+		Service:        "app",
+		Level:          glog.DebugLevel,
+		Writer:         glog.WriterConsole,
+		RotateInterval: glog.RotateIntervalTypeDay,
+		ExtraKeys:      []string{glog.KeyRequestId},
 	}
-	opt := glog.WithZapOptions(zap.AddCallerSkip(3))
-	initLogErr := glog.NewLogger(logCfg, opt)
+	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(1))
 	assert.Nil(t, initLogErr)
 
-	cfg := RedisConfig{
+	cfg := &RedisConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:6379",
-		Password: "",
+		Password: "123456",
 		DB:       0,
 	}
 	redisClient, err := InitRedis(cfg)
@@ -61,12 +59,13 @@ func TestInitRedis(t *testing.T) {
 	// 关闭 Redis 客户端
 	err = redisClient.Close()
 	assert.Nil(t, err)
+	glog.Info(ctx, "done")
 }
 
 func TestInitRedisWithoutInitLog(t *testing.T) {
 	defer glog.Close()
 
-	cfg := RedisConfig{
+	cfg := &RedisConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:6379",
 		Password: "",
