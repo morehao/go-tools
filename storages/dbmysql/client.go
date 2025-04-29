@@ -2,16 +2,10 @@ package dbmysql
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-)
-
-var (
-	dbMap = map[string]*gorm.DB{}
-	lock  sync.RWMutex
 )
 
 type MysqlConfig struct {
@@ -46,9 +40,6 @@ func InitMysql(cfg MysqlConfig) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	lock.Lock()
-	defer lock.Unlock()
-	dbMap[cfg.Database] = db
 	return db, nil
 }
 
@@ -62,23 +53,4 @@ func (cfg *MysqlConfig) buildDns() string {
 	}
 	dns += "&charset=" + charset
 	return dns
-}
-
-func InitMultiMysql(configs []MysqlConfig) error {
-	if len(configs) == 0 {
-		return fmt.Errorf("mysql configs is empty")
-	}
-	for _, cfg := range configs {
-		_, err := InitMysql(cfg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func GetDB(database string) *gorm.DB {
-	lock.RLock()
-	defer lock.RUnlock()
-	return dbMap[database]
 }

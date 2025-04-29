@@ -3,16 +3,10 @@ package dbredis
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/morehao/go-tools/glog"
 	"github.com/redis/go-redis/v9"
-)
-
-var (
-	dbMap = map[string]*redis.Client{}
-	lock  sync.RWMutex
 )
 
 type RedisConfig struct {
@@ -72,27 +66,5 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	} else {
 		fmt.Println("Redis connection successful:", pong)
 	}
-	lock.Lock()
-	defer lock.Unlock()
-	dbMap[cfg.Service] = rdb
 	return rdb, nil
-}
-
-func InitMultiRedis(configs []RedisConfig) error {
-	if len(configs) == 0 {
-		return fmt.Errorf("redis config is empty")
-	}
-	for _, cfg := range configs {
-		_, err := InitRedis(cfg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func GetClient(service string) *redis.Client {
-	lock.RLock()
-	defer lock.RUnlock()
-	return dbMap[service]
 }

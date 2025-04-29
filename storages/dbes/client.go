@@ -1,16 +1,7 @@
 package dbes
 
 import (
-	"fmt"
-	"sync"
-
 	"github.com/elastic/go-elasticsearch/v8"
-)
-
-var (
-	simpleClientMap = map[string]*elasticsearch.Client{}
-	typedClientMap  = map[string]*elasticsearch.TypedClient{}
-	lock            sync.RWMutex
 )
 
 type ESConfig struct {
@@ -39,35 +30,5 @@ func InitES(cfg ESConfig) (*elasticsearch.Client, *elasticsearch.TypedClient, er
 	if newTypedClientErr != nil {
 		return nil, nil, newTypedClientErr
 	}
-	lock.Lock()
-	defer lock.Unlock()
-	simpleClientMap[cfg.Service] = simpleClient
-	typedClientMap[cfg.Service] = typedClient
 	return simpleClient, typedClient, nil
-}
-
-func InitMultiES(configs []ESConfig) error {
-	if len(configs) == 0 {
-		return fmt.Errorf("es config is empty")
-	}
-	for _, cfg := range configs {
-		_, _, err := InitES(cfg)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func GetSimpleClient(service string) *elasticsearch.Client {
-	lock.RLock()
-	defer lock.RUnlock()
-	return simpleClientMap[service]
-}
-
-func GetTypedClient(service string) *elasticsearch.TypedClient {
-	lock.RLock()
-	defer lock.RUnlock()
-	return typedClientMap[service]
 }
