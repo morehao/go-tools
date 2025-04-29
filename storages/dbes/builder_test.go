@@ -3,27 +3,34 @@ package dbes
 import (
 	"testing"
 
-	"github.com/morehao/go-tools/glog"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/stretchr/testify/assert"
 )
 
-type Account struct {
-	AccountNumber int64  `json:"account_number"`
-	Balance       int64  `json:"balance"`
-	Firstname     string `json:"firstname"`
-	Lastname      string `json:"lastname"`
-	Age           int    `json:"age"`
-	Gender        string `json:"gender"`
-	Email         string `json:"email"`
-	Employer      string `json:"employer"`
-	Address       string `json:"address"`
-	City          string `json:"city"`
-	State         string `json:"state"`
-}
+func TestBuilder_AllFeatures(t *testing.T) {
+	builder := NewBuilder().
+		Set("custom", "value").
+		SetQuery(BuildMap("match", BuildMap("firstname", "Amber"))).
+		SetAggs(BuildMap("avg_balance", BuildMap("avg", BuildMap("field", "balance")))).
+		SetSort([]Map{
+			BuildSortField("balance", "desc"),
+			BuildSortScore("asc"),
+		}).
+		SetSize(20).
+		SetFrom(10).
+		SetSource([]string{"firstname", "lastname", "email"}).
+		SetHighlight(BuildHighlightField([]string{"address"},
+			WithFragmentSize(200),
+			WithNumberOfFragments(3),
+			WithPreTags([]string{"<highlight>"}),
+			WithPostTags([]string{"</highlight>"}),
+		))
 
-func TestAccountsIndex(t *testing.T) {
-	query := NewBuilder().
-		SetIndex("accounts").
-		SetQuery(Q.Match("city", "Brogan")).
-		SetSize(5).Build()
-	t.Logf("Search Result: %s", glog.ToJsonString(query))
+	body := builder.Build()
+	bodyStr, marshalErr := jsoniter.MarshalToString(body)
+	assert.Nil(t, marshalErr)
+	t.Log(bodyStr)
+	data, err := builder.BuildBytes()
+	assert.Nil(t, err)
+	t.Log(string(data))
 }

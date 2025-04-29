@@ -11,20 +11,16 @@ import (
 func TestInitRedis(t *testing.T) {
 	defer glog.Close()
 	logCfg := &glog.LogConfig{
-		Service: "app",
-		Modules: map[string]*glog.ModuleLoggerConfig{
-			"redis": {
-				Level:          glog.DebugLevel,
-				Writer:         glog.WriterConsole,
-				RotateInterval: glog.RotateIntervalTypeDay,
-				ExtraKeys:      []string{glog.KeyRequestId},
-			},
-		},
+		Service:        "app",
+		Level:          glog.DebugLevel,
+		Writer:         glog.WriterConsole,
+		RotateInterval: glog.RotateIntervalTypeDay,
+		ExtraKeys:      []string{glog.KeyRequestId},
 	}
 	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(1))
 	assert.Nil(t, initLogErr)
 
-	cfg := RedisConfig{
+	cfg := &RedisConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:6379",
 		Password: "123456",
@@ -69,7 +65,7 @@ func TestInitRedis(t *testing.T) {
 func TestInitRedisWithoutInitLog(t *testing.T) {
 	defer glog.Close()
 
-	cfg := RedisConfig{
+	cfg := &RedisConfig{
 		Service:  "test",
 		Addr:     "127.0.0.1:6379",
 		Password: "",

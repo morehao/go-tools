@@ -76,7 +76,7 @@ func getZapStandoutWriter() zapcore.WriteSyncer {
 	return os.Stdout
 }
 
-func getZapFileWriter(cfg *ModuleLoggerConfig, fileSuffix string) (zapcore.WriteSyncer, error) {
+func getZapFileWriter(cfg *LogConfig, fileSuffix string) (zapcore.WriteSyncer, error) {
 	// 目录始终按天组织
 	dir := strings.TrimSuffix(cfg.Dir, "/") + "/" + time.Now().Format("20060102")
 	if ok := fileExists(dir); !ok {
@@ -95,9 +95,9 @@ func getZapFileWriter(cfg *ModuleLoggerConfig, fileSuffix string) (zapcore.Write
 	// 构建日志文件名
 	var logFilename string
 	if timeFormat != "" {
-		logFilename = fmt.Sprintf("%s_%s_%s.log", cfg.service, fileSuffix, time.Now().Format(timeFormat))
+		logFilename = fmt.Sprintf("%s_%s_%s.log", cfg.Service, fileSuffix, time.Now().Format(timeFormat))
 	} else {
-		logFilename = fmt.Sprintf("%s_%s.log", cfg.service, fileSuffix)
+		logFilename = fmt.Sprintf("%s_%s.log", cfg.Service, fileSuffix)
 	}
 
 	logFilepath := path.Join(dir, logFilename)

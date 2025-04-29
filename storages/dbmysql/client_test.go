@@ -11,20 +11,16 @@ import (
 func TestInitMysql(t *testing.T) {
 	defer glog.Close()
 	logCfg := &glog.LogConfig{
-		Service: "test",
-		Modules: map[string]*glog.ModuleLoggerConfig{
-			"gorm": {
-				Level:          glog.DebugLevel,
-				Writer:         glog.WriterConsole,
-				RotateInterval: glog.RotateIntervalTypeDay,
-				ExtraKeys:      []string{glog.KeyRequestId},
-			},
-		},
+		Service:        "test",
+		Level:          glog.DebugLevel,
+		Writer:         glog.WriterConsole,
+		RotateInterval: glog.RotateIntervalTypeDay,
+		ExtraKeys:      []string{glog.KeyRequestId},
 	}
 
 	initLogErr := glog.InitLogger(logCfg)
 	assert.Nil(t, initLogErr)
-	cfg := MysqlConfig{
+	cfg := &MysqlConfig{
 		Addr:     "127.0.0.1:3306",
 		Database: "practice",
 		User:     "root",
@@ -50,7 +46,7 @@ func TestInitMysql(t *testing.T) {
 
 func TestInitMysqlWithoutInitLog(t *testing.T) {
 	defer glog.Close()
-	cfg := MysqlConfig{
+	cfg := &MysqlConfig{
 		Addr:     "127.0.0.1:3306",
 		Database: "practice",
 		User:     "root",

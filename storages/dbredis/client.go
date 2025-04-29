@@ -17,12 +17,29 @@ type RedisConfig struct {
 	DialTimeout  time.Duration `yaml:"dial_timeout"`  // 连接超时
 	ReadTimeout  time.Duration `yaml:"read_timeout"`  // 读取超时
 	WriteTimeout time.Duration `yaml:"write_timeout"` // 写入超时
+	loggerConfig *glog.LogConfig
 }
 
-func InitRedis(cfg RedisConfig) (*redis.Client, error) {
+type Option interface {
+	apply(*RedisConfig)
+}
+
+type optionFunc func(*RedisConfig)
+
+func (opt optionFunc) apply(cfg *RedisConfig) {
+	opt(cfg)
+}
+
+func InitRedis(cfg *RedisConfig, opts ...Option) (*redis.Client, error) {
 	if cfg.Service == "" {
 		return nil, fmt.Errorf("service name is empty")
 	}
+
+	cfg.loggerConfig = glog.GetDefaultLogConfig()
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+
 	opt := &redis.Options{
 		Addr:             cfg.Addr,
 		Password:         cfg.Password,
@@ -48,7 +65,8 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 	if service == "" {
 		service = "redis"
 	}
-	l, getLoggerErr := glog.GetModuleLogger("redis", glog.WithCallerSkip(6))
+
+	l, getLoggerErr := glog.GetLogger(cfg.loggerConfig, glog.WithCallerSkip(6))
 	if getLoggerErr != nil {
 		return nil, getLoggerErr
 	}
@@ -67,4 +85,10 @@ func InitRedis(cfg RedisConfig) (*redis.Client, error) {
 		fmt.Println("Redis connection successful:", pong)
 	}
 	return rdb, nil
+}
+
+func WithLogConfig(logConfig *glog.LogConfig) Option {
+	return optionFunc(func(cfg *RedisConfig) {
+		cfg.loggerConfig = logConfig
+	})
 }

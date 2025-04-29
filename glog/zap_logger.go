@@ -10,7 +10,7 @@ import (
 // Logger 是一个封装 zap.Logger 的结构体
 type zapLogger struct {
 	logger *zap.Logger
-	cfg    *ModuleLoggerConfig
+	cfg    *LogConfig
 }
 
 type zapLoggerConfig struct {
@@ -19,7 +19,7 @@ type zapLoggerConfig struct {
 	messageHookFunc MessageHookFunc
 }
 
-func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, error) {
+func getZapLogger(cfg *LogConfig, optCfg *optConfig) (*zap.Logger, error) {
 	// 创建基础配置
 	zapCfg := &zapLoggerConfig{
 		callerSkip:      optCfg.callerSkip,
@@ -74,7 +74,14 @@ func getZapLogger(cfg *ModuleLoggerConfig, optCfg *optConfig) (*zap.Logger, erro
 
 	// 创建 logger，添加 caller 选项
 	logger := zap.New(core, zap.Development(), zap.AddCaller(), zap.AddStacktrace(zapcore.PanicLevel))
-	logger = logger.Named(cfg.service).Named(cfg.module)
+	serviceName, moduleName := cfg.Service, cfg.Module
+	if cfg.Service == "" {
+		serviceName = defaultServiceName
+	}
+	if cfg.Module == "" {
+		moduleName = defaultModuleName
+	}
+	logger = logger.Named(serviceName).Named(moduleName)
 
 	// 如果设置了 callerSkip，添加 caller skip
 	callerSkip := defaultLogCallerSkip

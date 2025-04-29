@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/morehao/go-tools/glog"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -19,17 +20,34 @@ type MysqlConfig struct {
 	WriteTimeout  time.Duration `yaml:"write_timeout"`  // 写入超时
 	SlowThreshold time.Duration `yaml:"slow_threshold"` // 慢SQL阈值
 	MaxSqlLen     int           `yaml:"max_sql_len"`    // 日志最大SQL长度
+	loggerConfig  *glog.LogConfig
 }
 
-func InitMysql(cfg MysqlConfig) (*gorm.DB, error) {
+type Option interface {
+	apply(*MysqlConfig)
+}
+
+type optionFunc func(*MysqlConfig)
+
+func (opt optionFunc) apply(cfg *MysqlConfig) {
+	opt(cfg)
+}
+
+func InitMysql(cfg *MysqlConfig, opts ...Option) (*gorm.DB, error) {
 	if cfg.Database == "" {
 		return nil, fmt.Errorf("database name is empty")
 	}
+
+	cfg.loggerConfig = glog.GetDefaultLogConfig()
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
 	dns := cfg.buildDns()
 	customLogger, newLogErr := newOrmLogger(&ormConfig{
-		Addr:      cfg.Addr,
-		Database:  cfg.Database,
-		MaxSqlLen: cfg.MaxSqlLen,
+		Addr:         cfg.Addr,
+		Database:     cfg.Database,
+		MaxSqlLen:    cfg.MaxSqlLen,
+		loggerConfig: cfg.loggerConfig,
 	})
 	if newLogErr != nil {
 		return nil, newLogErr
@@ -53,4 +71,10 @@ func (cfg *MysqlConfig) buildDns() string {
 	}
 	dns += "&charset=" + charset
 	return dns
+}
+
+func WithLogConfig(logConfig *glog.LogConfig) Option {
+	return optionFunc(func(cfg *MysqlConfig) {
+		cfg.loggerConfig = logConfig
+	})
 }

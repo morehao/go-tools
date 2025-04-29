@@ -22,10 +22,11 @@ type ormLogger struct {
 }
 
 type ormConfig struct {
-	Service   string
-	Addr      string
-	Database  string
-	MaxSqlLen int
+	Service      string
+	Addr         string
+	Database     string
+	MaxSqlLen    int
+	loggerConfig *glog.LogConfig
 }
 
 func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
@@ -33,7 +34,7 @@ func newOrmLogger(cfg *ormConfig) (*ormLogger, error) {
 	if cfg.Service == "" {
 		s = cfg.Database
 	}
-	l, err := glog.GetModuleLogger("gorm", glog.WithCallerSkip(5))
+	l, err := glog.GetLogger(cfg.loggerConfig, glog.WithCallerSkip(5))
 	if err != nil {
 		return nil, err
 	}

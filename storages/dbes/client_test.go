@@ -13,19 +13,15 @@ import (
 func TestInitTypedES(t *testing.T) {
 	defer glog.Close()
 	logCfg := &glog.LogConfig{
-		Service: "app",
-		Modules: map[string]*glog.ModuleLoggerConfig{
-			"es": {
-				Level:          glog.DebugLevel,
-				Writer:         glog.WriterConsole,
-				RotateInterval: glog.RotateIntervalTypeDay,
-				ExtraKeys:      []string{glog.KeyRequestId},
-			},
-		},
+		Service:        "app",
+		Level:          glog.DebugLevel,
+		Writer:         glog.WriterConsole,
+		RotateInterval: glog.RotateIntervalTypeDay,
+		ExtraKeys:      []string{glog.KeyRequestId},
 	}
 	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(2))
 	assert.Nil(t, initLogErr)
-	cfg := ESConfig{
+	cfg := &ESConfig{
 		Service: "es",
 		Addr:    "http://localhost:9200",
 	}
@@ -47,19 +43,15 @@ func TestInitTypedES(t *testing.T) {
 func TestInitSimpleES(t *testing.T) {
 	defer glog.Close()
 	logCfg := &glog.LogConfig{
-		Service: "test",
-		Modules: map[string]*glog.ModuleLoggerConfig{
-			"es": {
-				Level:          glog.DebugLevel,
-				Writer:         glog.WriterConsole,
-				RotateInterval: glog.RotateIntervalTypeDay,
-				ExtraKeys:      []string{glog.KeyRequestId},
-			},
-		},
+		Service:        "test",
+		Level:          glog.DebugLevel,
+		Writer:         glog.WriterConsole,
+		RotateInterval: glog.RotateIntervalTypeDay,
+		ExtraKeys:      []string{glog.KeyRequestId},
 	}
 	initLogErr := glog.InitLogger(logCfg, glog.WithCallerSkip(2))
 	assert.Nil(t, initLogErr)
-	cfg := ESConfig{
+	cfg := &ESConfig{
 		Service: "es",
 		Addr:    "http://localhost:9200",
 	}
