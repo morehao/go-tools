@@ -24,8 +24,7 @@ func TestRWithResult(t *testing.T) {
 		Timeout: 5 * time.Second,
 		Retry:   3,
 	}
-	client, newErr := NewClient(cfg)
-	assert.Nil(t, newErr)
+	client := NewClient(cfg)
 	ctx := context.Background()
 	type Result struct {
 		Args struct {
@@ -33,15 +32,13 @@ func TestRWithResult(t *testing.T) {
 		} `json:"args"`
 	}
 	var result Result
-	request, newRequestErr := client.RWithResult(ctx, &result)
-	assert.Nil(t, newRequestErr)
-	_, err := request.SetQueryParam("name", "张三").Get("/get")
+	_, err := client.RWithResult(ctx, &result).SetQueryParam("name", "张三").Get("/get")
 
 	assert.Nil(t, err)
 	t.Log(glog.ToJsonString(result))
 }
 
-func TestWithoutNew(t *testing.T) {
+func TestRWithResultWithoutNew(t *testing.T) {
 	client := &Client{
 		Module:  "httpbin",
 		Host:    "http://httpbin.org",
@@ -56,10 +53,39 @@ func TestWithoutNew(t *testing.T) {
 		} `json:"args"`
 	}
 	var result Result
-	request, newRequestErr := client.RWithResult(ctx, &result)
-	assert.Nil(t, newRequestErr)
-	_, err := request.SetQueryParam("name", "张三").Get("/get")
+	_, err := client.RWithResult(ctx, &result).SetQueryParam("name", "张三").Get("/get")
 
 	assert.Nil(t, err)
 	t.Log(glog.ToJsonString(result))
+}
+
+func TestMultiClient(t *testing.T) {
+	client1 := &Client{
+		Module:  "httpbin",
+		Host:    "http://httpbin.org",
+		Timeout: 5 * time.Second,
+		Retry:   3,
+	}
+	client2 := &Client{
+		Module:  "httpbin1",
+		Host:    "http://httpbin.org",
+		Timeout: 5 * time.Second,
+		Retry:   3,
+	}
+	ctx := context.Background()
+	type Result struct {
+		Args struct {
+			Name string `json:"name"`
+		} `json:"args"`
+	}
+	var result1 Result
+	_, err := client1.RWithResult(ctx, &result1).SetQueryParam("name", "张三").Get("/get")
+
+	assert.Nil(t, err)
+	t.Log(glog.ToJsonString(result1))
+	var result2 Result
+	_, err2 := client2.RWithResult(ctx, &result2).SetQueryParam("name", "李四").Get("/get")
+
+	assert.Nil(t, err2)
+	t.Log(glog.ToJsonString(result2))
 }

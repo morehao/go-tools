@@ -21,7 +21,7 @@ func LoggingMiddleware(client *Client) func(restyClient *resty.Client, resp *res
 			glog.KeyMethod, resp.Request.Method,
 			glog.KeyHttpStatusCode, resp.StatusCode(),
 			glog.KeyRequestBody, resp.Request.Body,
-			glog.KeyRequestQuery, resp.Request.QueryParams,
+			glog.KeyRequestQuery, resp.Request.QueryParams.Encode(),
 			glog.KeyResponseBody, responseBody,
 			glog.KeyCost, cost,
 		}

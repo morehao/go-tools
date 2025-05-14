@@ -31,8 +31,12 @@ func GetLogger(cfg *LogConfig, opts ...Option) (Logger, error) {
 	return &loggerInstance{Logger: logger}, nil
 }
 
+func GetDefaultLogger() Logger {
+	return defaultLoggerInstance
+}
+
 func GetLoggerConfig() *LogConfig {
-	return defaultLoggerInstance.GetConfig()
+	return defaultLoggerInstance.getConfig()
 }
 
 // 以下函数使用Context中的logger，如果没有则使用默认logger

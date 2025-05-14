@@ -29,20 +29,18 @@ type Client struct {
 }
 
 // NewClient 创建一个新的 HTTP 客户端
-func NewClient(cfg *Client) (*Client, error) {
+func NewClient(cfg *Client) *Client {
 	if cfg == nil {
 		cfg = &Client{}
 	}
-	if err := cfg.init(); err != nil {
-		return nil, err
-	}
-	return cfg, nil
+	cfg.init()
+	return cfg
 }
 
 // init 初始化客户端
-func (c *Client) init() error {
-	var err error
+func (c *Client) init() {
 	c.once.Do(func() {
+		// 初始化 HTTP 客户端
 		client := resty.New()
 
 		// 设置超时
@@ -61,40 +59,35 @@ func (c *Client) init() error {
 			client.SetBaseURL(c.Host)
 		}
 
+		// 初始化 logger
+		logCfg := glog.GetLoggerConfig()
+		logCfg.Module = c.Module
+		if logger, err := glog.GetLogger(logCfg); err != nil {
+			c.logger = glog.GetDefaultLogger()
+		} else {
+			c.logger = logger
+		}
+
 		// 添加日志中间件
 		client.AddResponseMiddleware(LoggingMiddleware(c))
 
-		// 设置日志
-		logCfg := glog.GetLoggerConfig()
-		logCfg.Module = c.Module
-		logger, getLoggerErr := glog.GetLogger(logCfg)
-		if getLoggerErr != nil {
-			err = getLoggerErr
-			return
-		}
-		c.logger = logger
 		c.client = client
 	})
-	return err
 }
 
 // R 创建一个新的请求，支持 context
-func (c *Client) R(ctx context.Context) (*resty.Request, error) {
+func (c *Client) R(ctx context.Context) *resty.Request {
 	if c.client == nil {
-		if err := c.init(); err != nil {
-			return nil, err
-		}
+		c.init()
 	}
-	return c.client.R().SetContext(ctx), nil
+	return c.client.R().SetContext(ctx)
 }
 
-func (c *Client) RWithResult(ctx context.Context, result any) (*resty.Request, error) {
+func (c *Client) RWithResult(ctx context.Context, result any) *resty.Request {
 	if c.client == nil {
-		if err := c.init(); err != nil {
-			return nil, err
-		}
+		c.init()
 	}
 	return c.client.R().
 		SetContext(ctx).
-		SetResult(result), nil
+		SetResult(result)
 }
