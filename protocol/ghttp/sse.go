@@ -2,6 +2,7 @@ package ghttp
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ type SSEInst struct {
 	once   sync.Once
 }
 
+// NewSSEInst 创建实例
 func NewSSEInst(cfg *SSEInstConfig) *SSEInst {
 	client := &SSEInst{
 		Config: getDefaultSSEConfig(),
@@ -48,6 +50,7 @@ func (inst *SSEInst) init() {
 		if inst.Config.Module != "" {
 			es.SetHeader("module", inst.Config.Module)
 		}
+
 		logCfg := glog.GetLoggerConfig()
 		logCfg.Module = inst.Config.Module
 		if logger, err := glog.GetLogger(logCfg); err != nil {
@@ -55,28 +58,47 @@ func (inst *SSEInst) init() {
 		} else {
 			inst.logger = logger
 		}
+
 		inst.es = es
 	})
 }
 
-func (inst *SSEInst) Get() {
-
+func (inst *SSEInst) Es() *resty.EventSource {
+	if inst.es == nil {
+		inst.init()
+	}
+	return inst.es
 }
 
-func (inst *SSEInst) OnOpen(ctx context.Context) resty.EventOpenFunc {
+func (inst *SSEInst) NewOpenHandler(ctx context.Context) resty.EventOpenFunc {
 	return func(url string) {
-		fields := []any{
+		inst.logger.Infow(ctx, "Http SSE Open",
 			glog.KeyProto, glog.ValueProtoHttp,
 			glog.KeyHost, inst.Config.Host,
 			glog.KeyUri, url,
-			glog.KeyMethod, "",
-			glog.KeyHttpStatusCode, resp.StatusCode(),
-			glog.KeyRequestBody, resp.Request.Body,
-			glog.KeyRequestQuery, resp.Request.QueryParams.Encode(),
-			glog.KeyResponseBody, responseBody,
-			glog.KeyCost, cost,
+		)
+	}
+}
+
+// NewErrorHandler 构造带 context 的 OnError 日志函数
+func (inst *SSEInst) NewErrorHandler(ctx context.Context) resty.EventErrorFunc {
+	return func(err error) {
+		inst.logger.Errorw(ctx, "Http SSE Error",
+			glog.KeyProto, glog.ValueProtoHttp,
+			glog.KeyHost, inst.Config.Host,
+			"error", err,
+		)
+	}
+}
+
+func (inst *SSEInst) NewMessageHandler(ctx context.Context) resty.EventMessageFunc {
+	return func(e any) {
+		ev, ok := e.(*resty.Event)
+		if !ok {
+			inst.logger.Errorw(ctx, "Invalid SSE message type", "type", fmt.Sprintf("%T", e))
+			return
 		}
-		inst.logger.Infow(ctx)
+		fmt.Println("ID:", ev.ID, "Name:", ev.Name, "Data:", ev.Data)
 	}
 }
 
