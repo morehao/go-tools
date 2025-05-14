@@ -8,7 +8,7 @@ import (
 )
 
 // LoggingMiddleware 返回一个日志中间件
-func LoggingMiddleware(cfg *Client) func(c *resty.Client, resp *resty.Response) error {
+func LoggingMiddleware(client *Client) func(restyClient *resty.Client, resp *resty.Response) error {
 	return func(c *resty.Client, resp *resty.Response) error {
 		ctx := resp.Request.Context()
 		begin := resp.Request.Time
@@ -16,7 +16,7 @@ func LoggingMiddleware(cfg *Client) func(c *resty.Client, resp *resty.Response) 
 		responseBody := resp.Result()
 		fields := []any{
 			glog.KeyProto, glog.ValueProtoHttp,
-			glog.KeyHost, cfg.Host,
+			glog.KeyHost, client.Host,
 			glog.KeyUri, resp.Request.URL,
 			glog.KeyMethod, resp.Request.Method,
 			glog.KeyHttpStatusCode, resp.StatusCode(),
@@ -29,10 +29,10 @@ func LoggingMiddleware(cfg *Client) func(c *resty.Client, resp *resty.Response) 
 		if resp.IsError() {
 			// 记录错误日志
 			fields = append(fields, glog.KeyErrorMsg, resp.Error())
-			glog.Errorw(ctx, "HTTP request fail", fields...)
+			client.logger.Errorw(ctx, "HTTP request fail", fields...)
 		} else {
 			// 记录成功日志
-			glog.Infow(ctx, "HTTP request success", fields...)
+			client.logger.Infow(ctx, "HTTP request success", fields...)
 		}
 
 		return nil
