@@ -31,8 +31,8 @@ type Logger interface {
 	Fatal(ctx context.Context, args ...any)
 	Fatalf(ctx context.Context, format string, kvs ...any)
 	Fatalw(ctx context.Context, msg string, kvs ...any)
+	GetConfig() *LogConfig
 	getLogger(opts ...Option) (Logger, error)
-	Name() string
 	Close()
 }
 

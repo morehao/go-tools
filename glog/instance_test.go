@@ -53,16 +53,11 @@ func TestInit(t *testing.T) {
 		}
 
 		// 初始化日志系统
-		InitLogger(config)
-
-		// 验证默认 logger 是否创建成功
-		logger := getLoggerFromCtx(context.Background())
-		if logger == nil {
-			t.Error("Default logger not initialized")
-		}
+		err := InitLogger(config)
+		assert.Nil(t, err)
 
 		// 写入一条日志
-		logger.Info(context.Background(), "test message")
+		Info(context.Background(), "test message")
 
 		// 验证日志文件是否创建
 		expectedDir := filepath.Join(tempDir, time.Now().Format("20060102"))

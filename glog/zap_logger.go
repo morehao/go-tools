@@ -91,6 +91,10 @@ func getZapLogger(cfg *LogConfig, optCfg *optConfig) (*zap.Logger, error) {
 
 	return logger.WithOptions(zap.AddCallerSkip(callerSkip)), nil
 }
+
+func (l *zapLogger) GetConfig() *LogConfig {
+	return l.cfg
+}
 func (l *zapLogger) Debug(ctx context.Context, args ...any) {
 	l.ctxLog(DebugLevel, ctx, args...)
 }
@@ -181,10 +185,6 @@ func (l *zapLogger) getLogger(opts ...Option) (Logger, error) {
 		logger: logger,
 		cfg:    l.cfg,
 	}, nil
-}
-
-func (l *zapLogger) Name() string {
-	return l.logger.Name()
 }
 
 func (l *zapLogger) Close() {

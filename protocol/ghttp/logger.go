@@ -16,7 +16,6 @@ func LoggingMiddleware(cfg *Client) func(c *resty.Client, resp *resty.Response) 
 		responseBody := resp.Result()
 		fields := []any{
 			glog.KeyProto, glog.ValueProtoHttp,
-			glog.KeyService, cfg.Service,
 			glog.KeyHost, cfg.Host,
 			glog.KeyUri, resp.Request.URL,
 			glog.KeyMethod, resp.Request.Method,

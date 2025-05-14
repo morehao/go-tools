@@ -19,12 +19,13 @@ import (
 
 func TestRWithResult(t *testing.T) {
 	cfg := &Client{
-		Service: "httpbin",
+		Module:  "httpbin",
 		Host:    "http://httpbin.org",
 		Timeout: 5 * time.Second,
 		Retry:   3,
 	}
-	client := NewClient(cfg)
+	client, newErr := NewClient(cfg)
+	assert.Nil(t, newErr)
 	ctx := context.Background()
 	type Result struct {
 		Args struct {
@@ -32,28 +33,17 @@ func TestRWithResult(t *testing.T) {
 		} `json:"args"`
 	}
 	var result Result
-	_, err := client.RWithResult(ctx, &result).SetQueryParam("name", "张三").Get("/get")
+	request, newRequestErr := client.RWithResult(ctx, &result)
+	assert.Nil(t, newRequestErr)
+	_, err := request.SetQueryParam("name", "张三").Get("/get")
 
 	assert.Nil(t, err)
 	t.Log(glog.ToJsonString(result))
 }
 
-func TestGetClient(t *testing.T) {
-	cfg := &Client{
-		Service: "httpbin",
-		Host:    "http://httpbin.org",
-		Timeout: 5 * time.Second,
-		Retry:   3,
-	}
-
-	// 第一次调用应该初始化客户端
-	restyClient := cfg.GetClient()
-	assert.NotNil(t, restyClient)
-}
-
 func TestWithoutNew(t *testing.T) {
 	client := &Client{
-		Service: "httpbin",
+		Module:  "httpbin",
 		Host:    "http://httpbin.org",
 		Timeout: 5 * time.Second,
 		Retry:   3,
@@ -66,7 +56,9 @@ func TestWithoutNew(t *testing.T) {
 		} `json:"args"`
 	}
 	var result Result
-	_, err := client.RWithResult(ctx, &result).SetQueryParam("name", "张三").Get("/get")
+	request, newRequestErr := client.RWithResult(ctx, &result)
+	assert.Nil(t, newRequestErr)
+	_, err := request.SetQueryParam("name", "张三").Get("/get")
 
 	assert.Nil(t, err)
 	t.Log(glog.ToJsonString(result))

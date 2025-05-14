@@ -13,30 +13,35 @@ import (
 	"sync"
 	"time"
 
+	"github.com/morehao/go-tools/glog"
 	"resty.dev/v3"
 )
 
 type Client struct {
-	Service string        `yaml:"service"`
+	Module  string        `yaml:"service"`
 	Host    string        `yaml:"host"`
 	Timeout time.Duration `yaml:"timeout"`
 	Retry   int           `yaml:"retry"`
 
+	logger glog.Logger
 	client *resty.Client
 	once   sync.Once
 }
 
 // NewClient 创建一个新的 HTTP 客户端
-func NewClient(cfg *Client) *Client {
+func NewClient(cfg *Client) (*Client, error) {
 	if cfg == nil {
 		cfg = &Client{}
 	}
-	cfg.init()
-	return cfg
+	if err := cfg.init(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 // init 初始化客户端
-func (c *Client) init() {
+func (c *Client) init() error {
+	var err error
 	c.once.Do(func() {
 		client := resty.New()
 
@@ -51,7 +56,7 @@ func (c *Client) init() {
 		}
 
 		// 设置基础配置
-		client.SetHeader("Service", c.Service)
+		client.SetHeader("Service", c.Module)
 		if c.Host != "" {
 			client.SetBaseURL(c.Host)
 		}
@@ -59,31 +64,37 @@ func (c *Client) init() {
 		// 添加日志中间件
 		client.AddResponseMiddleware(LoggingMiddleware(c))
 
+		// 设置日志
+		logCfg := glog.GetLoggerConfig()
+		logCfg.Module = c.Module
+		logger, getLoggerErr := glog.GetLogger(logCfg)
+		if getLoggerErr != nil {
+			err = getLoggerErr
+			return
+		}
+		c.logger = logger
 		c.client = client
 	})
-}
-
-// GetClient 获取 resty 客户端实例
-func (c *Client) GetClient() *resty.Client {
-	if c.client == nil {
-		c.init()
-	}
-	return c.client
+	return err
 }
 
 // R 创建一个新的请求，支持 context
-func (c *Client) R(ctx context.Context) *resty.Request {
+func (c *Client) R(ctx context.Context) (*resty.Request, error) {
 	if c.client == nil {
-		c.init()
+		if err := c.init(); err != nil {
+			return nil, err
+		}
 	}
-	return c.client.R().SetContext(ctx)
+	return c.client.R().SetContext(ctx), nil
 }
 
-func (c *Client) RWithResult(ctx context.Context, result any) *resty.Request {
+func (c *Client) RWithResult(ctx context.Context, result any) (*resty.Request, error) {
 	if c.client == nil {
-		c.init()
+		if err := c.init(); err != nil {
+			return nil, err
+		}
 	}
 	return c.client.R().
 		SetContext(ctx).
-		SetResult(result)
+		SetResult(result), nil
 }
