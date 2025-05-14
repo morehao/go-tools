@@ -57,7 +57,7 @@ const (
 	KeyDslMethod        = "dslMethod"
 	KeyDslPath          = "dslPath"
 
-	ValueProtoHttp  = "http"
+	ValueProtoHttp  = "ghttp"
 	ValueProtoMysql = "mysql"
 	ValueProtoRedis = "redis"
 	ValueProtoES    = "es"
