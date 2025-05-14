@@ -18,7 +18,7 @@ import (
 )
 
 func TestRWithResult(t *testing.T) {
-	cfg := &Client{
+	cfg := &ClientConfig{
 		Module:  "httpbin",
 		Host:    "http://httpbin.org",
 		Timeout: 5 * time.Second,
@@ -39,11 +39,14 @@ func TestRWithResult(t *testing.T) {
 }
 
 func TestRWithResultWithoutNew(t *testing.T) {
-	client := &Client{
+	cfg := ClientConfig{
 		Module:  "httpbin",
 		Host:    "http://httpbin.org",
 		Timeout: 5 * time.Second,
 		Retry:   3,
+	}
+	client := &Client{
+		Config: cfg,
 	}
 
 	ctx := context.Background()
@@ -61,16 +64,20 @@ func TestRWithResultWithoutNew(t *testing.T) {
 
 func TestMultiClient(t *testing.T) {
 	client1 := &Client{
-		Module:  "httpbin",
-		Host:    "http://httpbin.org",
-		Timeout: 5 * time.Second,
-		Retry:   3,
+		Config: ClientConfig{
+			Module:  "httpbin1",
+			Host:    "http://httpbin.org",
+			Timeout: 5 * time.Second,
+			Retry:   3,
+		},
 	}
 	client2 := &Client{
-		Module:  "httpbin1",
-		Host:    "http://httpbin.org",
-		Timeout: 5 * time.Second,
-		Retry:   3,
+		Config: ClientConfig{
+			Module:  "httpbin2",
+			Host:    "http://httpbin.org",
+			Timeout: 5 * time.Second,
+			Retry:   3,
+		},
 	}
 	ctx := context.Background()
 	type Result struct {

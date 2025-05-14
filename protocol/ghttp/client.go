@@ -1,11 +1,3 @@
-/*
- * @Author: morehao morehao@qq.com
- * @Date: 2025-05-14 10:07:23
- * @LastEditors: morehao morehao@qq.com
- * @LastEditTime: 2025-05-14 10:46:58
- * @FilePath: /go-tools/protocol/ghttp/client.go
- * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
- */
 package ghttp
 
 import (
@@ -17,24 +9,33 @@ import (
 	"resty.dev/v3"
 )
 
-type Client struct {
-	Module  string        `yaml:"service"`
+type ClientConfig struct {
+	Module  string        `yaml:"module"`
 	Host    string        `yaml:"host"`
 	Timeout time.Duration `yaml:"timeout"`
 	Retry   int           `yaml:"retry"`
+}
 
+type Client struct {
+	Config ClientConfig
 	logger glog.Logger
 	client *resty.Client
 	once   sync.Once
 }
 
 // NewClient 创建一个新的 HTTP 客户端
-func NewClient(cfg *Client) *Client {
-	if cfg == nil {
-		cfg = &Client{}
+func NewClient(cfg *ClientConfig) *Client {
+	client := &Client{
+		Config: getDefaultConfig(),
 	}
-	cfg.init()
-	return cfg
+
+	if cfg != nil {
+		client = &Client{
+			Config: *cfg,
+		}
+	}
+	client.init()
+	return client
 }
 
 // init 初始化客户端
@@ -44,24 +45,26 @@ func (c *Client) init() {
 		client := resty.New()
 
 		// 设置超时
-		if c.Timeout > 0 {
-			client.SetTimeout(c.Timeout)
+		if c.Config.Timeout > 0 {
+			client.SetTimeout(c.Config.Timeout)
 		}
 
 		// 设置重试
-		if c.Retry > 0 {
-			client.SetRetryCount(c.Retry)
+		if c.Config.Retry > 0 {
+			client.SetRetryCount(c.Config.Retry)
 		}
 
 		// 设置基础配置
-		client.SetHeader("Service", c.Module)
-		if c.Host != "" {
-			client.SetBaseURL(c.Host)
+		if c.Config.Module != "" {
+			client.SetHeader("module", c.Config.Module)
+		}
+		if c.Config.Host != "" {
+			client.SetBaseURL(c.Config.Host)
 		}
 
 		// 初始化 logger
 		logCfg := glog.GetLoggerConfig()
-		logCfg.Module = c.Module
+		logCfg.Module = c.Config.Module
 		if logger, err := glog.GetLogger(logCfg); err != nil {
 			c.logger = glog.GetDefaultLogger()
 		} else {
@@ -90,4 +93,43 @@ func (c *Client) RWithResult(ctx context.Context, result any) *resty.Request {
 	return c.client.R().
 		SetContext(ctx).
 		SetResult(result)
+}
+
+func getDefaultConfig() ClientConfig {
+	return ClientConfig{
+		Module: "httpClient",
+		Retry:  3,
+	}
+}
+
+// LoggingMiddleware 返回一个日志中间件
+func LoggingMiddleware(client *Client) func(restyClient *resty.Client, resp *resty.Response) error {
+	return func(c *resty.Client, resp *resty.Response) error {
+		ctx := resp.Request.Context()
+		begin := resp.Request.Time
+		cost := glog.GetRequestCost(begin, time.Now())
+		responseBody := resp.Result()
+		fields := []any{
+			glog.KeyProto, glog.ValueProtoHttp,
+			glog.KeyHost, client.Config.Host,
+			glog.KeyUri, resp.Request.URL,
+			glog.KeyMethod, resp.Request.Method,
+			glog.KeyHttpStatusCode, resp.StatusCode(),
+			glog.KeyRequestBody, resp.Request.Body,
+			glog.KeyRequestQuery, resp.Request.QueryParams.Encode(),
+			glog.KeyResponseBody, responseBody,
+			glog.KeyCost, cost,
+		}
+
+		if resp.IsError() {
+			// 记录错误日志
+			fields = append(fields, glog.KeyErrorMsg, resp.Error())
+			client.logger.Errorw(ctx, "HTTP request fail", fields...)
+		} else {
+			// 记录成功日志
+			client.logger.Infow(ctx, "HTTP request success", fields...)
+		}
+
+		return nil
+	}
 }
