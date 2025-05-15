@@ -2,6 +2,7 @@ package ghttp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,9 +13,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// EventData 定义从SSE事件中解析的JSON数据结构
+type EventData struct {
+	Counter   int       `json:"counter"`
+	Timestamp string    `json:"timestamp"`
+	DateTime  time.Time `json:"date_time"`
+}
+
 func TestSSEGet(t *testing.T) {
 	// 初始化 SSE 客户端
-	inst := NewSSEInst(&SSEInstConfig{
+	client := NewSSEClient(&SSEClientConfig{
 		Module: "testModule",
 		Host:   "127.0.0.1",
 		Retry:  3,
@@ -25,10 +33,25 @@ func TestSSEGet(t *testing.T) {
 		10*time.Millisecond,
 		func(w io.Writer) error {
 			if counter == 100 {
-				inst.Es().Close()
+				client.Es().Close()
 				return fmt.Errorf("stop sending events")
 			}
-			_, err := fmt.Fprintf(w, "id: %v\ndata: The time is %s\n\n", counter, time.Now().Format(time.UnixDate))
+
+			// 创建JSON格式的数据
+			eventData := EventData{
+				Counter:   counter,
+				Timestamp: time.Now().Format(time.UnixDate),
+				DateTime:  time.Now(),
+			}
+
+			// 将数据转换为JSON字符串
+			jsonData, err := json.Marshal(eventData)
+			if err != nil {
+				return err
+			}
+
+			// 按照SSE格式发送JSON数据
+			_, err = fmt.Fprintf(w, "id: %v\ndata: %s\n\n", counter, jsonData)
 			counter++
 			return err
 		},
@@ -36,11 +59,24 @@ func TestSSEGet(t *testing.T) {
 	defer sseServer.Close()
 
 	ctx := context.Background()
-	err := inst.Es().
+
+	// 创建一个自定义消息处理函数来处理JSON解析后的数据
+	messageHandler := func(e any) {
+		// 此时e应该已经是解析后的EventData结构
+		if data, ok := e.(*EventData); ok {
+			fmt.Printf("接收到事件 - 计数器: %d, 时间戳: %s\n",
+				data.Counter, data.Timestamp)
+		} else {
+			t.Errorf("数据类型错误: %T", e)
+		}
+	}
+
+	// 将EventData结构的空实例作为第二个参数传递给OnMessage
+	err := client.Es().
 		SetURL(sseServer.URL).
-		OnOpen(inst.NewOpenHandler(ctx)).
-		OnError(inst.NewErrorHandler(ctx)).
-		OnMessage(inst.NewMessageHandler(ctx), nil).Get()
+		OnOpen(client.NewOpenHandler(ctx)).
+		OnError(client.NewErrorHandler(ctx)).
+		OnMessage(messageHandler, &EventData{}).Get()
 	assert.Nil(t, err)
 }
 

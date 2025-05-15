@@ -65,7 +65,7 @@ func (c *Client) init() {
 		// 初始化 logger
 		logCfg := glog.GetLoggerConfig()
 		logCfg.Module = c.Config.Module
-		if logger, err := glog.GetLogger(logCfg); err != nil {
+		if logger, err := glog.GetLogger(logCfg, glog.WithCallerSkip(1)); err != nil {
 			c.logger = glog.GetDefaultLogger()
 		} else {
 			c.logger = logger
