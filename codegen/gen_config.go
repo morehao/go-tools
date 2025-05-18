@@ -8,13 +8,13 @@ import (
 )
 
 type CommonConfig struct {
-	PackageName    string                    // 包名
-	TplDir         string                    // 模板目录
-	RootDir        string                    // 生成文件的根目录
-	LayerDirMap    map[LayerName]string      // 各层级目录，如果为空则使用默认规则
-	LayerNameMap   map[LayerName]LayerName   // 各层级名称，如果为空则使用默认规则
-	LayerPrefixMap map[LayerName]LayerPrefix // 各层级前缀，如果为空则使用默认规则
-	TplFuncMap     template.FuncMap          // 模板函数
+	PackageName       string                    // 包名
+	TplDir            string                    // 模板目录
+	RootDir           string                    // 生成文件的根目录
+	LayerParentDirMap map[LayerName]string      // 各层级父目录，如果为空则使用默认规则
+	LayerNameMap      map[LayerName]LayerName   // 各层级名称，如果为空则使用默认规则
+	LayerPrefixMap    map[LayerName]LayerPrefix // 各层级前缀，如果为空则使用默认规则
+	TplFuncMap        template.FuncMap          // 模板函数
 }
 
 type ModuleCfg struct {

@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"text/template"
 
@@ -92,17 +93,17 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 			layerPrefix = prefix
 		}
 
-		layerDir := rootDir
+		layerParentDir := rootDir
 		// 构造生成文件所在目录的名称
-		if customLayerDir, ok := cfg.LayerDirMap[defaultLayerName]; ok {
-			layerDir = customLayerDir
+		if customLayerParentDir, ok := cfg.LayerParentDirMap[defaultLayerName]; ok {
+			layerParentDir = path.Join(layerParentDir, customLayerParentDir)
 		}
 		var targetDir string
 		if defaultLayerPrefix.String() == "" {
-			targetDir = fmt.Sprintf("%s/%s", layerDir, layerName)
+			targetDir = path.Join(layerParentDir, string(layerName))
 		} else {
 			targetFileParentDir := fmt.Sprintf("%s%s", layerPrefix, strings.ToLower(gutils.SnakeToPascal(cfg.PackageName)))
-			targetDir = fmt.Sprintf("%s/%s/%s", layerDir, layerName, targetFileParentDir)
+			targetDir = path.Join(layerParentDir, string(layerName), targetFileParentDir)
 		}
 
 		// 构造生成文件的文件名称
@@ -118,10 +119,10 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		}
 
 		var targetFileExist bool
-		if gutils.FileExists(fmt.Sprintf("%s/%s", targetDir, targetFilename)) {
+		if gutils.FileExists(path.Join(targetDir, targetFilename)) {
 			targetFileExist = true
 		}
-		tplFilepath := fmt.Sprintf("%s/%s", cfg.TplDir, tplFilename)
+		tplFilepath := path.Join(cfg.TplDir, tplFilename)
 		tplInst := template.New(tplFilename).Funcs(cfg.TplFuncMap)
 		fileTemplate, parseErr := tplInst.ParseFiles(tplFilepath)
 		if parseErr != nil {
@@ -148,12 +149,12 @@ func createFile(targetDir, targetFilename string, tpl *template.Template, tplPar
 	if err := gutils.CreateDir(targetDir); err != nil {
 		return err
 	}
-	codeFilepath := fmt.Sprintf("%s/%s", targetDir, targetFilename)
+	codeFilepath := path.Join(targetDir, targetFilename)
 	// 判断文件是否存在
 	if exist := gutils.FileExists(codeFilepath); exist {
 		// 如果存在，先写入一个临时文件，再对既有文件进行追加
-		tempDir := fmt.Sprintf("%s/tmp", targetDir)
-		tmpFilepath := fmt.Sprintf("%s/%s", tempDir, targetFilename)
+		tempDir := path.Join(targetDir, "tmp")
+		tmpFilepath := path.Join(tempDir, targetFilename)
 		if err := gutils.CreateDir(tempDir); err != nil {
 			return err
 		}
