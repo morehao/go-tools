@@ -31,16 +31,12 @@ func GetLogger(cfg *LogConfig, opts ...Option) (Logger, error) {
 	return &loggerInstance{Logger: logger}, nil
 }
 
-// getLoggerFromCtx 从Context中获取logger，如果没有则返回默认logger
-func getLoggerFromCtx(ctx context.Context) Logger {
-	logger, ok := ctx.Value(KeyLogger).(Logger)
-	if ok {
-		if logger == nil {
-			return defaultLoggerInstance
-		}
-		return logger
-	}
+func GetDefaultLogger() Logger {
 	return defaultLoggerInstance
+}
+
+func GetLoggerConfig() *LogConfig {
+	return defaultLoggerInstance.getConfig()
 }
 
 // 以下函数使用Context中的logger，如果没有则使用默认logger
@@ -115,10 +111,6 @@ func Fatalf(ctx context.Context, format string, kvs ...any) {
 
 func Fatalw(ctx context.Context, msg string, kvs ...any) {
 	defaultLoggerInstance.Fatalw(ctx, msg, kvs...)
-}
-
-func Name(ctx context.Context) string {
-	return defaultLoggerInstance.Name()
 }
 
 // Close 关闭所有logger

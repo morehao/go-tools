@@ -2,7 +2,9 @@ package dbredis
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/morehao/go-tools/glog"
 	"github.com/stretchr/testify/assert"
@@ -104,4 +106,27 @@ func TestInitRedisWithoutInitLog(t *testing.T) {
 	// 关闭 Redis 客户端
 	err = redisClient.Close()
 	assert.Nil(t, err)
+}
+
+func TestSetNX(t *testing.T) {
+	cfg := &RedisConfig{
+		Service:  "test",
+		Addr:     "127.0.0.1:6379",
+		Password: "",
+		DB:       0,
+	}
+	redisClient, err := InitRedis(cfg)
+	assert.Nil(t, err)
+	key := "test123"
+	ok1, setErr1 := redisClient.SetNX(context.Background(), key, "value123", time.Second*2).Result()
+	assert.Nil(t, setErr1)
+	fmt.Println("ok1:", ok1)
+	for {
+		ok2, setErr2 := redisClient.SetNX(context.Background(), key, "value123", time.Second*2).Result()
+		assert.Nil(t, setErr2)
+		if ok2 {
+			break
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
 }

@@ -1,4 +1,4 @@
-package ctr{{.PackagePascalName}}
+package ctr{{.PackageName}}
 
 import (
 	"fmt"

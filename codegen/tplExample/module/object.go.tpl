@@ -1,1 +1,1 @@
-package obj{{.PackagePascalName}}
+package obj{{.PackageName}}

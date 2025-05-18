@@ -16,11 +16,10 @@ const (
 )
 
 type ModuleTplAnalysisRes struct {
-	PackageName       string
-	TableName         string
-	PackagePascalName string
-	StructName        string
-	TplAnalysisList   []ModuleTplAnalysisItem
+	PackageName     string
+	TableName       string
+	StructName      string
+	TplAnalysisList []ModuleTplAnalysisItem
 }
 
 type TplAnalysisItem struct {
@@ -41,9 +40,8 @@ type ModuleTplAnalysisItem struct {
 }
 
 type ApiTplAnalysisRes struct {
-	PackageName       string
-	PackagePascalName string
-	TplAnalysisList   []TplAnalysisItem
+	PackageName     string
+	TplAnalysisList []TplAnalysisItem
 }
 
 type GenParams struct {
@@ -94,16 +92,17 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 			layerPrefix = prefix
 		}
 
+		layerDir := rootDir
 		// 构造生成文件所在目录的名称
-		if layerDir, ok := cfg.LayerDirMap[defaultLayerName]; ok {
-			rootDir = layerDir
+		if customLayerDir, ok := cfg.LayerDirMap[defaultLayerName]; ok {
+			layerDir = customLayerDir
 		}
 		var targetDir string
 		if defaultLayerPrefix.String() == "" {
-			targetDir = fmt.Sprintf("%s/%s", rootDir, layerName)
+			targetDir = fmt.Sprintf("%s/%s", layerDir, layerName)
 		} else {
-			targetFileParentDir := fmt.Sprintf("%s%s", layerPrefix, gutils.SnakeToPascal(cfg.PackageName))
-			targetDir = fmt.Sprintf("%s/%s/%s", rootDir, layerName, targetFileParentDir)
+			targetFileParentDir := fmt.Sprintf("%s%s", layerPrefix, strings.ToLower(gutils.SnakeToPascal(cfg.PackageName)))
+			targetDir = fmt.Sprintf("%s/%s/%s", layerDir, layerName, targetFileParentDir)
 		}
 
 		// 构造生成文件的文件名称
@@ -112,7 +111,7 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		switch defaultLayerName {
 		case LayerNameRequest, LayerNameResponse:
 			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
-		case LayerNameRouter, LayerNameErrorCode:
+		case LayerNameRouter, LayerNameCode:
 			targetFilename = fmt.Sprintf("%s%s", gutils.CamelToSnakeCase(cfg.PackageName), goFileExtension)
 		default:
 			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)

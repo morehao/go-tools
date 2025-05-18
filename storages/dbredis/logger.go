@@ -99,8 +99,8 @@ func (l redisLogger) cmdsToString(cmds []redis.Cmder) string {
 	}
 	return fmt.Sprintf("[%s]", strings.Join(cmdStrs, ", "))
 }
-func (l redisLogger) commonFields(ctx context.Context) []interface{} {
-	fields := []interface{}{
+func (l redisLogger) commonFields(ctx context.Context) []any {
+	fields := []any{
 		glog.KeyAddr, l.Addr,
 		glog.KeyDatabase, l.Database,
 	}
