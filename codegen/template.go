@@ -3,7 +3,7 @@ package codegen
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -31,6 +31,7 @@ type TplAnalysisItem struct {
 	TargetDir       string
 	TargetFilename  string
 	TargetFileExist bool
+	OriginLayerName LayerName
 	LayerName       LayerName
 	LayerPrefix     LayerPrefix
 }
@@ -96,14 +97,14 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		layerParentDir := rootDir
 		// 构造生成文件所在目录的名称
 		if customLayerParentDir, ok := cfg.LayerParentDirMap[defaultLayerName]; ok {
-			layerParentDir = path.Join(layerParentDir, customLayerParentDir)
+			layerParentDir = filepath.Join(layerParentDir, customLayerParentDir)
 		}
 		var targetDir string
 		if defaultLayerPrefix.String() == "" {
-			targetDir = path.Join(layerParentDir, string(layerName))
+			targetDir = filepath.Join(layerParentDir, string(layerName))
 		} else {
 			targetFileParentDir := fmt.Sprintf("%s%s", layerPrefix, strings.ToLower(gutils.SnakeToPascal(cfg.PackageName)))
-			targetDir = path.Join(layerParentDir, string(layerName), targetFileParentDir)
+			targetDir = filepath.Join(layerParentDir, string(layerName), targetFileParentDir)
 		}
 
 		// 构造生成文件的文件名称
@@ -119,10 +120,10 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		}
 
 		var targetFileExist bool
-		if gutils.FileExists(path.Join(targetDir, targetFilename)) {
+		if gutils.FileExists(filepath.Join(targetDir, targetFilename)) {
 			targetFileExist = true
 		}
-		tplFilepath := path.Join(cfg.TplDir, tplFilename)
+		tplFilepath := filepath.Join(cfg.TplDir, tplFilename)
 		tplInst := template.New(tplFilename).Funcs(cfg.TplFuncMap)
 		fileTemplate, parseErr := tplInst.ParseFiles(tplFilepath)
 		if parseErr != nil {
@@ -133,6 +134,7 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 			Template:        fileTemplate,
 			TplFilepath:     tplFilepath,
 			TplFilename:     tplFilename,
+			OriginLayerName: defaultLayerName,
 			LayerName:       layerName,
 			LayerPrefix:     layerPrefix,
 			OriginFilename:  originFilename,
@@ -149,12 +151,12 @@ func createFile(targetDir, targetFilename string, tpl *template.Template, tplPar
 	if err := gutils.CreateDir(targetDir); err != nil {
 		return err
 	}
-	codeFilepath := path.Join(targetDir, targetFilename)
+	codeFilepath := filepath.Join(targetDir, targetFilename)
 	// 判断文件是否存在
 	if exist := gutils.FileExists(codeFilepath); exist {
 		// 如果存在，先写入一个临时文件，再对既有文件进行追加
-		tempDir := path.Join(targetDir, "tmp")
-		tmpFilepath := path.Join(tempDir, targetFilename)
+		tempDir := filepath.Join(targetDir, "tmp")
+		tmpFilepath := filepath.Join(tempDir, targetFilename)
 		if err := gutils.CreateDir(tempDir); err != nil {
 			return err
 		}
