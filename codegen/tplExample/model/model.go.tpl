@@ -1,1 +1,1 @@
-package dao{{.PackagePascalName}}
+package {{.DBServiceName}}model

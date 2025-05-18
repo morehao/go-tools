@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/morehao/go-tools/gutils"
 	"gorm.io/gorm"
 )
 
@@ -27,6 +26,7 @@ func (impl *generatorImpl) AnalysisModuleTpl(db *gorm.DB, cfg *ModuleCfg) (*Modu
 	if err := impl.checkModuleCfg(cfg); err != nil {
 		return nil, err
 	}
+	cfg.format()
 	dbType := db.Dialector.Name()
 	switch dbType {
 	case dbTypeMysql:
@@ -66,11 +66,10 @@ func (impl *generatorImpl) AnalysisApiTpl(cfg *ApiCfg) (*ApiTplAnalysisRes, erro
 		return nil, analysisErr
 	}
 	// 构造模板参数
-	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
+	cfg.format()
 	res := &ApiTplAnalysisRes{
-		PackageName:       cfg.PackageName,
-		PackagePascalName: packagePascalName,
-		TplAnalysisList:   tplAnalysisList,
+		PackageName:     cfg.PackageName,
+		TplAnalysisList: tplAnalysisList,
 	}
 	return res, nil
 }

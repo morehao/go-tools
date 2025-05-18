@@ -43,14 +43,12 @@ func (impl *mysqlImpl) GetModuleTemplateParam(db *gorm.DB, cfg *ModuleCfg) (*Mod
 			ModelFields:     modelFieldList,
 		})
 	}
-	packagePascalName := gutils.SnakeToPascal(cfg.PackageName)
 	structName := gutils.SnakeToPascal(cfg.TableName)
 	res := &ModuleTplAnalysisRes{
-		PackageName:       cfg.PackageName,
-		PackagePascalName: packagePascalName,
-		TableName:         cfg.TableName,
-		StructName:        structName,
-		TplAnalysisList:   moduleAnalysisList,
+		PackageName:     cfg.PackageName,
+		TableName:       cfg.TableName,
+		StructName:      structName,
+		TplAnalysisList: moduleAnalysisList,
 	}
 	return res, nil
 }

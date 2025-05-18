@@ -1,4 +1,4 @@
-package dto{{.PackagePascalName}}
+package dto{{.PackageName}}
 
 type {{.FunctionName}}Res struct {
 }

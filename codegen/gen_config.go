@@ -1,6 +1,11 @@
 package codegen
 
-import "text/template"
+import (
+	"strings"
+	"text/template"
+
+	"github.com/morehao/go-tools/gutils"
+)
 
 type CommonConfig struct {
 	PackageName    string                    // 包名
@@ -23,6 +28,10 @@ type ApiCfg struct {
 	TargetFilename string // 目标文件名
 }
 
+func (cfg *CommonConfig) format() {
+	cfg.PackageName = strings.ToLower(gutils.SnakeToPascal(cfg.PackageName))
+}
+
 type LayerName string
 
 type LayerPrefix string
@@ -39,7 +48,8 @@ const (
 	LayerNameRequest    LayerName = "request"
 	LayerNameResponse   LayerName = "response"
 	LayerNameModel      LayerName = "model"
-	LayerNameErrorCode  LayerName = "errorCode"
+	LayerNameDao        LayerName = "dao"
+	LayerNameCode       LayerName = "code"
 	LayerNameObject     LayerName = "object"
 
 	defaultLayerNameRequest  LayerName = "dto"
@@ -48,14 +58,14 @@ const (
 	defaultLayerPrefixController LayerPrefix = "ctr"
 	defaultLayerPrefixService    LayerPrefix = "svc"
 	defaultLayerPrefixDto        LayerPrefix = "dto"
-	defaultLayerPrefixModel      LayerPrefix = "dao"
+	defaultLayerPrefixDao        LayerPrefix = "dao"
 	defaultLayerPrefixObject     LayerPrefix = "obj"
 )
 
 var defaultLayerPrefixMap = map[LayerName]LayerPrefix{
 	LayerNameController: defaultLayerPrefixController,
 	LayerNameService:    defaultLayerPrefixService,
-	LayerNameModel:      defaultLayerPrefixModel,
+	LayerNameDao:        defaultLayerPrefixDao,
 	LayerNameDto:        defaultLayerPrefixDto,
 	LayerNameRequest:    defaultLayerPrefixDto,
 	LayerNameResponse:   defaultLayerPrefixDto,

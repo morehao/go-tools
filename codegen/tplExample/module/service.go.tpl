@@ -1,1 +1,1 @@
-package srv{{.PackagePascalName}}
+package srv{{.PackageName}}
