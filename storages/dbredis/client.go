@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"github.com/redis/go-redis/v9"
 )
 

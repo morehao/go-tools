@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"resty.dev/v3"
 )
 

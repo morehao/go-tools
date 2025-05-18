@@ -2,7 +2,7 @@ package dbes
 
 import (
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 )
 
 type ESConfig struct {

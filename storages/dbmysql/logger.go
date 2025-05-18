@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/utils"

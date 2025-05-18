@@ -38,7 +38,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"github.com/morehao/go-tools/conc/concqueue"
+	"github.com/morehao/golib/conc/concqueue"
 )
 
 func main() {

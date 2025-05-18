@@ -1,4 +1,4 @@
-module github.com/morehao/go-tools
+module github.com/morehao/golib
 
 go 1.23.0
 

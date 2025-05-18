@@ -8,7 +8,7 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 )
 
 func newEsLogger(cfg *ESConfig) (*esLog, error) {

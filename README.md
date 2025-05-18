@@ -1,5 +1,5 @@
 # go-tools简介
-`go-tools`是一个golang工具组件库，包含了一些个人在项目开发过程中总结的一些常用的工具函数和组件。
+`golib`是一个golang工具组件库，包含了一些个人在项目开发过程中总结的一些常用的工具函数和组件。
 
 组件列表：
 - [codegen](#codegen) 代码生成工具
@@ -18,7 +18,7 @@
 
 # 安装
 ```bash
-go get github.com/morehao/go-tools
+go get github.com/morehao/golib
 ```
 
 # 组件使用说明
@@ -49,7 +49,7 @@ go get github.com/morehao/go-tools
 ### 安装
 
 ```bash
-go get github.com/morehao/go-tools
+go get github.com/morehao/golib
 ```
 ### 使用
 使用示例参照[excel使用说明](excel/README.md)

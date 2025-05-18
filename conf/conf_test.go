@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/morehao/go-tools/gutils"
+	"github.com/morehao/golib/gutils"
 )
 
 func TestLoadConfig(t *testing.T) {

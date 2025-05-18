@@ -6,8 +6,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/morehao/go-tools/gast"
-	"github.com/morehao/go-tools/gutils"
+	"github.com/morehao/golib/gast"
+	"github.com/morehao/golib/gutils"
 )
 
 const (

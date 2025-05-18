@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"github.com/stretchr/testify/assert"
 )
 

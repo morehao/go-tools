@@ -3,7 +3,7 @@ package codegen
 import (
 	"fmt"
 
-	"github.com/morehao/go-tools/gutils"
+	"github.com/morehao/golib/gutils"
 	"gorm.io/gorm"
 )
 

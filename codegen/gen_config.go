@@ -4,7 +4,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/morehao/go-tools/gutils"
+	"github.com/morehao/golib/gutils"
 )
 
 type CommonConfig struct {

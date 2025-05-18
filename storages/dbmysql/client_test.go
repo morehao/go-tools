@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"github.com/stretchr/testify/assert"
 )
 

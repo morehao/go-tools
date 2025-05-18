@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

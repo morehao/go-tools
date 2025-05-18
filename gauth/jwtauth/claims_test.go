@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/morehao/go-tools/gutils"
+	"github.com/morehao/golib/gutils"
 )
 
 func TestNewClaims(t *testing.T) {

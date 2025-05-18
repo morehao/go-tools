@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/morehao/go-tools/excel"
+	"github.com/morehao/golib/excel"
 	"github.com/xuri/excelize/v2"
 )
 

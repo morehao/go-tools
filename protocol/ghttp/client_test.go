@@ -3,7 +3,7 @@
  * @Date: 2025-05-14 10:46:54
  * @LastEditors: morehao morehao@qq.com
  * @LastEditTime: 2025-05-14 12:13:44
- * @FilePath: /go-tools/protocol/ghttp/client_test.go
+ * @FilePath: /golib/protocol/ghttp/client_test.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 package ghttp
@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/morehao/go-tools/glog"
+	"github.com/morehao/golib/glog"
 	"github.com/stretchr/testify/assert"
 )
 
