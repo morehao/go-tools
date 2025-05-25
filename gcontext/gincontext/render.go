@@ -1,4 +1,4 @@
-package ginrender
+package gincontext
 
 import (
 	"net/http"
@@ -8,6 +8,12 @@ import (
 	"github.com/morehao/golib/gerror"
 	"github.com/pkg/errors"
 )
+
+type DtoRender struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data"`
+}
 
 func Success(ctx *gin.Context, data any) {
 	r := gcontext.NewResponseRender()

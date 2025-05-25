@@ -196,99 +196,6 @@ func AddFunction(functionFilepath, content, pkgName string) error {
 	return nil
 }
 
-// AddMethodToInterfaceInFileV2 adds a method from a receiver type to an interface
-func AddMethodToInterfaceInFileV2(filePath, receiverName, methodName, interfaceName string) error {
-	fileSet := token.NewFileSet()
-	node, err := parser.ParseFile(fileSet, filePath, nil, parser.ParseComments)
-	if err != nil {
-		return fmt.Errorf("failed to parse file: %w", err)
-	}
-
-	var methodDecl *ast.FuncDecl
-
-	// Find the method declaration
-	ast.Inspect(node, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok {
-			if fn.Recv != nil && len(fn.Recv.List) > 0 {
-				if starExpr, ok := fn.Recv.List[0].Type.(*ast.StarExpr); ok {
-					if ident, ok := starExpr.X.(*ast.Ident); ok && ident.Name == receiverName && fn.Name.Name == methodName {
-						methodDecl = fn
-						return false
-					}
-				}
-			}
-		}
-		return true
-	})
-
-	if methodDecl == nil {
-		return fmt.Errorf("method %s not found in receiver %s", methodName, receiverName)
-	}
-
-	// Extract method signature without comments
-	methodSig := removeCommentsFromFuncType(methodDecl.Type)
-
-	// Find the interface and add method signature
-	var interfaceType *ast.InterfaceType
-
-	ast.Inspect(node, func(n ast.Node) bool {
-		if ts, ok := n.(*ast.TypeSpec); ok {
-			if it, ok := ts.Type.(*ast.InterfaceType); ok && ts.Name.Name == interfaceName {
-				interfaceType = it
-				return false
-			}
-		}
-		return true
-	})
-
-	if interfaceType == nil {
-		return fmt.Errorf("interface %s not found", interfaceName)
-	}
-
-	// Add method signature to the interface
-	methodField := &ast.Field{
-		Names: []*ast.Ident{ast.NewIdent(methodName)},
-		Type:  methodSig,
-	}
-	interfaceType.Methods.List = append(interfaceType.Methods.List, methodField)
-
-	// Write modified AST back to file
-	f, err := os.Create(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer f.Close()
-
-	if err := printer.Fprint(f, fileSet, node); err != nil {
-		return fmt.Errorf("failed to print AST: %w", err)
-	}
-
-	return nil
-}
-
-// removeCommentsFromFuncType removes comments from function type
-func removeCommentsFromFuncType(ft *ast.FuncType) *ast.FuncType {
-	return &ast.FuncType{
-		Params:  removeCommentsFromFieldList(ft.Params),
-		Results: removeCommentsFromFieldList(ft.Results),
-	}
-}
-
-// removeCommentsFromFieldList removes comments from field list
-func removeCommentsFromFieldList(fl *ast.FieldList) *ast.FieldList {
-	if fl == nil {
-		return nil
-	}
-	newList := make([]*ast.Field, len(fl.List))
-	for i, f := range fl.List {
-		newList[i] = &ast.Field{
-			Names: f.Names,
-			Type:  f.Type,
-		}
-	}
-	return &ast.FieldList{List: newList}
-}
-
 // AddMethodToInterface 将指定接收者类型的方法添加到指定文件中的接口中。
 func AddMethodToInterface(filePath, receiverType, methodName, interfaceName string) error {
 	// 检查接口是否已经包含该方法。
@@ -454,4 +361,176 @@ func AddContentToFuncWithLineNumber(filePath, functionName, content string, line
 	}
 
 	return nil
+}
+
+// AddMapKVToFile 在指定文件中添加 map 变量，并向其中添加 kv。
+func AddMapKVToFile(filePath, varName, mapType, keyName, value string) error {
+
+	fileSet := token.NewFileSet()
+	node, err := parser.ParseFile(fileSet, filePath, nil, parser.AllErrors)
+	if err != nil {
+		return err
+	}
+
+	if cl, found := findMapVar(node, varName); found {
+		appendMapKV(cl, keyName, value)
+	} else {
+		createMapVar(node, varName, mapType, keyName, value)
+	}
+
+	// 写回文件
+	outFile, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	return format.Node(outFile, fileSet, node)
+}
+
+// findMapVar 查找是否存在指定变量名的 map
+func findMapVar(node *ast.File, varName string) (*ast.CompositeLit, bool) {
+	for _, decl := range node.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.VAR {
+			continue
+		}
+		for _, spec := range genDecl.Specs {
+			valSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for i, name := range valSpec.Names {
+				if name.Name == varName {
+					cl, ok := valSpec.Values[i].(*ast.CompositeLit)
+					if ok {
+						return cl, true
+					}
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+// createMapVar 创建新的 map 变量
+func createMapVar(node *ast.File, varName, mapType, keyName, value string) {
+	decl := &ast.GenDecl{
+		Tok: token.VAR,
+		Specs: []ast.Spec{
+			&ast.ValueSpec{
+				Names: []*ast.Ident{ast.NewIdent(varName)},
+				Type:  ast.NewIdent(mapType),
+				Values: []ast.Expr{
+					&ast.CompositeLit{
+						Type: ast.NewIdent(mapType),
+						Elts: []ast.Expr{
+							&ast.KeyValueExpr{
+								Key:   ast.NewIdent(keyName),
+								Value: &ast.BasicLit{Kind: token.STRING, Value: value},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	node.Decls = append(node.Decls, decl)
+}
+
+// appendMapKV 向已有 map 中追加 kv
+func appendMapKV(cl *ast.CompositeLit, keyName, value string) {
+	kv := &ast.KeyValueExpr{
+		Key:   ast.NewIdent(keyName),
+		Value: &ast.BasicLit{Kind: token.STRING, Value: value},
+	}
+	cl.Elts = append(cl.Elts, kv)
+}
+
+// AddConstToFile 向 Go 文件中追加常量（若不存在则创建 const 块，自动检查重名，自动 gofmt）
+func AddConstToFile(filePath, constName, constValue string) error {
+	fileSet := token.NewFileSet()
+	node, err := parser.ParseFile(fileSet, filePath, nil, parser.AllErrors)
+	if err != nil {
+		return err
+	}
+
+	// 检查是否已存在该常量定义
+	if constExists(node, constName) {
+		return nil // 已存在，跳过追加
+	}
+
+	added := false
+
+	// 查找已有 const 分组
+	for _, decl := range node.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.CONST {
+			continue
+		}
+
+		// 找到了 const 分组，直接追加
+		genDecl.Specs = append(genDecl.Specs, &ast.ValueSpec{
+			Names:  []*ast.Ident{ast.NewIdent(constName)},
+			Values: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: constValue}},
+		})
+		added = true
+		break
+	}
+
+	// 如果没有 const 分组，创建一个新的
+	if !added {
+		newDecl := &ast.GenDecl{
+			Tok: token.CONST,
+			Specs: []ast.Spec{
+				&ast.ValueSpec{
+					Names:  []*ast.Ident{ast.NewIdent(constName)},
+					Values: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: constValue}},
+				},
+			},
+		}
+		// 插入到文件顶部（import 之后）
+		insertAt := 0
+		for i, decl := range node.Decls {
+			if genDecl, ok := decl.(*ast.GenDecl); ok && genDecl.Tok == token.IMPORT {
+				insertAt = i + 1
+			}
+		}
+		node.Decls = append(node.Decls[:insertAt], append([]ast.Decl{newDecl}, node.Decls[insertAt:]...)...)
+	}
+
+	// 使用 gofmt 格式化写回文件
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, fileSet, node); err != nil {
+		return err
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filePath, formatted, 0644)
+}
+
+// constExists 检查常量是否已存在
+func constExists(node *ast.File, constName string) bool {
+	for _, decl := range node.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range genDecl.Specs {
+			valSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for _, name := range valSpec.Names {
+				if name.Name == constName {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

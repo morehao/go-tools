@@ -7,14 +7,14 @@ import (
 )
 
 func TestAddMethodToInterfaceInFile(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 
 	err := AddMethodToInterfaceInFile(filePath, "userImpl", "GetAge", "User")
 	assert.Nil(t, err)
 }
 
 func TestAddContentToFunc(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 	content := `routerGroup.POST("test")`
 
 	err := AddContentToFunc(filePath, "platformRouter", content)
@@ -27,12 +27,12 @@ func NewFunction() {
 	fmt.Println("Hello, World!")
 }
 `
-	err := AddFunction("test.go", content, "gast")
+	err := AddFunction("_test.go", content, "gast")
 	assert.Nil(t, err)
 }
 
 func TestAddMethodToInterface(t *testing.T) {
-	filePath := "test.go"
+	filePath := "_test.go"
 	content, err := getMethodDeclaration(filePath, "userImpl", "GetAge")
 	assert.Nil(t, err)
 	t.Log(content)
@@ -42,8 +42,20 @@ func TestAddMethodToInterface(t *testing.T) {
 }
 
 func TestAddContentToFuncWithLineNumber(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 	content := `routerGroup.POST("test3") // 3`
 	err := AddContentToFuncWithLineNumber(filePath, "platformRouter", content, -2)
+	assert.Nil(t, err)
+}
+
+func TestAddMapKVToFile(t *testing.T) {
+	filePath := "./_map.go"
+	err := AddMapKVToFile(filePath, "userErrorMsgMap", "map[int]string", "UserLoginErr", `"用户登录失败"`)
+	assert.Nil(t, err)
+}
+
+func TestAddConstToFile(t *testing.T) {
+	filePath := "./_map.go"
+	err := AddConstToFile(filePath, "UserLoginErr", "100001")
 	assert.Nil(t, err)
 }
