@@ -19,9 +19,9 @@ func TestGenModuleCode(t *testing.T) {
 	assert.Nil(t, getErr)
 	tplDir := fmt.Sprintf("%s/tplExample/module", workDir)
 	rootDir := fmt.Sprintf("%s/tmp", workDir)
-	layerDirMap := map[LayerName]string{
-		LayerNameModel: fmt.Sprintf("%s/%s", rootDir, LayerNameModel),
-		LayerNameDao:   fmt.Sprintf("%s/%s", rootDir, LayerNameDao),
+	layerParentDirMap := map[LayerName]string{
+		LayerNameModel: "model",
+		LayerNameDao:   "dao",
 	}
 	layerNameMap := map[LayerName]LayerName{
 		LayerNameCode:  "code",
@@ -33,12 +33,12 @@ func TestGenModuleCode(t *testing.T) {
 	}
 	cfg := &ModuleCfg{
 		CommonConfig: CommonConfig{
-			PackageName:    "user",
-			TplDir:         tplDir,
-			RootDir:        rootDir,
-			LayerDirMap:    layerDirMap,
-			LayerNameMap:   layerNameMap,
-			LayerPrefixMap: LayerPrefixMap,
+			PackageName:       "user",
+			TplDir:            tplDir,
+			RootDir:           rootDir,
+			LayerParentDirMap: layerParentDirMap,
+			LayerNameMap:      layerNameMap,
+			LayerPrefixMap:    LayerPrefixMap,
 		},
 		TableName: "user",
 	}
@@ -117,9 +117,9 @@ func TestGenModelCode(t *testing.T) {
 	assert.Nil(t, getErr)
 	tplDir := fmt.Sprintf("%s/tplExample/model", workDir)
 	rootDir := fmt.Sprintf("%s/tmp", workDir)
-	layerDirMap := map[LayerName]string{
-		LayerNameModel: fmt.Sprintf("%s/%s", rootDir, LayerNameModel),
-		LayerNameDao:   fmt.Sprintf("%s/%s", rootDir, LayerNameDao),
+	layerParentDirMap := map[LayerName]string{
+		LayerNameModel: "model",
+		LayerNameDao:   "dao",
 	}
 	layerNameMap := map[LayerName]LayerName{
 		LayerNameCode:  "code",
@@ -131,12 +131,12 @@ func TestGenModelCode(t *testing.T) {
 	}
 	cfg := &ModuleCfg{
 		CommonConfig: CommonConfig{
-			PackageName:    "user",
-			TplDir:         tplDir,
-			RootDir:        rootDir,
-			LayerDirMap:    layerDirMap,
-			LayerNameMap:   layerNameMap,
-			LayerPrefixMap: LayerPrefixMap,
+			PackageName:       "user",
+			TplDir:            tplDir,
+			RootDir:           rootDir,
+			LayerParentDirMap: layerParentDirMap,
+			LayerNameMap:      layerNameMap,
+			LayerPrefixMap:    LayerPrefixMap,
 		},
 		TableName: "user",
 	}

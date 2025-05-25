@@ -12,21 +12,21 @@ import (
 )
 
 func TestParseFile(t *testing.T) {
-	file := "./test.go"
+	file := "./_test.go"
 	res, err := ParseFile(file)
 	assert.Nil(t, err)
 	t.Log(res)
 }
 
 func TestTrimFileTitle(t *testing.T) {
-	file := "./test.go"
+	file := "./_test.go"
 	res, err := TrimFileTitle(file)
 	assert.Nil(t, err)
 	t.Log(res)
 }
 
 func TestFindMethodInFile(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 
 	method, ok, findErr := FindMethod(filePath, "userImpl", "GetName")
 	assert.Nil(t, findErr)
@@ -45,7 +45,7 @@ func TestFindMethodInFile(t *testing.T) {
 }
 
 func TestFindFunctionInFile(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 
 	function, ok, findErr := FindFunction(filePath, "platformRouter")
 	assert.Nil(t, findErr)
@@ -64,7 +64,7 @@ func TestFindFunctionInFile(t *testing.T) {
 }
 
 func TestGetFunctionContent(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 
 	content, err := GetFunctionContent(filePath, "platformRouter")
 	assert.Nil(t, err)
@@ -72,7 +72,7 @@ func TestGetFunctionContent(t *testing.T) {
 }
 
 func TestGetFunctionLines(t *testing.T) {
-	filePath := "./test.go"
+	filePath := "./_test.go"
 
 	start, end, err := GetFunctionLines(filePath, "platformRouter")
 	assert.Nil(t, err)

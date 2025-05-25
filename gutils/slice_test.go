@@ -13,3 +13,8 @@ func TestSliceContain(t *testing.T) {
 	s := []string{"a", "b"}
 	t.Log(SliceContain(s, "a"))
 }
+
+func TestSliceDuplicate(t *testing.T) {
+	s := []string{"a", "b", "a"}
+	t.Log(SliceDuplicate(s))
+}

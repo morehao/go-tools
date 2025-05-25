@@ -11,6 +11,9 @@ type Error struct {
 	Msg  string
 }
 
+type ErrorMap map[int]Error
+type CodeMsgMap map[int]string
+
 // Error 方法实现了error接口，返回错误信息
 func (e Error) Error() string {
 	return e.Msg
