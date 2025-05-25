@@ -1,7 +1,9 @@
 package codegen
 
 import (
+	"bytes"
 	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,28 +154,29 @@ func createFile(targetDir, targetFilename string, tpl *template.Template, tplPar
 		return err
 	}
 	codeFilepath := filepath.Join(targetDir, targetFilename)
-	// 判断文件是否存在
-	if exist := gutils.FileExists(codeFilepath); exist {
-		// 如果存在，先写入一个临时文件，再对既有文件进行追加
+
+	if gutils.FileExists(codeFilepath) {
+		// 文件已存在，写入临时文件，再追加
 		tempDir := filepath.Join(targetDir, "tmp")
 		tmpFilepath := filepath.Join(tempDir, targetFilename)
 		if err := gutils.CreateDir(tempDir); err != nil {
 			return err
 		}
-		tempF, openTempErr := os.OpenFile(tmpFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
-		if openTempErr != nil {
-			return openTempErr
-		}
 		defer func() {
-			if err := os.RemoveAll(tempDir); err != nil {
-				panic(err)
-			}
+			_ = os.RemoveAll(tempDir)
 		}()
-		if err := tpl.Execute(tempF, tplParam); err != nil {
+
+		// 将模板执行结果写入 buffer，再写入临时文件
+		var buf bytes.Buffer
+		if err := tpl.Execute(&buf, tplParam); err != nil {
+			return err
+		}
+		if err := os.WriteFile(tmpFilepath, buf.Bytes(), 0666); err != nil {
 			return err
 		}
 
-		// 判断文件是否包含package和import关键字
+		// 判断是否包含 package/import，并决定截断头部
+		var appendContent string
 		hasPackage, checkPackageErr := gast.HasPackageKeywords(tmpFilepath)
 		if checkPackageErr != nil {
 			return checkPackageErr
@@ -182,15 +185,12 @@ func createFile(targetDir, targetFilename string, tpl *template.Template, tplPar
 		if checkImportErr != nil {
 			return checkImportErr
 		}
-
-		// 获取追加的文件内容
-		var appendContent string
 		if hasPackage || hasImport {
-			trimTitleContent, trimErr := gast.TrimFileTitle(tmpFilepath)
+			content, trimErr := gast.TrimFileTitle(tmpFilepath)
 			if trimErr != nil {
 				return trimErr
 			}
-			appendContent = "\n" + trimTitleContent
+			appendContent = "\n" + content
 		} else {
 			content, readErr := os.ReadFile(tmpFilepath)
 			if readErr != nil {
@@ -199,28 +199,43 @@ func createFile(targetDir, targetFilename string, tpl *template.Template, tplPar
 			appendContent = string(content)
 		}
 
-		// 追加到原文件
+		// 格式化追加内容
+		formattedContent, formatErr := format.Source([]byte(appendContent))
+		if formatErr != nil {
+			return fmt.Errorf("format fail, error: %w", formatErr)
+		}
+
+		// 追加写入原文件
 		f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 		if openErr != nil {
 			return openErr
 		}
-		_, writeErr := f.WriteString(appendContent)
-		if writeErr != nil {
-			return writeErr
+		defer f.Close()
+
+		if _, err := f.Write(formattedContent); err != nil {
+			return err
 		}
 	} else {
+		// 文件不存在，生成新文件
+		var buf bytes.Buffer
+		if err := tpl.Execute(&buf, tplParam); err != nil {
+			return err
+		}
+		formattedContent, formatErr := format.Source(buf.Bytes())
+		if formatErr != nil {
+			return fmt.Errorf("format fail, error: %w", formatErr)
+		}
+
 		f, openErr := os.OpenFile(codeFilepath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 		if openErr != nil {
 			return openErr
 		}
-		defer func() {
-			if err := f.Close(); err != nil {
-				panic(err)
-			}
-		}()
-		if err := tpl.Execute(f, &tplParam); err != nil {
+		defer f.Close()
+
+		if _, err := f.Write(formattedContent); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
