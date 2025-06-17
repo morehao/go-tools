@@ -115,7 +115,7 @@ func analysisTplFiles(cfg CommonConfig, defaultTargetFilename string) ([]TplAnal
 		switch defaultLayerName {
 		case LayerNameRequest, LayerNameResponse:
 			targetFilename = fmt.Sprintf("%s%s", originFilename, goFileExtension)
-		case LayerNameRouter, LayerNameCode:
+		case LayerNameAPI, LayerNameCode:
 			targetFilename = fmt.Sprintf("%s%s", gutils.CamelToSnakeCase(cfg.PackageName), goFileExtension)
 		default:
 			targetFilename = fmt.Sprintf("%s%s", gutils.TrimFileExtension(defaultTargetFilename), goFileExtension)

@@ -41,7 +41,7 @@ func (lp LayerPrefix) String() string {
 }
 
 const (
-	LayerNameRouter     LayerName = "router"
+	LayerNameAPI        LayerName = "api"
 	LayerNameController LayerName = "controller"
 	LayerNameService    LayerName = "service"
 	LayerNameDto        LayerName = "dto"
