@@ -11,7 +11,7 @@ import (
 )
 
 func TestGenModuleCode(t *testing.T) {
-	dsn := "root:123456@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True"
+	dsn := "root:123456@tcp(127.0.0.1:3306)/practice?charset=utf8mb4&parseTime=True"
 	db, openErr := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	assert.Nil(t, openErr)
 	// 获取当前的运行路径
@@ -109,7 +109,7 @@ func TestGenApiCode(t *testing.T) {
 }
 
 func TestGenModelCode(t *testing.T) {
-	dsn := "root:123456@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True"
+	dsn := "root:123456@tcp(127.0.0.1:3306)/practice?charset=utf8mb4&parseTime=True"
 	db, openErr := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	assert.Nil(t, openErr)
 	// 获取当前的运行路径
