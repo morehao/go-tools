@@ -35,18 +35,14 @@ type mysqlTableColumn struct {
 }
 
 type ModelField struct {
-	FieldName         string // 字段名称
-	FieldType         string // 字段数据类型，如int、string
-	ColumnName        string // 列名
-	ColumnType        string // 列数据类型，如varchar(255)
-	ColumnSize        int    // 字段长度
-	IsNull            bool   // 是否允许为空
-	DefaultValue      string // 默认值
-	ColumnKey         string // 索引类型
-	Comment           string // 字段注释
-	NumericPrecision  int64  // 数值列的精度
-	NumericScale      int64  // 数值列的小数位数
-	DatetimePrecision int64  // 日期时间列的精度
+	FieldName    string // 字段名称
+	FieldType    string // 字段数据类型，如int、string
+	ColumnName   string // 列名
+	ColumnType   string // 列数据类型，如varchar(255)
+	ColumnKey    string // 索引类型，如PRI（主键）, UNI（唯一索引）, MUL（非唯一索引）
+	IsNullable   bool   // 是否允许为空
+	DefaultValue string // 默认值
+	Comment      string // 字段注释
 }
 
 type TableList []string
