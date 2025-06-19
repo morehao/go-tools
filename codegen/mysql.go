@@ -66,12 +66,14 @@ func (impl *mysqlImpl) getModelField(db *gorm.DB, dbName string, cfg *ModuleCfg)
 	var modelFieldList []ModelField
 	for _, v := range entities {
 		item := ModelField{
-			FieldName:  gutils.SnakeToPascal(v.ColumnName),
-			FieldType:  columnTypeMap[v.DataType],
-			ColumnName: v.ColumnName,
-			ColumnType: v.DataType,
-			ColumnKey:  v.ColumnKey,
-			Comment:    v.ColumnComment,
+			FieldName:    gutils.SnakeToPascal(v.ColumnName),
+			FieldType:    columnTypeMap[v.DataType],
+			ColumnName:   v.ColumnName,
+			ColumnType:   v.ColumnType,
+			ColumnKey:    v.ColumnKey,
+			IsNullable:   v.IsNullable == "YES",
+			DefaultValue: v.ColumnDefault.String,
+			Comment:      v.ColumnComment,
 		}
 		modelFieldList = append(modelFieldList, item)
 	}
