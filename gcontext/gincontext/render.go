@@ -1,12 +1,12 @@
 package gincontext
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/morehao/golib/gcontext"
 	"github.com/morehao/golib/gerror"
-	"github.com/pkg/errors"
 )
 
 type DtoRender struct {
@@ -21,7 +21,6 @@ func Success(ctx *gin.Context, data any) {
 	r.SetMsg("success")
 	r.SetData(data)
 	ctx.JSON(http.StatusOK, r)
-	return
 }
 
 func SuccessWithFormat(ctx *gin.Context, data any) {
@@ -30,7 +29,6 @@ func SuccessWithFormat(ctx *gin.Context, data any) {
 	r.SetMsg("success")
 	r.SetDataWithFormat(data)
 	ctx.JSON(http.StatusOK, r)
-	return
 }
 
 func Fail(ctx *gin.Context, err error) {
@@ -45,14 +43,13 @@ func Fail(ctx *gin.Context, err error) {
 		msg = gErr.Msg
 	} else {
 		code = -1
-		msg = errors.Cause(err).Error()
+		msg = cause(err).Error()
 	}
 
 	r.SetCode(code)
 	r.SetMsg(msg)
 	r.SetData(gin.H{})
 	ctx.JSON(http.StatusOK, r)
-	return
 }
 
 func Abort(ctx *gin.Context, err error) {
@@ -65,10 +62,18 @@ func Abort(ctx *gin.Context, err error) {
 		r.SetData(gin.H{})
 	} else {
 		r.SetCode(-1)
-		r.SetMsg(errors.Cause(err).Error())
+		r.SetMsg(cause(err).Error())
 		r.SetData(gin.H{})
 	}
 	ctx.AbortWithStatusJSON(http.StatusOK, r)
+}
 
-	return
+func cause(err error) error {
+	for {
+		unwrapped := errors.Unwrap(err)
+		if unwrapped == nil {
+			return err
+		}
+		err = unwrapped
+	}
 }
